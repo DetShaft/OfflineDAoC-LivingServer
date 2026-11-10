@@ -27,6 +27,8 @@ public static class AutonomousBotDashboard
     private static readonly Logger Log = LoggerManager.Create(typeof(AutonomousBotDashboard));
     private static Timer _timer;
     private static int _writing;
+    private static int _publishDisabled;
+    private static int _publishAccessDeniedLogged;
     private static string _lastRequestId = string.Empty;
 
     public static string FilePath => Path.Combine(AppContext.BaseDirectory, "bot-world.json");
@@ -91,16 +93,26 @@ public static class AutonomousBotDashboard
             // The launcher's atomic request replacement can overlap this tiny
             // read window. The next poll retries without logging noise.
         }
-        catch (UnauthorizedAccessException exception)
+        catch (UnauthorizedAccessException)
         {
-            Log.Warn("Live bot dashboard request could not be read", exception);
+            DisablePublishing("Live bot dashboard request file could not be read; launcher snapshots are paused for this session.");
         }
+    }
+
+    private static void DisablePublishing(string message)
+    {
+        Volatile.Write(ref _publishDisabled, 1);
+        if (Interlocked.Exchange(ref _publishAccessDeniedLogged, 1) == 0)
+            Log.Warn(message);
     }
 
     private const int MoveAttempts = 4, MoveRetryMilliseconds = 100;
 
     private static bool Publish(bool running, string requestId)
     {
+        if (Volatile.Read(ref _publishDisabled) != 0)
+            return false;
+
         if (Interlocked.Exchange(ref _writing, 1) != 0)
             return false;
 
@@ -132,12 +144,22 @@ public static class AutonomousBotDashboard
                 {
                     Thread.Sleep(MoveRetryMilliseconds);
                 }
-                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                catch (UnauthorizedAccessException)
+                {
+                    DisablePublishing("Live bot dashboard snapshot writes are denied; launcher snapshots are paused for this session.");
+                    return false;
+                }
+                catch (IOException exception)
                 {
                     Log.Warn($"Live bot dashboard snapshot skipped: the file stayed locked ({exception.Message})");
                     return false;
                 }
             }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            DisablePublishing("Live bot dashboard snapshot writes are denied; launcher snapshots are paused for this session.");
+            return false;
         }
         catch (Exception exception)
         {

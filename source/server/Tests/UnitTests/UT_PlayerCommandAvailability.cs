@@ -31,12 +31,24 @@ namespace DOL.UnitTests
         }
 
         [TestCase(typeof(TeleportToExchangeCommandHandler), "&tc")]
+        [TestCase(typeof(transfercorpseCommandHandler), "&tfcorpse")]
         [TestCase(typeof(MobsCommandHandler), "&mobs")]
         [TestCase(typeof(TeleportToBotCommandHandler), "&tele")]
         [TestCase(typeof(SpawnTemporaryGroupBotCommandHandler), "&spawn")]
         public void RetainedPlayerCommandsRemainRegistered(Type handlerType, string command)
         {
             Assert.That(CommandsOn(handlerType), Does.Contain(command));
+        }
+
+        [Test]
+        public void RealmExchangeAndCorpseSummonDoNotShareTc()
+        {
+            string[] teleport = CommandsOn(typeof(TeleportToExchangeCommandHandler));
+            string[] corpse = CommandsOn(typeof(transfercorpseCommandHandler));
+            Assert.That(teleport, Does.Contain("&tc"));
+            Assert.That(corpse, Does.Not.Contain("&tc"));
+            Assert.That(corpse, Does.Contain("&transfercorpse"));
+            Assert.That(corpse, Does.Contain("&tfcorpse"));
         }
 
         [Test]
