@@ -44,10 +44,31 @@ def git_show(rel: str) -> bytes | None:
         return None
 
 
+def base_commit_present() -> bool:
+    try:
+        subprocess.check_call(
+            ["git", "cat-file", "-e", f"{BASE}^{{commit}}"],
+            cwd=ROOT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
 def main() -> int:
     patches = {e["Path"]: e for e in json.loads(PATCHES.read_text(encoding="utf-8"))}
     problems: list[str] = []
     cs_changed = False
+
+    if not base_commit_present():
+        print(
+            f"error: git commit {BASE} (0.37 release baseline) is not in this clone; "
+            "fetch full history (actions/checkout fetch-depth: 0) before running this check",
+            file=sys.stderr,
+        )
+        return 1
 
     for scan in SCAN_ROOTS:
         for path in sorted(scan.rglob("*")):

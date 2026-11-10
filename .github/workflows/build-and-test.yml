@@ -18,7 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # Full history: check_newclient_packaged.py diffs game/ui + game/net against the 0.37
+      # release commit (ab4df02a). A shallow clone makes every script look brand-new and fails.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Check the README and release versions agree
         run: |
           python3 tools/release/check_versions.py
