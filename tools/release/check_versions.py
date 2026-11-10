@@ -20,7 +20,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-REPO = "chris4aker/OfflineDAoC-LivingServer"
+# Prefer the Actions repository (so Jay's DetShaft fork CI validates its own README links);
+# fall back to DetShaft for local runs of this fork.
+REPO = os.environ.get("GITHUB_REPOSITORY", "DetShaft/OfflineDAoC-LivingServer")
 
 README = "README.md"
 CHANGELOG = "CHANGELOG-LIVING-SERVER.md"
@@ -30,7 +32,13 @@ MAIN_FORM = "source/tools/OfflineDaoc.Launcher/MainForm.cs"
 VERSION = r"\d+(?:\.\d+)+"
 HEADING = re.compile(rf"^## Beta ({VERSION})\b(.*)$", re.MULTILINE)
 IS_OUT = re.compile(rf"\*\*Beta ({VERSION}) is out\.\*\*")
-RELEASE_LINK = re.compile(rf"github\.com/{re.escape(REPO)}/releases/(?:tag|download)/v({VERSION})-beta\b", re.IGNORECASE)
+# Accept this fork's repo and the upstream Living Server repo: README may still point at published
+# chris4aker releases until Jay publishes matching tags on DetShaft.
+_RELEASE_REPOS = {REPO, "chris4aker/OfflineDAoC-LivingServer", "DetShaft/OfflineDAoC-LivingServer"}
+RELEASE_LINK = re.compile(
+    rf"github\.com/(?:{'|'.join(re.escape(r) for r in sorted(_RELEASE_REPOS))})/releases/(?:tag|download)/v({VERSION})-beta\b",
+    re.IGNORECASE,
+)
 FILE_NAME = re.compile(rf"\b(?:LivingServer-Setup|OfflineDAoC-LivingServer)-({VERSION})-beta\.(?:exe|zip)\b")
 FORK_BUILD_NAME = re.compile(rf"FORK_BUILD name=({VERSION})-beta\b")
 BUILD_NAME = re.compile(r'const string BuildName = "([^"]+)"')

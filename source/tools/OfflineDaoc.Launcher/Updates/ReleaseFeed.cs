@@ -1,6 +1,8 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 
 namespace OfflineDaoc.Updates;
@@ -23,21 +25,82 @@ public interface IReleaseWeb
 // player; a failure is reported to the caller, who stays quiet about it unless the player asked.
 public static class ReleaseFeed
 {
-    public const string Repository = "chris4aker/OfflineDAoC-LivingServer";
+    /// <summary>Jay's DetShaft fork is the default release source for this tree; override via update-settings.json.</summary>
+    public const string DefaultRepository = "DetShaft/OfflineDAoC-LivingServer";
+
+    /// <summary>Legacy upstream Living Server repository (kept for docs and one-time redirects).</summary>
+    public const string UpstreamRepository = "chris4aker/OfflineDAoC-LivingServer";
+
+    /// <summary>The repository currently used for checks and downloads (owner/repo).</summary>
+    public static string Repository { get; private set; } = DefaultRepository;
+
     /// <summary>The newest final release (GitHub leaves drafts and prereleases out of /latest).</summary>
-    public const string LatestUrl = "https://api.github.com/repos/" + Repository + "/releases/latest";
+    public static string LatestUrl => LatestUrlFor(Repository);
+
+    /// <summary>All published releases (including prereleases). Used when AllowPrereleases is on.</summary>
+    public static string ReleasesUrl => ReleasesUrlFor(Repository);
+
     /// <summary>Packages are downloaded only from this repository's own release files.</summary>
-    public const string DownloadPrefix = "https://github.com/" + Repository + "/releases/download/";
+    public static string DownloadPrefix => DownloadPrefixFor(Repository);
+
     public static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(10);
 
-    /// <summary>The newest release, or null with the reason (offline, rate limit, not a release). Never throws.</summary>
-    public static ReleaseInfo? TryGetLatest(IReleaseWeb web, out string? problem)
+    public static string LatestUrlFor(string repository) =>
+        "https://api.github.com/repos/" + NormalizeRepository(repository) + "/releases/latest";
+
+    public static string ReleasesUrlFor(string repository) =>
+        "https://api.github.com/repos/" + NormalizeRepository(repository) + "/releases?per_page=30";
+
+    public static string DownloadPrefixFor(string repository) =>
+        "https://github.com/" + NormalizeRepository(repository) + "/releases/download/";
+
+    /// <summary>
+    /// Points the feed at owner/repo for the rest of this process. Invalid or empty values fall back to
+    /// <see cref="DefaultRepository"/>.
+    /// </summary>
+    public static void Configure(string? repository)
+    {
+        Repository = NormalizeRepository(repository);
+    }
+
+    /// <summary>owner/repo with no leading/trailing slashes; rejects empty or multi-slash junk.</summary>
+    public static string NormalizeRepository(string? repository)
+    {
+        string value = (repository ?? "").Trim().Trim('/');
+        if (value.Length == 0)
+            return DefaultRepository;
+        string[] parts = value.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length != 2)
+            return DefaultRepository;
+        return parts[0] + "/" + parts[1];
+    }
+
+    /// <summary>The newest usable release, or null with the reason. Never throws.</summary>
+    public static ReleaseInfo? TryGetLatest(IReleaseWeb web, out string? problem) =>
+        TryGetLatest(web, allowPrereleases: false, out problem);
+
+    /// <summary>
+    /// The newest usable release for the configured repository. When allowPrereleases is false, uses /releases/latest.
+    /// When true, lists /releases and picks the newest non-draft build that still has a package.
+    /// </summary>
+    public static ReleaseInfo? TryGetLatest(IReleaseWeb web, bool allowPrereleases, out string? problem)
     {
         try
         {
-            ReleaseInfo? release = ReleaseInfo.Parse(web.GetText(LatestUrl, CheckTimeout));
-            problem = release == null ? "GitHub's answer wasn't a release" : null;
-            return release;
+            if (!allowPrereleases)
+            {
+                ReleaseInfo? release = ReleaseInfo.Parse(web.GetText(LatestUrl, CheckTimeout));
+                problem = release == null ? "GitHub's answer wasn't a release" : null;
+                return release;
+            }
+
+            IReadOnlyList<ReleaseInfo> releases = ReleaseInfo.ParseList(web.GetText(ReleasesUrl, CheckTimeout));
+            ReleaseInfo? newest = releases
+                .Where(r => r.IsUsableWith(allowPrereleases: true) && r.Package != null)
+                .OrderByDescending(r => r.Version!)
+                .FirstOrDefault();
+            problem = newest == null ? "GitHub listed no usable Living Server release" : null;
+            return newest;
         }
         catch (Exception e)
         {
@@ -60,7 +123,8 @@ public static class ReleaseFeed
         if (PackageDigest.Sha256Of(asset.Digest) == null)
             throw new PackageRefusedException("GitHub gave no SHA-256 digest for " + asset.Name + ", so it can't be checked. Nothing was downloaded.");
         string url = asset.DownloadUrl ?? "";
-        if (!url.StartsWith(DownloadPrefix, StringComparison.Ordinal))
+        string prefix = DownloadPrefix;
+        if (!url.StartsWith(prefix, StringComparison.Ordinal))
             throw new PackageRefusedException("The package's address isn't one of this project's release files: " + url);
 
         Directory.CreateDirectory(folder);

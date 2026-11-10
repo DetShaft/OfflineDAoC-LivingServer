@@ -31,7 +31,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-REPO = os.environ.get("GITHUB_REPOSITORY", "chris4aker/OfflineDAoC-LivingServer")
+REPO = os.environ.get("GITHUB_REPOSITORY", "DetShaft/OfflineDAoC-LivingServer")
 API = os.environ.get("GITHUB_API_URL", "https://api.github.com")
 SETUP_PLACEHOLDER = "(filled in when the exe is built)"
 ZIP_PLACEHOLDER = "(zip SHA-256: filled in by hand at publish)"

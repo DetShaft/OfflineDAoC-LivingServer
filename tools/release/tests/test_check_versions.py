@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import check_versions as cv  # noqa: E402
 
-REL = "https://github.com/chris4aker/OfflineDAoC-LivingServer/releases/tag/"
+REL = f"https://github.com/{cv.REPO}/releases/tag/"
 README = f"""### Alive. **Beta 1.1.1 is out.**
 > **[Download Beta 1.1.1]({REL}v1.1.1-beta)**
 1. Download `LivingServer-Setup-1.1.1-beta.exe` from the [release]({REL}v1.1.1-beta).

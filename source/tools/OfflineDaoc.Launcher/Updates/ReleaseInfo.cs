@@ -27,8 +27,14 @@ public sealed class ReleaseInfo
     /// <summary>The build the tag names ("v1.1.2-beta" is 1.1.2-beta), or null for a tag that isn't a build.</summary>
     public BuildVersion? Version => BuildVersion.Parse(TagName);
 
-    /// <summary>A published, final release whose tag is a build: the only kind an update is offered from.</summary>
-    public bool IsUsable => !Draft && !Prerelease && Version != null;
+    /// <summary>A published, final release whose tag is a build: the only kind an update is offered from by default.</summary>
+    public bool IsUsable => IsUsableWith(allowPrereleases: false);
+
+    /// <summary>
+    /// Whether this release can be offered. Drafts are never usable. Prereleases are usable only when the player
+    /// opted into them (update-settings.json AllowPrereleases).
+    /// </summary>
+    public bool IsUsableWith(bool allowPrereleases) => !Draft && Version != null && (allowPrereleases || !Prerelease);
 
     /// <summary>The package a release of this build carries: OfflineDAoC-LivingServer-&lt;build&gt;.zip.</summary>
     public static string PackageName(BuildVersion build) => "OfflineDAoC-LivingServer-" + build.Name + ".zip";
@@ -61,6 +67,30 @@ public sealed class ReleaseInfo
         catch (Exception e) when (e is SerializationException || e is InvalidCastException || e is ArgumentException || e is FormatException)
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Reads GitHub's /releases list (a JSON array). Empty when the answer isn't a list. Used when prereleases are
+    /// allowed, because /releases/latest never includes them.
+    /// </summary>
+    public static IReadOnlyList<ReleaseInfo> ParseList(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return Array.Empty<ReleaseInfo>();
+        string trimmed = json!.TrimStart('\uFEFF').TrimStart();
+        if (!trimmed.StartsWith("[", StringComparison.Ordinal))
+            return Array.Empty<ReleaseInfo>();
+        try
+        {
+            var serializer = new DataContractJsonSerializer(typeof(List<ReleaseInfo>));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(trimmed));
+            var list = serializer.ReadObject(stream) as List<ReleaseInfo>;
+            return list?.Where(r => r?.TagName != null).ToList() ?? (IReadOnlyList<ReleaseInfo>)Array.Empty<ReleaseInfo>();
+        }
+        catch (Exception e) when (e is SerializationException || e is InvalidCastException || e is ArgumentException || e is FormatException)
+        {
+            return Array.Empty<ReleaseInfo>();
         }
     }
 

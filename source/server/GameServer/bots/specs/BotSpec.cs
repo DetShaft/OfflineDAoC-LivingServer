@@ -76,40 +76,8 @@ namespace DOL.GS
             return null;
         }
 
-        public static IReadOnlyList<eSpecType> GetSpecializationChoices(eCharacterClass charClass) => charClass switch
-        {
-            eCharacterClass.Armsman => [eSpecType.OneHandAndShield, eSpecType.OneHandHybrid, eSpecType.TwoHandHybrid, eSpecType.TwoHanded],
-            eCharacterClass.Cabalist => [eSpecType.MatterCab, eSpecType.BodyCab, eSpecType.SpiritCab],
-            eCharacterClass.Cleric => [eSpecType.RejuvCleric, eSpecType.EnhanceCleric, eSpecType.SmiteCleric],
-            eCharacterClass.Friar => [eSpecType.RejuvFriar, eSpecType.EnhanceFriar, eSpecType.StaffFriar],
-            eCharacterClass.Mercenary => [eSpecType.DualWield, eSpecType.DualWieldAndShield],
-            eCharacterClass.Paladin => [eSpecType.OneHandAndShield, eSpecType.TwoHandHybrid],
-            eCharacterClass.Sorcerer => [eSpecType.MatterSorc, eSpecType.BodySorc, eSpecType.MindSorc],
-            eCharacterClass.Theurgist => [eSpecType.EarthTheur, eSpecType.IceTheur, eSpecType.AirTheur],
-            eCharacterClass.Wizard => [eSpecType.EarthWiz, eSpecType.IceWiz, eSpecType.FireWiz],
-            eCharacterClass.Necromancer => [eSpecType.DeathsightNecro, eSpecType.PainworkingNecro],
-            eCharacterClass.Blademaster => [eSpecType.DualWield, eSpecType.DualWieldAndShield],
-            eCharacterClass.Champion => [eSpecType.OneHandAndShield, eSpecType.TwoHanded],
-            eCharacterClass.Druid => [eSpecType.RegrowthDruid, eSpecType.NurtureDruid, eSpecType.NatureDruid],
-            eCharacterClass.Eldritch => [eSpecType.LightEld, eSpecType.ManaEld, eSpecType.VoidEld],
-            eCharacterClass.Enchanter => [eSpecType.LightEnchanter, eSpecType.ManaEnchanter, eSpecType.EnchantmentEnchanter],
-            eCharacterClass.Hero => [eSpecType.OneHandAndShield, eSpecType.TwoHandHybrid],
-            eCharacterClass.Mentalist => [eSpecType.LightMenta, eSpecType.ManaMenta, eSpecType.MentaMenta],
-            eCharacterClass.Animist => [eSpecType.ArborealAnimist, eSpecType.CreepingAnimist, eSpecType.VerdantAnimist],
-            eCharacterClass.Warden => [eSpecType.RegrowthWarden, eSpecType.NurtureWarden, eSpecType.BattleWarden],
-            eCharacterClass.Sluaghbinder => [eSpecType.SluaghbinderBulwark, eSpecType.SluaghbinderBane, eSpecType.SluaghbinderCovenant],
-            eCharacterClass.Bonedancer => [eSpecType.DarkBone, eSpecType.SuppBone, eSpecType.ArmyBone],
-            eCharacterClass.Healer => [eSpecType.MendHealer, eSpecType.AugHealer, eSpecType.PacHealer],
-            eCharacterClass.Runemaster => [eSpecType.DarkRune, eSpecType.SuppRune, eSpecType.RuneRune],
-            eCharacterClass.Savage => [eSpecType.TwoHanded, eSpecType.DualWield],
-            eCharacterClass.Shadowblade => [eSpecType.LeftAxe, eSpecType.TwoHanded],
-            eCharacterClass.Shaman => [eSpecType.MendShaman, eSpecType.AugShaman, eSpecType.SubtShaman],
-            eCharacterClass.Spiritmaster => [eSpecType.DarkSpirit, eSpecType.SuppSpirit, eSpecType.SummSpirit],
-            eCharacterClass.Thane => [eSpecType.OneHandAndShield, eSpecType.TwoHanded],
-            eCharacterClass.Skald => [eSpecType.OneHandAndShield, eSpecType.TwoHanded],
-            eCharacterClass.Warrior => [eSpecType.OneHandAndShield, eSpecType.TwoHanded],
-            _ => [eSpecType.None],
-        };
+        public static IReadOnlyList<eSpecType> GetSpecializationChoices(eCharacterClass charClass) =>
+            BotSpecializationChoices.For(charClass);
 
         public static eSpecType ChooseRandomSpecialization(eCharacterClass charClass)
         {
@@ -128,6 +96,26 @@ namespace DOL.GS
                 value ^= value >> 31;
                 return choices[(int)(value % (ulong)choices.Count)];
             }
+        }
+
+        /// <summary>
+        /// Create-time preferred specialization from the launcher when set; otherwise the hashed persistent pick.
+        /// <paramref name="preferredSpecType"/> of <see cref="BotSpecializationChoices.AutoPreferredSpec"/> keeps the hash.
+        /// </summary>
+        public static eSpecType ChooseSpecialization(eCharacterClass charClass, long botId, int preferredSpecType)
+        {
+            IReadOnlyList<eSpecType> choices = GetSpecializationChoices(charClass);
+            if (preferredSpecType != BotSpecializationChoices.AutoPreferredSpec &&
+                System.Enum.IsDefined(typeof(eSpecType), preferredSpecType))
+            {
+                var preferred = (eSpecType)preferredSpecType;
+                for (int i = 0; i < choices.Count; i++)
+                {
+                    if (choices[i] == preferred && preferred != eSpecType.None)
+                        return preferred;
+                }
+            }
+            return ChoosePersistentSpecialization(charClass, botId);
         }
     }
 }

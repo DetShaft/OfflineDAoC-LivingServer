@@ -944,6 +944,11 @@ public sealed class OfflineWorldBotRecord : DataObject
     [DataElement(AllowDbNull = false)] public int BindZ { get; set; }
     [DataElement(AllowDbNull = false)] public string SerializedSpecs { get; set; } = string.Empty;
     [DataElement(AllowDbNull = false)] public string SerializedBuildPlan { get; set; } = string.Empty;
+    /// <summary>
+    /// Optional create-time specialization from the launcher. -1 (default) keeps the hashed
+    /// <see cref="BotSpec.ChoosePersistentSpecialization"/> pick; otherwise an <c>eSpecType</c> value.
+    /// </summary>
+    [DataElement(AllowDbNull = false)] public int PreferredSpecType { get; set; } = -1;
     [DataElement(AllowDbNull = false)] public int UnspentSpecPoints { get; set; }
     [DataElement(AllowDbNull = false)] public string SerializedAbilities { get; set; } = string.Empty;
     [DataElement(AllowDbNull = false)] public string SerializedCraftingSkills { get; set; } = string.Empty;

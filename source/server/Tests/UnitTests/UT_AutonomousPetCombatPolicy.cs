@@ -540,6 +540,17 @@ public sealed class UT_AutonomousPetCombatPolicy
         Assert.That(BotSpec.GetSpecializationChoices(eCharacterClass.Bonedancer).Distinct().Count(), Is.EqualTo(3));
     }
 
+    [Test]
+    public void PreferredSpecializationOverridesTheHashWhenValid()
+    {
+        eSpecType hashed = BotSpec.ChoosePersistentSpecialization(eCharacterClass.Healer, 42);
+        eSpecType preferred = eSpecType.PacHealer;
+        Assert.That(BotSpec.ChooseSpecialization(eCharacterClass.Healer, 42, (int)preferred), Is.EqualTo(preferred));
+        Assert.That(BotSpec.ChooseSpecialization(eCharacterClass.Healer, 42, BotSpecializationChoices.AutoPreferredSpec), Is.EqualTo(hashed));
+        Assert.That(BotSpec.ChooseSpecialization(eCharacterClass.Healer, 42, (int)eSpecType.SmiteCleric), Is.EqualTo(hashed),
+            "a Cleric spec is ignored for a Healer");
+    }
+
     [TestCase(eSpecType.DarkBone, Specs.Darkness)]
     [TestCase(eSpecType.SuppBone, Specs.Suppression)]
     [TestCase(eSpecType.ArmyBone, Specs.BoneArmy)]

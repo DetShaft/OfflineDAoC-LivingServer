@@ -30,6 +30,10 @@
     <!-- Living Server: 2003-style bot names, the same mix as the server's own bots. -->
     <Compile Include="../../server/GameServer/bots/autonomous/EraBotNames.cs" Link="SocialExpansion/EraBotNames.cs" />
     <Compile Include="../../server/GameServer/bots/autonomous/EraBotNameWords.cs" Link="SocialExpansion/EraBotNameWords.cs" />
+    <!-- Living Server: create-time class/spec pickers share the server's specialization choice table. -->
+    <Compile Include="../../server/GameServer/Enums/eCharacterClass.cs" Link="Bots/eCharacterClass.cs" />
+    <Compile Include="../../server/GameServer/bots/specs/BotSpecType.cs" Link="Bots/BotSpecType.cs" />
+    <Compile Include="../../server/GameServer/bots/specs/BotSpecializationChoices.cs" Link="Bots/BotSpecializationChoices.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\offline-daoc-header.png"

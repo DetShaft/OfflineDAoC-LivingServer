@@ -19,7 +19,7 @@ internal sealed class FakeReleaseWeb : IReleaseWeb
     public string GetText(string url, TimeSpan timeout)
     {
         GetCalls++;
-        Assert.That(url, Is.EqualTo(ReleaseFeed.LatestUrl));
+        Assert.That(url, Is.EqualTo(ReleaseFeed.LatestUrl).Or.EqualTo(ReleaseFeed.ReleasesUrl));
         Assert.That(timeout, Is.EqualTo(TimeSpan.FromSeconds(10)));
         if (GetFails != null)
             throw GetFails;
@@ -90,8 +90,10 @@ internal static class UpdateFixtures
             .Replace("\"prerelease\": false", $"\"prerelease\": {(prerelease ? "true" : "false")}")
             .Replace("OfflineDAoC-LivingServer-1.1-beta.zip", name)
             .Replace("releases/download/v1.1-beta/", $"releases/download/{tag}/");
+        // Fixtures still record the upstream owner; rewrite download URLs to the configured feed so trust checks match.
+        json = json.Replace("https://github.com/chris4aker/OfflineDAoC-LivingServer/", "https://github.com/" + ReleaseFeed.Repository + "/");
         if (url != null)
-            json = json.Replace($"https://github.com/chris4aker/OfflineDAoC-LivingServer/releases/download/{tag}/{name}", url);
+            json = json.Replace($"https://github.com/{ReleaseFeed.Repository}/releases/download/{tag}/{name}", url);
         string recorded = "sha256:67374b96ec6a33a233447682d21499fed581a1ce03e6a5b81c843eb8bb828b97";
         return json.Replace($"\"digest\": \"{recorded}\"", digest && package != null ? $"\"digest\": \"sha256:{Sha(package)}\"" : "\"digest\": null");
     }
