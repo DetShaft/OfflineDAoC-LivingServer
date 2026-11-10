@@ -248,24 +248,39 @@ namespace DOL.GS
 		private static string NormalizeCommanderName(string value) =>
 			new string((value ?? string.Empty).Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
 
-		static CommanderPet()
+		/// <summary>
+		/// Load BD pet weapon templates on first use. Deferred from a static ctor so pure
+		/// helpers (TryParseWeaponType, enums) work in unit tests without GameServer.Database.
+		/// </summary>
+		private static void EnsureWeaponTemplates()
 		{
-			// Get weapon templates, creating them if necessary.
-			for (int i = (int)eWeaponType.MIN; i <= (int)eWeaponType.MAX; i++)
-			{
-				DbItemTemplate itemTemp = GameServer.Database.FindObjectByKey<DbItemTemplate>(WEAPON_KEYS[i]);
+			if (WEAPON_TEMPLATES.Count > 0)
+				return;
 
-				if (itemTemp == null)
+			lock (WeaponTemplatesLock)
+			{
+				if (WEAPON_TEMPLATES.Count > 0)
+					return;
+
+				if (GameServer.Database == null)
+					return;
+
+				for (int i = (int)eWeaponType.MIN; i <= (int)eWeaponType.MAX; i++)
 				{
-					itemTemp = CreateBdPetWeapon((eWeaponType)i);
+					DbItemTemplate itemTemp = GameServer.Database.FindObjectByKey<DbItemTemplate>(WEAPON_KEYS[i]);
 
 					if (itemTemp == null)
-						log.Error($"Unable to find item template: {WEAPON_KEYS[i]}, could not create a new template.");
-					else
-						log.Info($"Unable to find item template: {WEAPON_KEYS[i]}, using default template.");
-				}
+					{
+						itemTemp = CreateBdPetWeapon((eWeaponType)i);
 
-				WEAPON_TEMPLATES.Add(itemTemp);
+						if (itemTemp == null)
+							log.Error($"Unable to find item template: {WEAPON_KEYS[i]}, could not create a new template.");
+						else
+							log.Info($"Unable to find item template: {WEAPON_KEYS[i]}, using default template.");
+					}
+
+					WEAPON_TEMPLATES.Add(itemTemp);
+				}
 			}
 		}
 
@@ -593,7 +608,8 @@ namespace DOL.GS
 			"BD_Guardian_Round_Buckler"
 		};
 
-		private static readonly List<DbItemTemplate> WEAPON_TEMPLATES = new List<DbItemTemplate>((int)eWeaponType.MAX);
+		private static readonly List<DbItemTemplate> WEAPON_TEMPLATES = new List<DbItemTemplate>((int)eWeaponType.MAX + 1);
+		private static readonly object WeaponTemplatesLock = new();
 
 		/// <summary>
 		/// 1.65 Bonedancer pet weapons (owner 2026-10-13): plain Norse weapons from the 1.64 retail client, not the
@@ -628,6 +644,10 @@ namespace DOL.GS
 		public static DbItemTemplate GetWeaponTemplate(eWeaponType type)
 		{
 			if (type < eWeaponType.MIN || type > eWeaponType.MAX)
+				return null;
+
+			EnsureWeaponTemplates();
+			if (WEAPON_TEMPLATES.Count <= (int)type)
 				return null;
 
 			return WEAPON_TEMPLATES[(int)type];

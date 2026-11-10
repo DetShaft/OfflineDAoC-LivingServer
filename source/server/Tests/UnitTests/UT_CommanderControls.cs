@@ -10,6 +10,8 @@ public sealed class UT_CommanderControls
     [Test]
     public void TryParseWeaponType_RecognizesAliases()
     {
+        // Ensure GameObject/CommanderPet type init can see a database double if needed.
+        using var server = new EpicTestServerScope();
         Assert.That(CommanderPet.TryParseWeaponType("1h-axe", out var a), Is.True);
         Assert.That(a, Is.EqualTo(CommanderPet.eWeaponType.OneHandAxe));
         Assert.That(CommanderPet.TryParseWeaponType("2h-hammer", out var h), Is.True);
@@ -26,6 +28,8 @@ public sealed class UT_CommanderControls
     [Test]
     public void SetTaunting_AndPreferredSpell_ArePublic()
     {
+        // GameObject fills its quest cache on first use; isolate with an empty DB double.
+        using var server = new EpicTestServerScope();
         var pet = (CommanderPet)RuntimeHelpers.GetUninitializedObject(typeof(CommanderPet));
         pet.SetTaunting(true);
         Assert.That(pet.Taunting, Is.True);

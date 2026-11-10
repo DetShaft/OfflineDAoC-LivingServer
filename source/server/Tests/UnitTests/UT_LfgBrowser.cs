@@ -53,6 +53,8 @@ public sealed class UT_LfgBrowser
     [Test]
     public void BotLfgAds_FreshWindow()
     {
+        // GameObject fills its quest cache on first use; isolate with an empty DB double.
+        using var server = new EpicTestServerScope();
         const long id = 42;
         BotLfgAds.SetAdTickForTests(id, 1000);
         GameBot bot = (GameBot)RuntimeHelpers.GetUninitializedObject(typeof(GameBot));
