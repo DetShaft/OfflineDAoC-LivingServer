@@ -361,6 +361,35 @@ New-PatchedGame $fixRelease
 $null = RunIn $patched 'install-server-build.ps1' @('-GameFolder', $fixRelease)
 $fixToRelease = RunIn $patched 'rollback-server-build.ps1' @('-GameFolder', $fixRelease, '-ToRelease')
 Check ($fixToRelease.Code -eq 0 -and [IO.File]::ReadAllText((Join-Path $fixRelease 'runtime\server\navmesh\zone999.nav')) -eq $releasedText) "content: -ToRelease puts the released file back`n$($fixToRelease.Output)"
+# Beta 1.1.5: Create (new new-client script) and ReplaceAny (MMOEngine.dll) — install, rollback removes/creates.
+$createText = 'friends window script'
+$dllOld = 'old mmengine dll!!'
+$dllNew = 'new mmengine dll!!'
+$createPatches = @(
+    [pscustomobject]@{ Path = 'new-client/godot/game/ui/friends_window_test.gd'; Released = ''; Fixed = (TextSha $createText); Size = $createText.Length
+        File = 'content/godot/game/ui/friends_window_test.gd'; Create = $true },
+    [pscustomobject]@{ Path = 'new-client/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll'; Released = (TextSha 'other'); Fixed = (TextSha $dllNew); Size = $dllNew.Length
+        File = 'content/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll'; ReplaceAny = $true })
+New-Item -ItemType Directory -Path (Join-Path $patched 'content\godot\game\ui'), (Join-Path $patched 'content\godot\.godot\mono\temp\bin\Debug') -Force | Out-Null
+[IO.File]::WriteAllText((Join-Path $patched 'content\godot\game\ui\friends_window_test.gd'), $createText)
+[IO.File]::WriteAllText((Join-Path $patched 'content\godot\.godot\mono\temp\bin\Debug\MMOEngine.dll'), $dllNew)
+[IO.File]::WriteAllText((Join-Path $patched 'content-patches.json'), (ConvertTo-Json -InputObject $createPatches -Depth 6))
+$infoLines = @(Get-Content -LiteralPath (Join-Path $patched 'BUILD-INFO.txt') | Where-Object { $_ -notlike 'content-patches.json=*' })
+$infoLines += "content-patches.json=$(Sha (Join-Path $patched 'content-patches.json'))"
+Set-Content -LiteralPath (Join-Path $patched 'BUILD-INFO.txt') -Value $infoLines -Encoding UTF8
+$createGame = Join-Path $work 'content-create'
+New-FakeGame $createGame $base -NewClient
+New-Item -ItemType Directory -Path (Join-Path $createGame 'new-client\godot\.godot\mono\temp\bin\Debug') -Force | Out-Null
+[IO.File]::WriteAllText((Join-Path $createGame 'new-client\godot\.godot\mono\temp\bin\Debug\MMOEngine.dll'), $dllOld)
+$createInstall = RunIn $patched 'install-server-build.ps1' @('-GameFolder', $createGame)
+$friendsPath = Join-Path $createGame 'new-client\godot\game\ui\friends_window_test.gd'
+$dllPath = Join-Path $createGame 'new-client\godot\.godot\mono\temp\bin\Debug\MMOEngine.dll'
+Check ($createInstall.Code -eq 0 -and (Test-Path $friendsPath) -and [IO.File]::ReadAllText($friendsPath) -eq $createText) "content: Create installs a new new-client script`n$($createInstall.Output)"
+Check ([IO.File]::ReadAllText($dllPath) -eq $dllNew) "content: ReplaceAny replaces MMOEngine.dll that is not the Released hash`n$($createInstall.Output)"
+$createRollback = RunIn $patched 'rollback-server-build.ps1' @('-GameFolder', $createGame)
+Check ($createRollback.Code -eq 0 -and !(Test-Path $friendsPath)) "content: rollback removes a Created new-client script`n$($createRollback.Output)"
+Check ([IO.File]::ReadAllText($dllPath) -eq $dllOld) "content: rollback restores the previous MMOEngine.dll`n$($createRollback.Output)"
+
 [IO.File]::WriteAllText((Join-Path $patched 'content-patches.json'), '[]')
 $damaged = Join-Path $work 'content-damaged'
 New-PatchedGame $damaged

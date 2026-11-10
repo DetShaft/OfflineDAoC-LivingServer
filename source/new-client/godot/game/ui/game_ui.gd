@@ -865,6 +865,9 @@ func _build_lfg() -> void:
 func lfg_entries(rows: Array) -> void:
 	if lfg_window:
 		lfg_window.apply_entries(rows)
+		# /lfg window (and FindGroupUpdate) should surface the browser, not only fill a hidden panel.
+		if not lfg_window.visible:
+			lfg_window.show_window()
 
 
 func _build_friends() -> void:
