@@ -97,6 +97,7 @@ namespace DOL.GameServerConsole
 		public void SendSpellEffectAnimation(GameObject spellCaster, GameObject spellTarget, ushort spellid, ushort boltTime, bool noSound, byte success) { }
 		public void SendRiding(GameObject rider, GameObject steed, bool dismount) { }
 		public void SendFindGroupWindowUpdate(GamePlayer[] list) { }
+		public void SendFindGroupWindowUpdate(LfgWindowEntry[] list) { }
 		public void SendDialogBox(eDialogCode code, ushort data1, ushort data2, ushort data3, ushort data4, eDialogType type, bool autoWarpText, string message) { }
 		public void SendGroupInviteCommand(GamePlayer invitingPlayer, string inviteMessage) { }
 		public void SendGuildLeaveCommand(GamePlayer invitingPlayer, string inviteMessage) { }

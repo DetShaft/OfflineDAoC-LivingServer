@@ -147,6 +147,7 @@ public static class AutonomousBotRegistry
             Active.TryRemove(bot.DatabaseID, out _);
             AutonomousBotRealmGuilds.OnBotOffline(bot);
             BotFriends.OnBotOffline(bot); // Fork: friends hear when a bot goes offline
+            BotLfgAds.Forget(bot);
             _snapshot = new(-1, []);
             AutonomousBotEconomy.ForgetCachedDecision(bot.DatabaseID);
         }

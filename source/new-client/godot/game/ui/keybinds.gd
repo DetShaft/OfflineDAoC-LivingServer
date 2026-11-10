@@ -55,6 +55,9 @@ func _ready() -> void:
 	# the guild window (owner 2026-10-17, a roster window beyond 1.65 - GuildWindow): Shift+G, free in every preset
 	actions.append({"id": "show_guild", "label": "Guild Window", "category": "Show",
 			"presets": {"rpg": ["Shift+G"], "fps": ["Shift+G"], "mmo": ["Shift+G"]}})
+	# Looking For Group browser (Shift+L): FindGroupUpdate + /lfg list
+	actions.append({"id": "show_lfg", "label": "Looking For Group", "category": "Show",
+			"presets": {"rpg": ["Shift+L"], "fps": ["Shift+L"], "mmo": ["Shift+L"]}})
 	categories.append("Quickbars")
 	for bar in range(1, QUICKBARS + 1):
 		for slot in range(1, QUICKBAR_SLOTS + 1):

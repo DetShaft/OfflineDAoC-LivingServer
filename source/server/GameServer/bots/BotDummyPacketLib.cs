@@ -187,6 +187,10 @@ namespace DOL.GS
         {
         }
 
+        public void SendFindGroupWindowUpdate(LfgWindowEntry[] list)
+        {
+        }
+
         public void SendFurniture(House house)
         {
         }
