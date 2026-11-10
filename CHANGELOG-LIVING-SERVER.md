@@ -8,6 +8,14 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.4 — 2026-11-10
+
+DetShaft fork test release after merging the open Living Server change-plan PRs (#1 server fixes,
+#4 combat AI, #2 launcher DetShaft feed / auto-install / spec picker, #3 static party + friends window
++ guild gate, #5 commander pet controls + LFG browser). Friends is Shift+F, LFG is Shift+L; the
+Bonedancer commander panel sits beside the minipet. Not yet verified in-game on the owner's PC
+([docs/RELEASE-NOTES-1.1.4.md](docs/RELEASE-NOTES-1.1.4.md)).
+
 ## Beta 1.1.3 — 2026-11-08
 
 Started as a hotfix (/faction chat that holds together, out of Xanxicar's stomp, Scurceol Hyrde's orbs shot down from the
