@@ -6,14 +6,21 @@ zip's SHA-256 is filled in when publishing.
 
 ---
 
-### New-client friends, LFG and commander actually install on 0.37c
+### New-client friends/LFG/commander install + Active Population grid fix
 
 1.1.5 is a **DetShaft fork prerelease** on top of 1.1.4. Same Offline DAoC **0.37 / 0.37b / 0.37c** base.
 
-**Bug in 1.1.4:** the zip had no `new-client` Godot scripts, so Shift+F and Shift+L did nothing on 0.37c even though
-the server and launcher were updated. This build ships the friends, LFG and commander `.gd` scripts, the matching
-`game_ui` / `keybinds` / `server_world` edits, and a rebuilt `MMOEngine.dll` (FindGroup packets) through
-`content-patches.json`. INSTALL creates or replaces those files; ROLLBACK restores or removes them.
+**Bug in 1.1.4 (new client):** the zip had no `new-client` Godot scripts, so Shift+F and Shift+L did nothing on
+0.37c even though the server and launcher were updated. This build ships the friends, LFG and commander `.gd`
+scripts, the matching `game_ui` / `keybinds` / `server_world` edits, and a rebuilt `MMOEngine.dll` (FindGroup
+packets) through `content-patches.json`. INSTALL creates or replaces those files; ROLLBACK restores or removes them.
+
+**Bug in 1.1.4 (launcher):** Active Population could show an empty grid while the header still listed online bots
+(for example 66 online, realm cards populated, Spec Auto / Online Only selected). The population rebind muted
+`ListChanged` while `CurrencyManager` was suspended, so the grid never painted the filtered rows. Spec Auto is
+only the create-time picker — it is not a population filter. 1.1.5 keeps `ListChanged` live and resets bindings
+after resume so a populated status payload shows rows under the default filters; Active Groups, Active RvR and
+Realm Exchange still bind from the same snapshot.
 
 Turn on **Allow prereleases** in the launcher (DetShaft feed) to be offered this build from 1.1.4.
 

@@ -2116,18 +2116,34 @@ internal sealed partial class MainForm : Form
     {
         var realm = _realmFilter.SelectedItem?.ToString() ?? "All realms";
         var search = _search.Text.Trim();
-        IEnumerable<BotRow> filtered = _bots.Where(bot =>
-            (!_onlineOnly.Checked || bot.IsOnline) &&
-            (realm == "All realms" || bot.Realm == realm) &&
-            (search.Length == 0 || $"{bot.Name} {bot.Realm} {bot.RaceName} {bot.Gender} {bot.ClassName} {bot.ZoneName} {bot.Activity}".Contains(search, StringComparison.OrdinalIgnoreCase)));
-        List<BotRow> rows = SortBots(filtered).ToList();
+        // Spec Auto (hashed) is the create-time picker only — it is not part of this filter.
+        List<BotRow> rows = SortBots(FilterPopulationBots(_bots, realm, search, _onlineOnly.Checked)).ToList();
         RebindBotGrid(rows);
         UpdateBotSortGlyph();
     }
 
     /// <summary>
+    /// Active Population row filter (realm / search / online-only). Kept static so tests can
+    /// assert a populated status payload still yields rows under the default filters (via
+    /// reflection) without depending on Spec Auto, which is create-time only.
+    /// </summary>
+    private static IEnumerable<BotRow> FilterPopulationBots(
+        IEnumerable<BotRow> bots, string realm, string search, bool onlineOnly)
+    {
+        search ??= string.Empty;
+        realm ??= "All realms";
+        return bots.Where(bot =>
+            (!onlineOnly || bot.IsOnline) &&
+            (realm == "All realms" || bot.Realm == realm) &&
+            (search.Length == 0 || $"{bot.Name} {bot.Realm} {bot.RaceName} {bot.Gender} {bot.ClassName} {bot.ZoneName} {bot.Activity}".Contains(search, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
     /// Replaces the Active Population grid's list without leaving CurrencyManager on a stale row index
     /// (the IndexOutOfRangeException dialogs after Shift/Ctrl batch create).
+    /// Must keep RaiseListChangedEvents on and ResetBindings after ResumeBinding — muting ListChanged
+    /// while SuspendBinding was leaving the grid at zero rows even when the roster/header had bots
+    /// (1.1.4 Active Population empty-grid regression).
     /// </summary>
     private void RebindBotGrid(List<BotRow> rows)
     {
@@ -2136,8 +2152,6 @@ internal sealed partial class MainForm : Form
         CurrencyManager? currency = null;
         try { currency = BindingContext[_botSource] as CurrencyManager; }
         catch (ArgumentException) { /* no binding context yet */ }
-        bool raise = _botSource.RaiseListChangedEvents;
-        _botSource.RaiseListChangedEvents = false;
         _grid.SuspendLayout();
         try
         {
@@ -2157,7 +2171,8 @@ internal sealed partial class MainForm : Form
         {
             try { currency?.ResumeBinding(); }
             catch (InvalidOperationException) { }
-            _botSource.RaiseListChangedEvents = raise;
+            // ResumeBinding alone does not always push a muted/suspended list change to the grid.
+            _botSource.ResetBindings(false);
             _grid.ResumeLayout();
         }
     }
