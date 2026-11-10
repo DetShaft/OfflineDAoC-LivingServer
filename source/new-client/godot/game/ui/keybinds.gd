@@ -58,6 +58,9 @@ func _ready() -> void:
 	# Looking For Group browser (Shift+L): FindGroupUpdate + /lfg list
 	actions.append({"id": "show_lfg", "label": "Looking For Group", "category": "Show",
 			"presets": {"rpg": ["Shift+L"], "fps": ["Shift+L"], "mmo": ["Shift+L"]}})
+	# modern friends window (activity + invite/tell): Shift+F
+	actions.append({"id": "show_friends", "label": "Friends Window", "category": "Show",
+			"presets": {"rpg": ["Shift+F"], "fps": ["Shift+F"], "mmo": ["Shift+F"]}})
 	categories.append("Quickbars")
 	for bar in range(1, QUICKBARS + 1):
 		for slot in range(1, QUICKBAR_SLOTS + 1):

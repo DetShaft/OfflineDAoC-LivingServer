@@ -48,7 +48,7 @@ $headers = @{ 'User-Agent' = 'OfflineDAoC-LivingServer-tests' }
 if ($env:GH_TOKEN) { $headers['Authorization'] = "Bearer $env:GH_TOKEN" }
 $packages = @{}
 foreach ($tag in @($From, $To)) {
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/chris4aker/OfflineDAoC-LivingServer/releases/tags/$tag" -Headers $headers
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/DetShaft/OfflineDAoC-LivingServer/releases/tags/$tag" -Headers $headers
     $name = "OfflineDAoC-LivingServer-$($tag.TrimStart('v')).zip"
     $asset = @($release.assets | Where-Object { $_.name -eq $name })[0]
     if (!$asset) { throw "The $tag release has no $name." }

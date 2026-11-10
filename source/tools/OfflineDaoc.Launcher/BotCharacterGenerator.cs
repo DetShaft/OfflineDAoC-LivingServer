@@ -80,6 +80,17 @@ internal static class BotCharacterGenerator
         [3] = ["", "ae", "el", "in", "or"],
     };
 
+    /// <summary>Realm class roster for the launcher create pickers (Any class keeps the random roll).</summary>
+    public static IReadOnlyList<(int ClassId, string ClassName)> ClassesForRealm(int realm, bool allowSluaghbinder = true)
+    {
+        if (!Choices.TryGetValue(realm, out Choice[]? pool))
+            return [];
+        return pool
+            .Where(entry => allowSluaghbinder || entry.ClassId != 63)
+            .Select(entry => (entry.ClassId, entry.ClassName))
+            .ToArray();
+    }
+
     /// <summary>
     /// A new bot. Its name is three in four in the 2003 style and one in four a lore name (OfflineDaoc.Shared.EraBotNames has
     /// the mix and the research); <paramref name="rejected"/> is the server's invalid-names check (EraBotNames.LoadRejected).
@@ -88,12 +99,23 @@ internal static class BotCharacterGenerator
         Generate(realm, reservedNames, allowSluaghbinder, null);
 
     /// <param name="rejected">The server's invalid-names check, or null for none.</param>
-    public static Identity Generate(int realm, ISet<string> reservedNames, bool allowSluaghbinder, Func<string, bool> rejected)
+    public static Identity Generate(int realm, ISet<string> reservedNames, bool allowSluaghbinder, Func<string, bool>? rejected) =>
+        Generate(realm, reservedNames, allowSluaghbinder, rejected, forcedClassId: null);
+
+    /// <param name="forcedClassId">When set, every created bot uses that class (and a legal race for it).</param>
+    public static Identity Generate(int realm, ISet<string> reservedNames, bool allowSluaghbinder, Func<string, bool>? rejected, int? forcedClassId)
     {
         int gender = Random.Shared.Next(1, 3);
         // The "no custom class" edition (0.33, 0.34, 0.35; classes/enable_sluaghbinder = False) never rolls class 63.
         Choice[] pool = allowSluaghbinder ? Choices[realm] : Choices[realm].Where(entry => entry.ClassId != 63).ToArray();
-        Choice choice = pool[Random.Shared.Next(pool.Length)];
+        Choice choice;
+        if (forcedClassId is int classId)
+        {
+            choice = pool.FirstOrDefault(entry => entry.ClassId == classId)
+                ?? throw new ArgumentOutOfRangeException(nameof(forcedClassId), $"Class {classId} is not available for realm {realm}.");
+        }
+        else
+            choice = pool[Random.Shared.Next(pool.Length)];
         var race = choice.Races[Random.Shared.Next(choice.Races.Length)];
         var parts = Names[(realm, gender)];
         string[] loreBridges = NameBridges[realm];
@@ -101,7 +123,7 @@ internal static class BotCharacterGenerator
         foreach (OfflineDaoc.Shared.EraBotNames.Style tried in new[] { style, OfflineDaoc.Shared.EraBotNames.Style.Invented })
         {
             string era = OfflineDaoc.Shared.EraBotNames.Generate(tried, realm, gender == 2, choice.ClassName, Random.Shared,
-                reservedNames.Contains, rejected,
+                reservedNames.Contains, rejected ?? (_ => false),
                 () => Normalize(parts.Starts[Random.Shared.Next(parts.Starts.Length)] + parts.Middles[Random.Shared.Next(parts.Middles.Length)] +
                                 loreBridges[Random.Shared.Next(loreBridges.Length)] + parts.Ends[Random.Shared.Next(parts.Ends.Length)]));
             if (era != null && reservedNames.Add(era))

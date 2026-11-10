@@ -2565,17 +2565,15 @@ namespace DOL.GS
 
             InitializeBotStats();
             eCharacterClass persistentClass = (eCharacterClass)ClassId;
+            eSpecType specialization = BotSpec.ChooseSpecialization(persistentClass, record.BotId, record.PreferredSpecType);
             BotSpec = persistentClass switch
             {
-                eCharacterClass.Bonedancer => new BonedancerBotSpec(
-                    BotSpec.ChoosePersistentSpecialization(persistentClass, record.BotId), record.BotId, true),
+                eCharacterClass.Bonedancer => new BonedancerBotSpec(specialization, record.BotId, true),
                 eCharacterClass.Savage => new SavageBotSpec(
-                    BotSpec.ChoosePersistentSpecialization(persistentClass, record.BotId),
+                    specialization,
                     SavageBotSpec.WeaponFromPersistedSpecs(record.SerializedSpecs)),
-                eCharacterClass.Sluaghbinder => new SluaghbinderBotSpec(
-                    BotSpec.ChoosePersistentSpecialization(persistentClass, record.BotId), record.BotId, true),
-                _ => BotSpec.GetSpec(persistentClass,
-                    BotSpec.ChoosePersistentSpecialization(persistentClass, record.BotId)),
+                eCharacterClass.Sluaghbinder => new SluaghbinderBotSpec(specialization, record.BotId, true),
+                _ => BotSpec.GetSpec(persistentClass, specialization),
             };
             LoadClassSpecializations(false);
             if (IsEpicSpecialForce)

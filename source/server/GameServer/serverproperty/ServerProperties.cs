@@ -2395,6 +2395,13 @@ namespace DOL.GS.ServerProperties
 		public static bool BOT_GUILD_RECRUIT_PLAYER;
 
 		/// <summary>
+		/// Erenshor-style guild recruitment gate: Friendly/Application/Closed bot guilds require memory/deeds of
+		/// grouping with the player before inviting. Open guilds stay open. Off keeps today's open recruiting.
+		/// </summary>
+		[ServerProperty("guild", "bot_guild_recruit_gate", "When bot guild recruiting is on: guild invites follow an Open/Friendly/Application/Closed policy from the guild's charter. Friendly and tighter guilds only invite once bot memory shows you grouped or rezzed with their members (grouping itself is never refused). False keeps every bot guild open to invites as before.", false)]
+		public static bool BOT_GUILD_RECRUIT_GATE;
+
+		/// <summary>
 		/// Bot guilds claim keeps and towers their realm takes, under the usual claim rules.
 		/// </summary>
 		[ServerProperty("guild", "bot_guild_claims_keeps", "When bot guilds are on: after a realm takes a keep or tower, a bot guild with enough members inside claims it (claim_num, half for towers; guilds_claim_limit), never while a real player of that realm is inside. Its warbands answer first when that keep is attacked.", true)]
@@ -2430,6 +2437,18 @@ namespace DOL.GS.ServerProperties
 		/// </summary>
 		[ServerProperty("bots", "bot_incoming_fire_reaction", "Autonomous gamebots hit by a player, bot or pet react like a player: a 0.3-2.5 s reaction delay (healers heal meanwhile; shorter for tanks and bold personalities), an area spell from a distance doesn't make its caster the bot's target, and healers cure a dotted group with the group cure. Companions and bots in your group are not affected. False keeps the immediate reaction.", true)]
 		public static bool BOT_INCOMING_FIRE_REACTION;
+
+		/// <summary>
+		/// Cleric/Druid/Healer support bots assist with nukes or melee when nobody needs healing.
+		/// </summary>
+		[ServerProperty("bots", "healer_idle_combat", "When a Cleric, Druid or Healer is the exclusive support in a group: if nobody needs healing, the group is fighting, mana is at least 40%, and stance is not Passive, the healer may nuke, debuff or melee the group's target instead of standing idle. Healing, cures and resurrection still come first. False keeps healers support-only (buff/follow only while grouped).", true)]
+		public static bool HEALER_IDLE_COMBAT;
+
+		/// <summary>
+		/// The group leader can give grouped bots a small set of chat orders in /group.
+		/// </summary>
+		[ServerProperty("bots", "bot_group_orders", "When on: the group leader (you) can order grouped bots in /group with a small fixed vocabulary — attack, assist me, buff us, follow, stay. Only exact short phrases are accepted. Bots acknowledge in /group. False keeps chat-only replies with no action.", true)]
+		public static bool BOT_GROUP_ORDERS;
 
 		/// <summary>
 		/// Autonomous gamebots speak lines from the bot-voices corpus in their own writing style.

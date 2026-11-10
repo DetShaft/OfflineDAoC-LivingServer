@@ -109,13 +109,15 @@ public static class BotFriends
 
     /// <summary>/friend window (FriendsManager.SendPlayerFriendsSocial): an "F" line for each online bot among the friends
     /// not listed yet, as upstream writes one for an online player. A listed bot leaves <paramref name="unlisted"/>, so it
-    /// is not shown as offline too.</summary>
+    /// is not shown as offline too. The quoted field carries zone plus a short activity label for the modern friends UI.</summary>
     public static int SendOnlineBots(GamePlayer player, List<string> unlisted, int index)
     {
         foreach (GameBot bot in OnlineBots(player, unlisted.ToArray()))
         {
             unlisted.RemoveAll(name => string.Equals(name, bot.Name, StringComparison.OrdinalIgnoreCase));
-            player.Out.SendMessage(SocialLine(index++, bot.Name, bot.Level, bot.CharacterClass?.ID ?? 0, bot.CurrentZone?.Description ?? string.Empty),
+            string zone = bot.CurrentZone?.Description ?? string.Empty;
+            player.Out.SendMessage(SocialLine(index++, bot.Name, bot.Level, bot.CharacterClass?.ID ?? 0,
+                    WhereWithActivity(zone, ActivityLabel(bot))),
                 eChatType.CT_SocialInterface, eChatLoc.CL_SystemWindow);
         }
 
@@ -125,6 +127,55 @@ public static class BotFriends
     /// <summary>A friend's line in the social window, in upstream's format: F,place,name,level,class,"zone or last played".</summary>
     public static string SocialLine(int index, string name, int level, int classId, string where) =>
         string.Format("F,{0},{1},{2},{3},\"{4}\"", index, name, level, classId, where);
+
+    /// <summary>Zone field with a short activity tag for online friends (classic client still shows one quoted string).</summary>
+    public static string WhereWithActivity(string zone, string activity)
+    {
+        zone = zone?.Trim() ?? string.Empty;
+        activity = activity?.Trim() ?? string.Empty;
+        if (activity.Length == 0)
+            return zone;
+        if (zone.Length == 0)
+            return activity;
+        return $"{zone} — {activity}";
+    }
+
+    /// <summary>
+    /// Short activity snapshot for the friends window: grinding, in group, idle in town, frontier, in town, or online.
+    /// Pure over the bot's group flag and PersistentRecord text so it is unit-tested without a world.
+    /// </summary>
+    public static string ActivityLabel(GameBot bot)
+    {
+        if (bot == null)
+            return "offline";
+        return ActivityLabel(bot.Group != null, bot.IsPlayerLedGroup,
+            bot.PersistentRecord?.Activity, bot.PersistentRecord?.CurrentGoal);
+    }
+
+    public static string ActivityLabel(bool inGroup, bool playerLed, string activity, string goal)
+    {
+        if (inGroup)
+            return playerLed ? "in group" : "in group";
+
+        string hay = $"{activity} {goal}".ToLowerInvariant();
+        if (string.Equals(activity, "Town idling", StringComparison.OrdinalIgnoreCase) ||
+            hay.Contains("town idle") || hay.Contains("idle in"))
+            return "idle in town";
+        if (hay.Contains("grind") || hay.Contains("camp") || hay.Contains("dungeon") || hay.Contains("pull"))
+            return "grinding";
+        if (hay.Contains("rvr") || hay.Contains("frontier") || hay.Contains("siege") || hay.Contains("relic") ||
+            hay.Contains("keep"))
+            return "frontier";
+        if (hay.Contains("vendor") || hay.Contains("trainer") || hay.Contains("bank") || hay.Contains("exchange") ||
+            hay.Contains("craft") || hay.Contains("stable") || hay.Contains("town"))
+            return "in town";
+        if (string.IsNullOrWhiteSpace(activity) && string.IsNullOrWhiteSpace(goal))
+            return "online";
+
+        string text = string.IsNullOrWhiteSpace(activity) ? goal : activity;
+        text = text.Trim();
+        return text.Length <= 28 ? text.ToLowerInvariant() : text[..28].Trim().ToLowerInvariant();
+    }
 
     private static GameBot[] OnlineBots(GamePlayer player, IEnumerable<string> names)
     {

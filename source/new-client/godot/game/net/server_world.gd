@@ -948,11 +948,16 @@ func _social(text: String) -> void:
 		"TF":
 			_social_title = "FRIENDS"
 			_social_lines = []
+			# Modern friends window (FriendsWindow) when the UI has one; else the information list.
+			if viewer and viewer.ui and viewer.ui.get("friends_window"):
+				viewer.ui.friends_window.begin_list()
 		"F":
 			if f.size() >= 6:
 				_social_title = "FRIENDS"
 				var cls := Server.class_name_of(int(f[4]))
 				_social_lines.append("%s  (level %s %s)  %s" % [f[2], f[3], cls, f[5]])
+				if viewer and viewer.ui and viewer.ui.get("friends_window"):
+					viewer.ui.friends_window.receive_friend(f)
 		"N":
 			if f.size() >= 5:
 				if _social_title != "NEWS":
@@ -966,7 +971,12 @@ func _social(text: String) -> void:
 		get_tree().create_timer(0.4).timeout.connect(func():
 			_social_due = false
 			if viewer and viewer.ui:
-				viewer.ui.show_lines(_social_title, _social_lines if not _social_lines.is_empty() else ["(none)"])
+				# Friends go to FriendsWindow when present; news (and fallback) stay on show_lines.
+				if _social_title == "FRIENDS" and viewer.ui.get("friends_window"):
+					if not viewer.ui.friends_window.visible:
+						viewer.ui.friends_window.show_window()
+				else:
+					viewer.ui.show_lines(_social_title, _social_lines if not _social_lines.is_empty() else ["(none)"])
 			if _social_title == "NEWS":
 				_social_title = "")
 

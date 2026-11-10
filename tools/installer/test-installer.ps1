@@ -131,7 +131,7 @@ if ($Scenario -contains 'newest') {
     Write-Host '== newest: which package Setup installs' -ForegroundColor Cyan
     $headers = @{ 'User-Agent' = 'OfflineDAoC-LivingServer-tests' }
     if ($env:GH_TOKEN) { $headers['Authorization'] = "Bearer $env:GH_TOKEN" }
-    $latest = Invoke-RestMethod -Uri 'https://api.github.com/repos/chris4aker/OfflineDAoC-LivingServer/releases/latest' -Headers $headers
+    $latest = Invoke-RestMethod -Uri 'https://api.github.com/repos/DetShaft/OfflineDAoC-LivingServer/releases/latest' -Headers $headers
     function NumberOf([string]$build) {
         $parts = @(($build -replace '^v', '' -replace '-beta.*$', '').Split('.') | ForEach-Object { [int]$_ })
         while ($parts.Count -lt 4) { $parts += 0 }

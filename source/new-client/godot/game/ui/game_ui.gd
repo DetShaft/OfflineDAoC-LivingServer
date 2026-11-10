@@ -358,6 +358,7 @@ func _build() -> void:
 	_build_benefits()
 	_build_warmap()
 	_build_guild()
+	_build_friends()
 	PlayerData.window_toggle.connect(func(id: String):
 		if windows.has(id):
 			if windows[id].visible:
@@ -811,6 +812,8 @@ var guild_window: GuildWindow
 var lfg_window: LfgWindow
 ## Bonedancer commander controls beside the minipet (CommanderPanel).
 var commander_panel: CommanderPanel
+## Modern friends window (Shift+F / /friend window): FriendsWindow in friends_window.gd.
+var friends_window: FriendsWindow
 ## The guild emblem picker - the server opens it (EmblemDialogue).
 var emblem_window: EmblemWindow
 
@@ -862,6 +865,22 @@ func _build_lfg() -> void:
 func lfg_entries(rows: Array) -> void:
 	if lfg_window:
 		lfg_window.apply_entries(rows)
+
+
+func _build_friends() -> void:
+	friends_window = FriendsWindow.new()
+	friends_window.resizable = true
+	friends_window.patch = [6, 19, 13, 33]
+	friends_window.min_size = FriendsWindow.BODY
+	friends_window.max_size = FriendsWindow.BODY
+	friends_window.size = FriendsWindow.BODY
+	var at := Vector2(area().x * 0.5 - FriendsWindow.BODY.x * 0.5, 80)
+	friends_window.setup("friends", "interact", Rect2(), at)
+	_add(friends_window, at, false)
+	friends_window.typing = func(text: String):
+		if chat:
+			chat.start_typing(text)
+	friends_window.build()
 
 
 func _build_warmap() -> void:
@@ -1766,6 +1785,9 @@ func handle_input(event: InputEvent) -> bool:
 			lfg_window.hide_window()
 		else:
 			lfg_window.open_window()
+		return true
+	if Keybinds.pressed(event, "show_friends") and friends_window:
+		friends_window.toggle_window()
 		return true
 	if Keybinds.pressed(event, "show_map") and map_window:
 		map_window.player = player
