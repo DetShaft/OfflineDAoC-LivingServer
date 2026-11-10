@@ -69,10 +69,15 @@ public static class ReleaseFeed
         string value = (repository ?? "").Trim().Trim('/');
         if (value.Length == 0)
             return DefaultRepository;
-        string[] parts = value.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // net472 (Setup) has no StringSplitOptions.TrimEntries; trim parts by hand.
+        string[] parts = value.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 2)
             return DefaultRepository;
-        return parts[0] + "/" + parts[1];
+        string owner = parts[0].Trim();
+        string repo = parts[1].Trim();
+        if (owner.Length == 0 || repo.Length == 0)
+            return DefaultRepository;
+        return owner + "/" + repo;
     }
 
     /// <summary>The newest usable release, or null with the reason. Never throws.</summary>
