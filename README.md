@@ -40,7 +40,7 @@ run themselves, whether or not you come along.
 
 Ships the new-client friends (Shift+F), LFG (Shift+L) and commander panels that 1.1.4 left out of the zip, plus
 `MMOEngine.dll` packet support, and fixes the Active Population empty-grid regression (header online while the
-roster table stayed blank under the default filters)
+roster stayed blank; Spec now has Any and stays enabled instead of a stuck Auto create picker)
 ([what's new](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.5-beta)).
 
 ## New in Beta 1.1.2

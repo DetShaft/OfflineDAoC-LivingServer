@@ -16,8 +16,9 @@ zip. INSTALL now Create/ReplaceAny those files; ROLLBACK restores or removes the
 
 Also fixes the Active Population empty-grid regression from the 1.1.4 launcher rebind path: the header could
 show dozens of online bots while the roster table stayed blank under All realms / Spec Auto / Online Only.
-Spec Auto is create-time only; the grid now rebinds with ListChanged live so a populated status payload shows
-rows again ([docs/RELEASE-NOTES-1.1.5.md](docs/RELEASE-NOTES-1.1.5.md)).
+The grid now rebinds with ListChanged live, and Spec is a usable population filter with an Any option (Any /
+Auto / disabled never hide rows) instead of a disabled create-only Auto (hashed) control
+([docs/RELEASE-NOTES-1.1.5.md](docs/RELEASE-NOTES-1.1.5.md)).
 
 ## Beta 1.1.4 — 2026-11-10
 

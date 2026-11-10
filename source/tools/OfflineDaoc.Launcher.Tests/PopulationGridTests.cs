@@ -9,13 +9,15 @@ namespace OfflineDaoc.Launcher.Tests;
 /// Regression coverage for Active Population rebind / SelectBot after large batch creates
 /// (IndexOutOfRangeException dialogs on Shift/Ctrl + Lv), and for the 1.1.4 empty-grid
 /// regression where RebindBotGrid muted ListChanged while SuspendBinding so a populated
-/// status payload painted zero rows under the default filters.
+/// status payload painted zero rows under the default filters. Also covers Spec Any / Auto
+/// as a no-op population filter while Spec stays enabled in the population view.
 /// </summary>
 [TestFixture, NonParallelizable, Apartment(ApartmentState.STA)]
 public sealed class PopulationGridTests
 {
     private static readonly Assembly Launcher = Assembly.Load("OfflineDAoC");
     private static readonly BindingFlags Hidden = BindingFlags.Instance | BindingFlags.NonPublic;
+    private static readonly BindingFlags HiddenStatic = BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
 
     [Test]
     public void RebindBotGridAcceptsALargerRosterWithoutThrowing()
@@ -48,6 +50,60 @@ public sealed class PopulationGridTests
     }
 
     [Test]
+    public void SpecStaysEnabledWithAnyWhenClassIsAnyAndDoesNotEmptyTheGrid()
+    {
+        Type main = Launcher.GetType("OfflineDaoc.Launcher.MainForm")!;
+        using Form form = (Form)Activator.CreateInstance(main)!;
+        var createClass = (ComboBox)main.GetField("_createClass", Hidden)!.GetValue(form)!;
+        var createSpec = (ComboBox)main.GetField("_createSpec", Hidden)!.GetValue(form)!;
+        var onlineOnly = (CheckBox)main.GetField("_onlineOnly", Hidden)!.GetValue(form)!;
+        var bots = (IList)main.GetField("_bots", Hidden)!.GetValue(form)!;
+        var grid = (DataGridView)main.GetField("_grid", Hidden)!.GetValue(form)!;
+        var source = (BindingSource)main.GetField("_botSource", Hidden)!.GetValue(form)!;
+        Type botRow = main.GetNestedType("BotRow", BindingFlags.NonPublic)!;
+
+        Assert.That(createClass.SelectedItem?.ToString(), Is.EqualTo("Any class"));
+        Assert.That(createSpec.Enabled, Is.True, "Spec must stay usable in the population view.");
+        Assert.That(createSpec.SelectedItem?.ToString(), Is.EqualTo("Any"));
+        onlineOnly.Checked = true;
+
+        bots.Clear();
+        for (int i = 0; i < 66; i++)
+            bots.Add(MakeBot(botRow, $"Bot{i:00}", "Albion", online: true));
+
+        // Default Any Spec / Any class / Online Only must keep every online bot.
+        object[] filtered = InvokeFilter(main, bots, "All realms", "", true, null, null);
+        Assert.That(filtered.Length, Is.EqualTo(66));
+
+        main.GetMethod("ApplyFilter", Hidden)!.Invoke(form, null);
+        Assert.That(source.Count, Is.EqualTo(66));
+        Assert.That(grid.RowCount, Is.EqualTo(66));
+    }
+
+    [Test]
+    public void SpecAnyAndAutoAreNoOpFiltersAndConcreteSpecNarrowsRows()
+    {
+        Type main = Launcher.GetType("OfflineDaoc.Launcher.MainForm")!;
+        Type botRow = main.GetNestedType("BotRow", BindingFlags.NonPublic)!;
+        var bots = new List<object>
+        {
+            MakeBot(botRow, "SmiteOne", "Albion", online: true, className: "Cleric", preferredSpec: (int)eSpecType.SmiteCleric),
+            MakeBot(botRow, "RejuvOne", "Albion", online: true, className: "Cleric", preferredSpec: (int)eSpecType.RejuvCleric),
+            MakeBot(botRow, "AutoOne", "Albion", online: true, className: "Cleric", preferredSpec: BotSpecializationChoices.AutoPreferredSpec),
+        };
+
+        Assert.That(InvokeFilter(main, bots, "All realms", "", true, null, null).Length, Is.EqualTo(3), "null Spec filter is a no-op.");
+        Assert.That(BotSpecializationChoices.IsSpecFilterNoOp(BotSpecializationChoices.AnySpecFilter), Is.True);
+        Assert.That(BotSpecializationChoices.IsSpecFilterNoOp(BotSpecializationChoices.AutoPreferredSpec), Is.True);
+
+        object[] smite = InvokeFilter(main, bots, "All realms", "", true, "Cleric", (int)eSpecType.SmiteCleric);
+        Assert.That(smite.Select(bot => ((dynamic)bot).Name).Cast<string>().ToArray(), Is.EqualTo(new[] { "SmiteOne" }));
+
+        object[] anyClass = InvokeFilter(main, bots, "All realms", "", true, null, (int)eSpecType.SmiteCleric);
+        Assert.That(anyClass.Length, Is.EqualTo(1));
+    }
+
+    [Test]
     public void DefaultFiltersShowRowsFromAPopulatedStatusPayload()
     {
         Type main = Launcher.GetType("OfflineDaoc.Launcher.MainForm")!;
@@ -60,9 +116,9 @@ public sealed class PopulationGridTests
         var createSpec = (ComboBox)main.GetField("_createSpec", Hidden)!.GetValue(form)!;
         Type botRow = main.GetNestedType("BotRow", BindingFlags.NonPublic)!;
 
-        // Jay's defaults: All realms, Spec Auto (hashed) create picker, Online Only on.
         Assert.That(realmFilter.SelectedItem?.ToString(), Is.EqualTo("All realms"));
-        Assert.That(createSpec.SelectedItem?.ToString(), Does.Contain("Auto"));
+        Assert.That(createSpec.SelectedItem?.ToString(), Is.EqualTo("Any"));
+        Assert.That(createSpec.Enabled, Is.True);
         onlineOnly.Checked = true;
 
         bots.Clear();
@@ -72,13 +128,9 @@ public sealed class PopulationGridTests
             bots.Add(MakeBot(botRow, $"Mid{i:00}", "Midgard", online: true));
         for (int i = 0; i < 22; i++)
             bots.Add(MakeBot(botRow, $"Hib{i:00}", "Hibernia", online: true));
-        // Offline roster members must stay filtered out when Online Only is checked.
         bots.Add(MakeBot(botRow, "OfflineOne", "Albion", online: false));
 
-        // Spec Auto must not participate in filtering — only realm / search / online-only do.
-        object[] filtered = ((IEnumerable)main.GetMethod("FilterPopulationBots",
-                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!
-            .Invoke(null, [bots, "All realms", "", true])!).Cast<object>().ToArray();
+        object[] filtered = InvokeFilter(main, bots, "All realms", "", true, null, null);
         Assert.That(filtered.Length, Is.EqualTo(66), "Default filters must keep every online bot from the status payload.");
 
         main.GetMethod("ApplyFilter", Hidden)!.Invoke(form, null);
@@ -145,9 +197,17 @@ public sealed class PopulationGridTests
             Is.EquivalentTo(new[] { eSpecType.MendHealer, eSpecType.AugHealer, eSpecType.PacHealer }));
         Assert.That(BotSpecializationChoices.DisplayName(eSpecType.SmiteCleric), Is.EqualTo("Smite"));
         Assert.That(BotSpecializationChoices.AutoPreferredSpec, Is.EqualTo(-1));
+        Assert.That(BotSpecializationChoices.AnySpecFilter, Is.EqualTo(-2));
     }
 
-    private static object MakeBot(Type botRow, string name, string realm, bool online = false, string objectiveKind = "SoloPve")
+    private static object[] InvokeFilter(Type main, IEnumerable bots, string realm, string search, bool onlineOnly,
+        string? className, int? preferredSpecType) =>
+        ((IEnumerable)main.GetMethod("FilterPopulationBots", HiddenStatic)!
+            .Invoke(null, [bots, realm, search, onlineOnly, className, preferredSpecType])!)
+            .Cast<object>().ToArray();
+
+    private static object MakeBot(Type botRow, string name, string realm, bool online = false,
+        string objectiveKind = "SoloPve", string className = "Hero", int preferredSpec = BotSpecializationChoices.AutoPreferredSpec)
     {
         // BotRow(long? BotId, string Name, string Realm, string RaceName, string Gender, string ClassName,
         // int Level, string ZoneName, string Activity, bool IsOnline, bool CanDelete, bool DeletionQueued,
@@ -160,7 +220,7 @@ public sealed class PopulationGridTests
             realm,
             "Celt",
             "Male",
-            "Hero",
+            className,
             1,
             "Lough Derg",
             "Idle",
@@ -176,6 +236,8 @@ public sealed class PopulationGridTests
             "",
             "",
         ];
-        return Activator.CreateInstance(botRow, args)!;
+        object bot = Activator.CreateInstance(botRow, args)!;
+        botRow.GetProperty("PreferredSpecType")!.SetValue(bot, preferredSpec);
+        return bot;
     }
 }

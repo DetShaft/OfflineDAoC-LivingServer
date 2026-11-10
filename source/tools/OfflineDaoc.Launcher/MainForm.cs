@@ -1044,11 +1044,16 @@ internal sealed partial class MainForm : Form
         panel.Controls.Add(_deleteBotButton);
         panel.Controls.Add(_onlineOnly);
         _helpTip.SetToolTip(_onlineOnly, "Show only online bots in the current realm and search results. Uncheck to show all bots.");
-        _helpTip.SetToolTip(_createClass, "Optional class for new gamebots from the realm + Lv buttons. Any class keeps the current random roll.");
-        _helpTip.SetToolTip(_createSpec, "Optional specialization for new gamebots. Auto keeps the hashed persistent pick. Applies to every bot in a Shift/Ctrl batch.");
+        _helpTip.SetToolTip(_createClass, "Filters Active Population by class, and is optional for new gamebots from the realm + Lv buttons. Any class shows every class and keeps the random roll on create.");
+        _helpTip.SetToolTip(_createSpec, "Filters Active Population by preferred specialization. Any and Auto never hide rows. Auto (hashed) is also the create-time default; a concrete Spec applies to every bot in a Shift/Ctrl batch.");
         PopulateCreateClassPicker();
-        _createClass.SelectedIndexChanged += (_, _) => PopulateCreateSpecPicker();
         PopulateCreateSpecPicker();
+        _createClass.SelectedIndexChanged += (_, _) =>
+        {
+            PopulateCreateSpecPicker();
+            ApplyFilter();
+        };
+        _createSpec.SelectedIndexChanged += (_, _) => ApplyFilter();
         return panel;
     }
 
@@ -1089,40 +1094,73 @@ internal sealed partial class MainForm : Form
     {
         int? classId = (_createClass.SelectedItem as CreateClassOption)?.ClassId;
         object? previous = _createSpec.SelectedItem;
-        _createSpec.Items.Clear();
-        _createSpec.Items.Add(new CreateSpecOption("Auto (hashed)", BotSpecializationChoices.AutoPreferredSpec));
-        if (classId is int id && Enum.IsDefined(typeof(eCharacterClass), (byte)id))
+        _createSpec.BeginUpdate();
+        try
         {
-            var charClass = (eCharacterClass)id;
-            if (BotSpecializationChoices.HasChoices(charClass))
+            _createSpec.Items.Clear();
+            // Always offer Any so Spec stays usable (and a no-op filter) even when Class is Any class.
+            _createSpec.Items.Add(new CreateSpecOption("Any", BotSpecializationChoices.AnySpecFilter));
+            if (classId is int id && Enum.IsDefined(typeof(eCharacterClass), (byte)id))
             {
-                foreach (eSpecType spec in BotSpecializationChoices.For(charClass))
+                var charClass = (eCharacterClass)id;
+                if (BotSpecializationChoices.HasChoices(charClass))
                 {
-                    if (spec == eSpecType.None)
-                        continue;
-                    _createSpec.Items.Add(new CreateSpecOption(BotSpecializationChoices.DisplayName(spec), (int)spec));
+                    _createSpec.Items.Add(new CreateSpecOption("Auto (hashed)", BotSpecializationChoices.AutoPreferredSpec));
+                    foreach (eSpecType spec in BotSpecializationChoices.For(charClass))
+                    {
+                        if (spec == eSpecType.None)
+                            continue;
+                        _createSpec.Items.Add(new CreateSpecOption(BotSpecializationChoices.DisplayName(spec), (int)spec));
+                    }
                 }
             }
-        }
-        _createSpec.Enabled = classId != null && _createSpec.Items.Count > 1;
-        if (previous is CreateSpecOption prior)
-        {
-            for (int i = 0; i < _createSpec.Items.Count; i++)
+            // Spec must stay enabled in the population view; disabled Spec previously looked like a stuck filter.
+            _createSpec.Enabled = true;
+            if (previous is CreateSpecOption prior)
             {
-                if (_createSpec.Items[i] is CreateSpecOption option && option.SpecType == prior.SpecType)
+                for (int i = 0; i < _createSpec.Items.Count; i++)
                 {
-                    _createSpec.SelectedIndex = i;
-                    return;
+                    if (_createSpec.Items[i] is CreateSpecOption option && option.SpecType == prior.SpecType)
+                    {
+                        _createSpec.SelectedIndex = i;
+                        return;
+                    }
                 }
             }
+            _createSpec.SelectedIndex = 0;
         }
-        _createSpec.SelectedIndex = 0;
+        finally
+        {
+            _createSpec.EndUpdate();
+        }
     }
 
     private int? SelectedCreateClassId() => (_createClass.SelectedItem as CreateClassOption)?.ClassId;
 
-    private int SelectedPreferredSpecType() =>
-        (_createSpec.SelectedItem as CreateSpecOption)?.SpecType ?? BotSpecializationChoices.AutoPreferredSpec;
+    private string? SelectedCreateClassName() =>
+        SelectedCreateClassId() is int classId ? ClassInfo(classId).Name : null;
+
+    /// <summary>PreferredSpecType for create. Any / Auto / disabled Spec all keep the hashed pick.</summary>
+    private int SelectedPreferredSpecType()
+    {
+        if (!_createSpec.Enabled)
+            return BotSpecializationChoices.AutoPreferredSpec;
+        int spec = (_createSpec.SelectedItem as CreateSpecOption)?.SpecType
+            ?? BotSpecializationChoices.AnySpecFilter;
+        return BotSpecializationChoices.IsSpecFilterNoOp(spec)
+            ? BotSpecializationChoices.AutoPreferredSpec
+            : spec;
+    }
+
+    /// <summary>Concrete Spec for population filtering, or null when Spec is Any / Auto / disabled (no-op).</summary>
+    private int? SelectedSpecFilterType()
+    {
+        if (!_createSpec.Enabled)
+            return null;
+        int spec = (_createSpec.SelectedItem as CreateSpecOption)?.SpecType
+            ?? BotSpecializationChoices.AnySpecFilter;
+        return BotSpecializationChoices.IsSpecFilterNoOp(spec) ? null : spec;
+    }
 
     private Control BuildFooter()
     {
@@ -1916,6 +1954,10 @@ internal sealed partial class MainForm : Form
                 : "'' AS ObjectiveKind, '' AS ObjectiveAssignmentId, '' AS ObjectiveAssignedUtc, '' AS ObjectivePhase";
             objectiveColumns += ColumnExists(connection, "offline_world_bots", "ObjectiveExpiresUtc")
                 ? ", COALESCE(ObjectiveExpiresUtc, '')" : ", '' AS ObjectiveExpiresUtc";
+            bool hasPreferredSpec = ColumnExists(connection, "offline_world_bots", "PreferredSpecType");
+            objectiveColumns += hasPreferredSpec
+                ? ", PreferredSpecType"
+                : $", {BotSpecializationChoices.AutoPreferredSpec} AS PreferredSpecType";
             command.CommandText = $"SELECT BotId, Name, Realm, RaceName, Gender, ClassName, Level, COALESCE(ZoneName, '—'), Activity, CurrentGoal, TargetName, TravelDestination, ObjectiveProgress, IsOnline, IsRetired, COALESCE(ItineraryJson, ''), {objectiveColumns} FROM offline_world_bots ORDER BY Realm, Level DESC, Name";
             using var reader = command.ExecuteReader();
             while (reader.Read())
@@ -1937,6 +1979,7 @@ internal sealed partial class MainForm : Form
                 string assignedUtc = hasLiveStatus ? live!.ObjectiveAssignedUtc : reader.GetString(18);
                 string objectivePhase = hasLiveStatus ? live!.ObjectivePhase : reader.GetString(19);
                 string objectiveExpiresUtc = hasLiveStatus ? live!.ObjectiveExpiresUtc : reader.GetString(20);
+                int preferredSpecType = reader.IsDBNull(21) ? BotSpecializationChoices.AutoPreferredSpec : reader.GetInt32(21);
                 string activity = deletionQueued
                     ? running || serverProcessPresent
                         ? "Deletion requested — waiting for safe server removal"
@@ -1947,6 +1990,7 @@ internal sealed partial class MainForm : Form
                     group?.GroupId ?? string.Empty, group?.Phase ?? string.Empty, group?.SharedGoal ?? string.Empty, group?.Status ?? string.Empty,
                     objectiveKind, assignmentId, assignedUtc, objectivePhase)
                 {
+                    PreferredSpecType = preferredSpecType,
                     ObjectiveExpiresUtc = objectiveExpiresUtc,
                     HasGroupTaskClock = group?.HasTaskClock == true,
                     TaskTimerPaused = group?.TaskTimerPaused == true,
@@ -2116,25 +2160,29 @@ internal sealed partial class MainForm : Form
     {
         var realm = _realmFilter.SelectedItem?.ToString() ?? "All realms";
         var search = _search.Text.Trim();
-        // Spec Auto (hashed) is the create-time picker only — it is not part of this filter.
-        List<BotRow> rows = SortBots(FilterPopulationBots(_bots, realm, search, _onlineOnly.Checked)).ToList();
+        // Spec Any / Auto / disabled is always a no-op; only a concrete Spec hides rows.
+        List<BotRow> rows = SortBots(FilterPopulationBots(
+            _bots, realm, search, _onlineOnly.Checked, SelectedCreateClassName(), SelectedSpecFilterType())).ToList();
         RebindBotGrid(rows);
         UpdateBotSortGlyph();
     }
 
     /// <summary>
-    /// Active Population row filter (realm / search / online-only). Kept static so tests can
-    /// assert a populated status payload still yields rows under the default filters (via
-    /// reflection) without depending on Spec Auto, which is create-time only.
+    /// Active Population row filter. Spec filter is a no-op when null (Any / Auto / disabled).
+    /// Kept static so tests can assert a populated status payload still yields rows under the
+    /// default filters via reflection.
     /// </summary>
     private static IEnumerable<BotRow> FilterPopulationBots(
-        IEnumerable<BotRow> bots, string realm, string search, bool onlineOnly)
+        IEnumerable<BotRow> bots, string realm, string search, bool onlineOnly,
+        string? className = null, int? preferredSpecType = null)
     {
         search ??= string.Empty;
         realm ??= "All realms";
         return bots.Where(bot =>
             (!onlineOnly || bot.IsOnline) &&
             (realm == "All realms" || bot.Realm == realm) &&
+            (string.IsNullOrEmpty(className) || bot.ClassName.Equals(className, StringComparison.OrdinalIgnoreCase)) &&
+            (preferredSpecType is null || bot.PreferredSpecType == preferredSpecType.Value) &&
             (search.Length == 0 || $"{bot.Name} {bot.Realm} {bot.RaceName} {bot.Gender} {bot.ClassName} {bot.ZoneName} {bot.Activity}".Contains(search, StringComparison.OrdinalIgnoreCase)));
     }
 
@@ -3510,6 +3558,7 @@ internal sealed partial class MainForm : Form
     private sealed record BotRow(long? BotId, string Name, string Realm, string RaceName, string Gender, string ClassName, int Level, string ZoneName, string Activity, bool IsOnline, bool CanDelete, bool DeletionQueued,
         string GroupId, string GroupPhase, string GroupGoal, string GroupStatus, string ObjectiveKind, string ObjectiveAssignmentId, string ObjectiveAssignedUtc, string ObjectivePhase)
     {
+        public int PreferredSpecType { get; init; } = BotSpecializationChoices.AutoPreferredSpec;
         public string ObjectiveExpiresUtc { get; init; } = string.Empty;
         public bool HasGroupTaskClock { get; init; }
         public bool TaskTimerPaused { get; init; }

@@ -16,11 +16,16 @@ scripts, the matching `game_ui` / `keybinds` / `server_world` edits, and a rebui
 packets) through `content-patches.json`. INSTALL creates or replaces those files; ROLLBACK restores or removes them.
 
 **Bug in 1.1.4 (launcher):** Active Population could show an empty grid while the header still listed online bots
-(for example 66 online, realm cards populated, Spec Auto / Online Only selected). The population rebind muted
-`ListChanged` while `CurrencyManager` was suspended, so the grid never painted the filtered rows. Spec Auto is
-only the create-time picker — it is not a population filter. 1.1.5 keeps `ListChanged` live and resets bindings
-after resume so a populated status payload shows rows under the default filters; Active Groups, Active RvR and
-Realm Exchange still bind from the same snapshot.
+(for example 66 online, realm cards populated, Spec stuck on Auto / Online Only). Two fixes ship together:
+
+1. Population rebind muted `ListChanged` while `CurrencyManager` was suspended, so the grid never painted rows.
+2. Spec was the create-time picker, stayed **disabled** on "Auto (hashed)" when Class was Any, and looked like a
+   stuck filter. Spec is now a real population filter with an **Any** option (Any / Auto / disabled never hide
+   rows); it stays enabled in the population view, and Auto (hashed) remains available for create when a class
+   is chosen. Class also filters the roster when not Any.
+
+1.1.5 keeps `ListChanged` live and resets bindings after resume so a populated status payload shows rows under
+the default filters; Active Groups, Active RvR and Realm Exchange still bind from the same snapshot.
 
 Turn on **Allow prereleases** in the launcher (DetShaft feed) to be offered this build from 1.1.4.
 
