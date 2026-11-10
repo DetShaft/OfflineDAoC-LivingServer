@@ -102,15 +102,17 @@ public sealed class LauncherUpdater
             Settings.LastCheckUtc = nowUtc;
             SaveSettings();
         }
-        Log.Write($"Checking for a newer Living Server than {installed?.Name ?? "(unknown build)"}{(asked ? " (asked)" : "")}: GET {ReleaseFeed.LatestUrl}");
-        ReleaseInfo? latest = ReleaseFeed.TryGetLatest(_web, out problem);
+        ReleaseFeed.Configure(Settings.ReleaseRepository);
+        string url = Settings.AllowPrereleases ? ReleaseFeed.ReleasesUrl : ReleaseFeed.LatestUrl;
+        Log.Write($"Checking for a newer Living Server than {installed?.Name ?? "(unknown build)"}{(asked ? " (asked)" : "")} on {ReleaseFeed.Repository}: GET {url}");
+        ReleaseInfo? latest = ReleaseFeed.TryGetLatest(_web, Settings.AllowPrereleases, out problem);
         if (latest == null)
         {
             Log.Write("No answer: " + problem);
             return null;
         }
         bool offer = UpdatePolicy.ShouldOffer(latest, installed, Settings, asked);
-        Log.Write($"Newest release {latest.TagName}{(latest.Package == null ? " (no package)" : "")}: {(offer ? "newer, offered" : "nothing to offer")}.");
+        Log.Write($"Newest release {latest.TagName}{(latest.Package == null ? " (no package)" : "")}{(latest.Prerelease ? " (prerelease)" : "")}: {(offer ? "newer, offered" : "nothing to offer")}.");
         return offer ? latest : null;
     }
 
@@ -144,7 +146,8 @@ public sealed class LauncherUpdater
     public PreparedUpdate PrepareFromRelease(ReleaseInfo release, Action<long, long>? progress, CancellationToken cancel)
     {
         BuildVersion build = release.Version ?? throw new PackageRefusedException("Not a Living Server release: " + release.TagName);
-        Log.Write($"Downloading {release.Package?.Name} ({release.Package?.Size:N0} bytes) to {UpdatesFolder}");
+        ReleaseFeed.Configure(Settings.ReleaseRepository);
+        Log.Write($"Downloading {release.Package?.Name} ({release.Package?.Size:N0} bytes) from {ReleaseFeed.Repository} to {UpdatesFolder}");
         try
         {
             var (zip, contents) = ReleaseFeed.DownloadPackage(_web, release, UpdatesFolder, progress, cancel);

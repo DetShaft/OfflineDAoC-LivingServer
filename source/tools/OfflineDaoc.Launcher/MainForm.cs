@@ -65,7 +65,9 @@ internal sealed partial class MainForm : Form
         TextAlign = ContentAlignment.MiddleCenter,
     };
     private readonly ComboBox _realmFilter = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130 };
-    private readonly TextBox _search = new() { PlaceholderText = "Search name, class, zone or activity", Width = 280 };
+    private readonly ComboBox _createClass = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 118 };
+    private readonly ComboBox _createSpec = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 126 };
+    private readonly TextBox _search = new() { PlaceholderText = "Search name, class, zone…", Width = 170 };
     private readonly CheckBox _onlineOnly = new()
     {
         Text = "ONLINE ONLY",
@@ -140,6 +142,7 @@ internal sealed partial class MainForm : Form
     private bool _loadingXpRates;
     private bool _savingXpRates;
     private bool _generatingBot;
+    private bool _suppressBotFilter;
     private DateTime _nextAutoRefreshUtc;
     private DateTime _nextRvrSnapshotRefreshUtc;
     private string _dashboardFooterSummary = string.Empty;
@@ -211,7 +214,12 @@ internal sealed partial class MainForm : Form
 
         _realmFilter.Items.AddRange(["All realms", "Albion", "Midgard", "Hibernia"]);
         _realmFilter.SelectedIndex = 0;
-        _realmFilter.SelectedIndexChanged += (_, _) => ApplyFilter();
+        _realmFilter.SelectedIndexChanged += (_, _) =>
+        {
+            if (_suppressBotFilter)
+                return;
+            ApplyFilter();
+        };
         _search.TextChanged += (_, _) => ApplyFilter();
         _onlineOnly.CheckedChanged += (_, _) => ApplyFilter();
         _auctionSearch.TextChanged += (_, _) => ApplyAuctionFilter();
@@ -231,6 +239,8 @@ internal sealed partial class MainForm : Form
         _autoRefresh.Tick += async (_, _) =>
         {
             ScheduleNextAutoRefresh();
+            if (_generatingBot)
+                return;
             await RefreshDashboardAsync();
         };
         _serverReadinessPoll.Tick += async (_, _) => await RefreshWhenServerReadyAsync();
@@ -459,13 +469,16 @@ internal sealed partial class MainForm : Form
             {
                 IReadOnlyList<BotCharacterGenerator.Identity> identities =
                     await Task.Run(() => GenerateBotCharacters(realm, batchSize, level));
-                _realmFilter.SelectedItem = realmName[0] + realmName[1..].ToLowerInvariant();
-                await RefreshDashboardAsync();
+                string filterRealm = realmName[0] + realmName[1..].ToLowerInvariant();
+                _suppressBotFilter = true;
+                try { _realmFilter.SelectedItem = filterRealm; }
+                finally { _suppressBotFilter = false; }
+                await RefreshDashboardAsync(allowWhileGenerating: true);
                 BotCharacterGenerator.Identity last = identities[^1];
                 SelectBot(last.Name);
                 _footer.Text = batchSize == 1
                     ? $"Created {last.Name}, a level {level} {last.RaceName} {last.ClassName}. Queued for staggered login."
-                    : $"Created all {batchSize} level {level} {realmName[0] + realmName[1..].ToLowerInvariant()} characters. All are queued for staggered login.";
+                    : $"Created all {batchSize} level {level} {filterRealm} characters. All are queued for staggered login.";
             }
             catch (Exception exception)
             {
@@ -504,7 +517,7 @@ internal sealed partial class MainForm : Form
         var tabs = new DaocTabControl { Dock = DockStyle.Fill };
         var population = new TabPage("Active Population") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
         var populationLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
-        populationLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 43));
+        populationLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         populationLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         populationLayout.Controls.Add(BuildFilters(), 0, 0);
         populationLayout.Controls.Add(BuildGrid(), 0, 1);
@@ -1011,8 +1024,14 @@ internal sealed partial class MainForm : Form
     {
         var panel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(5, 7, 0, 4), BackColor = DaocTheme.Panel };
         StyleInput(_realmFilter);
+        StyleInput(_createClass);
+        StyleInput(_createSpec);
         StyleInput(_search);
         panel.Controls.Add(_realmFilter);
+        panel.Controls.Add(CreatePickerLabel("Class"));
+        panel.Controls.Add(_createClass);
+        panel.Controls.Add(CreatePickerLabel("Spec"));
+        panel.Controls.Add(_createSpec);
         panel.Controls.Add(_search);
         _refreshButton = ActionButton("REFRESH", Color.FromArgb(126, 104, 67));
         _refreshButton.Width = 100;
@@ -1025,8 +1044,85 @@ internal sealed partial class MainForm : Form
         panel.Controls.Add(_deleteBotButton);
         panel.Controls.Add(_onlineOnly);
         _helpTip.SetToolTip(_onlineOnly, "Show only online bots in the current realm and search results. Uncheck to show all bots.");
+        _helpTip.SetToolTip(_createClass, "Optional class for new gamebots from the realm + Lv buttons. Any class keeps the current random roll.");
+        _helpTip.SetToolTip(_createSpec, "Optional specialization for new gamebots. Auto keeps the hashed persistent pick. Applies to every bot in a Shift/Ctrl batch.");
+        PopulateCreateClassPicker();
+        _createClass.SelectedIndexChanged += (_, _) => PopulateCreateSpecPicker();
+        PopulateCreateSpecPicker();
         return panel;
     }
+
+    private static Label CreatePickerLabel(string text) => new()
+    {
+        Text = text,
+        AutoSize = true,
+        ForeColor = DaocTheme.GoldLight,
+        Font = new Font("Georgia", 8f, FontStyle.Bold),
+        Margin = new Padding(8, 7, 2, 0),
+    };
+
+    private sealed record CreateClassOption(string Label, int? ClassId)
+    {
+        public override string ToString() => Label;
+    }
+
+    private sealed record CreateSpecOption(string Label, int SpecType)
+    {
+        public override string ToString() => Label;
+    }
+
+    private void PopulateCreateClassPicker()
+    {
+        _createClass.Items.Clear();
+        _createClass.Items.Add(new CreateClassOption("Any class", null));
+        bool allowSluaghbinder = InstalledEditionHasCustomClass(_database);
+        foreach (int realm in new[] { 1, 2, 3 })
+        {
+            string realmName = realm switch { 1 => "Alb", 2 => "Mid", _ => "Hib" };
+            foreach ((int classId, string className) in BotCharacterGenerator.ClassesForRealm(realm, allowSluaghbinder))
+                _createClass.Items.Add(new CreateClassOption($"{realmName} {className}", classId));
+        }
+        _createClass.SelectedIndex = 0;
+    }
+
+    private void PopulateCreateSpecPicker()
+    {
+        int? classId = (_createClass.SelectedItem as CreateClassOption)?.ClassId;
+        object? previous = _createSpec.SelectedItem;
+        _createSpec.Items.Clear();
+        _createSpec.Items.Add(new CreateSpecOption("Auto (hashed)", BotSpecializationChoices.AutoPreferredSpec));
+        if (classId is int id && Enum.IsDefined(typeof(eCharacterClass), (byte)id))
+        {
+            var charClass = (eCharacterClass)id;
+            if (BotSpecializationChoices.HasChoices(charClass))
+            {
+                foreach (eSpecType spec in BotSpecializationChoices.For(charClass))
+                {
+                    if (spec == eSpecType.None)
+                        continue;
+                    _createSpec.Items.Add(new CreateSpecOption(BotSpecializationChoices.DisplayName(spec), (int)spec));
+                }
+            }
+        }
+        _createSpec.Enabled = classId != null && _createSpec.Items.Count > 1;
+        if (previous is CreateSpecOption prior)
+        {
+            for (int i = 0; i < _createSpec.Items.Count; i++)
+            {
+                if (_createSpec.Items[i] is CreateSpecOption option && option.SpecType == prior.SpecType)
+                {
+                    _createSpec.SelectedIndex = i;
+                    return;
+                }
+            }
+        }
+        _createSpec.SelectedIndex = 0;
+    }
+
+    private int? SelectedCreateClassId() => (_createClass.SelectedItem as CreateClassOption)?.ClassId;
+
+    private int SelectedPreferredSpecType() =>
+        (_createSpec.SelectedItem as CreateSpecOption)?.SpecType ?? BotSpecializationChoices.AutoPreferredSpec;
 
     private Control BuildFooter()
     {
@@ -1209,9 +1305,17 @@ internal sealed partial class MainForm : Form
         foreach (DataGridViewColumn column in _grid.Columns)
             column.SortMode = DataGridViewColumnSortMode.Programmatic;
         _grid.ColumnHeaderMouseClick += (_, eventArgs) => SortBotsByColumn(eventArgs.ColumnIndex);
+        // Batch create / rebind can briefly desync CurrencyManager row counts; never show the default dialog spam.
+        _grid.DataError += (_, eventArgs) =>
+        {
+            eventArgs.ThrowException = false;
+            if (_footer != null && !string.IsNullOrWhiteSpace(eventArgs.Exception?.Message))
+                _footer.Text = "Population grid skipped a bad row: " + eventArgs.Exception.Message;
+        };
         _grid.CellFormatting += (_, eventArgs) =>
         {
-            if (eventArgs.RowIndex < 0 || eventArgs.ColumnIndex < 0 || _grid.Rows[eventArgs.RowIndex].DataBoundItem is not BotRow bot) return;
+            if (eventArgs.RowIndex < 0 || eventArgs.ColumnIndex < 0 || eventArgs.RowIndex >= _grid.Rows.Count) return;
+            if (_grid.Rows[eventArgs.RowIndex].DataBoundItem is not BotRow bot) return;
             if (_grid.Columns[eventArgs.ColumnIndex].DataPropertyName == "Realm")
             {
                 eventArgs.CellStyle.ForeColor = bot.Realm switch
@@ -1268,9 +1372,12 @@ internal sealed partial class MainForm : Form
         return _grid;
     }
 
-    private async Task RefreshDashboardAsync()
+    private async Task RefreshDashboardAsync(bool allowWhileGenerating = false)
     {
-        if (_refreshing) return;
+        // Skip overlapping refreshes while a batch create owns the roster (avoids mid-transaction snapshots
+        // and CurrencyManager desync when Shift/Ctrl + Lv create grows the grid). The create path itself
+        // passes allowWhileGenerating after the SQLite commit.
+        if (_refreshing || (_generatingBot && !allowWhileGenerating)) return;
         _refreshing = true;
         Dictionary<Button, bool> buttonStates = CaptureAndDisableButtonsForSnapshot();
         bool buttonsRestored = false;
@@ -1446,12 +1553,19 @@ internal sealed partial class MainForm : Form
         return states;
     }
 
-    private static void RestoreButtonsAfterSnapshot(IReadOnlyDictionary<Button, bool> states)
+    private void RestoreButtonsAfterSnapshot(IReadOnlyDictionary<Button, bool> states)
     {
         foreach ((Button button, bool enabled) in states)
         {
-            if (!button.IsDisposed)
-                button.Enabled = enabled;
+            if (button.IsDisposed)
+                continue;
+            // Generate owns enablement for the realm + Lv buttons until its finally block.
+            if (_generatingBot && _realmGenerateButtons.Contains(button))
+            {
+                button.Enabled = false;
+                continue;
+            }
+            button.Enabled = enabled;
         }
     }
 
@@ -2006,9 +2120,46 @@ internal sealed partial class MainForm : Form
             (!_onlineOnly.Checked || bot.IsOnline) &&
             (realm == "All realms" || bot.Realm == realm) &&
             (search.Length == 0 || $"{bot.Name} {bot.Realm} {bot.RaceName} {bot.Gender} {bot.ClassName} {bot.ZoneName} {bot.Activity}".Contains(search, StringComparison.OrdinalIgnoreCase)));
-        _botSource.DataSource = SortBots(filtered).ToList();
-        _botSource.ResetBindings(false);
+        List<BotRow> rows = SortBots(filtered).ToList();
+        RebindBotGrid(rows);
         UpdateBotSortGlyph();
+    }
+
+    /// <summary>
+    /// Replaces the Active Population grid's list without leaving CurrencyManager on a stale row index
+    /// (the IndexOutOfRangeException dialogs after Shift/Ctrl batch create).
+    /// </summary>
+    private void RebindBotGrid(List<BotRow> rows)
+    {
+        if (_grid.IsDisposed)
+            return;
+        CurrencyManager? currency = null;
+        try { currency = BindingContext[_botSource] as CurrencyManager; }
+        catch (ArgumentException) { /* no binding context yet */ }
+        bool raise = _botSource.RaiseListChangedEvents;
+        _botSource.RaiseListChangedEvents = false;
+        _grid.SuspendLayout();
+        try
+        {
+            currency?.SuspendBinding();
+            try
+            {
+                _grid.ClearSelection();
+                _grid.CurrentCell = null;
+            }
+            catch (InvalidOperationException) { /* grid not ready */ }
+            catch (ArgumentOutOfRangeException) { /* mid-rebind */ }
+            _botSource.DataSource = rows;
+            // true resets the list position so a previous "last row" index can't outrun the new count.
+            _botSource.ResetBindings(true);
+        }
+        finally
+        {
+            try { currency?.ResumeBinding(); }
+            catch (InvalidOperationException) { }
+            _botSource.RaiseListChangedEvents = raise;
+            _grid.ResumeLayout();
+        }
     }
 
     private void SortBotsByColumn(int columnIndex)
@@ -2186,6 +2337,18 @@ internal sealed partial class MainForm : Form
             throw new ArgumentOutOfRangeException(nameof(count));
         if (level is not (1 or 50)) throw new ArgumentOutOfRangeException(nameof(level));
 
+        int? forcedClassId = SelectedCreateClassId();
+        int preferredSpec = SelectedPreferredSpecType();
+        if (forcedClassId is int classId)
+        {
+            bool matchesRealm = BotCharacterGenerator.ClassesForRealm(realm, allowSluaghbinder: true)
+                .Any(entry => entry.ClassId == classId);
+            if (!matchesRealm)
+                throw new InvalidOperationException($"The selected class is not available for that realm. Pick Any class or a class of that realm.");
+        }
+        else
+            preferredSpec = BotSpecializationChoices.AutoPreferredSpec;
+
         using var connection = new SQLiteConnection($"Data Source={_database};Version=3;Pooling=False;Default Timeout=10");
         connection.Open();
         using (var busy = connection.CreateCommand())
@@ -2195,6 +2358,7 @@ internal sealed partial class MainForm : Form
         }
 
         using var transaction = connection.BeginTransaction();
+        EnsurePreferredSpecColumn(connection, transaction);
         var reserved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using (var names = connection.CreateCommand())
         {
@@ -2210,7 +2374,7 @@ internal sealed partial class MainForm : Form
         var identities = new List<BotCharacterGenerator.Identity>(count);
         for (int index = 0; index < count; index++)
         {
-            BotCharacterGenerator.Identity identity = BotCharacterGenerator.Generate(realm, reserved, allowSluaghbinder, rejected);
+            BotCharacterGenerator.Identity identity = BotCharacterGenerator.Generate(realm, reserved, allowSluaghbinder, rejected, forcedClassId);
             BotStartingLocation start = level == 50
                 ? CapitalBotStartingLocation(identity.Realm)
                 : ChooseBotStartingLocation(connection, transaction, identity.Realm, identity.RaceId, identity.ClassId);
@@ -2223,12 +2387,12 @@ internal sealed partial class MainForm : Form
                     (Name, Realm, ClassId, ClassName, RaceId, RaceName, Gender, Level, Experience, RealmPoints,
                      ZoneName, Activity, IsOnline, IsAlive, LastUpdateUtc, MoneyCopper, InventoryRevision,
                      ZoneId, X, Y, Z, RegionId, Health, Mana, Endurance, BindRegionId, BindX, BindY, BindZ,
-                     CurrentGoal, ObjectiveProgress, LastMeaningfulProgressUtc, IsRetired)
+                     CurrentGoal, ObjectiveProgress, LastMeaningfulProgressUtc, IsRetired, PreferredSpecType)
                 VALUES
                     (@name, @realm, @classId, @className, @raceId, @raceName, @gender, @level, @xp, 0,
                      @zoneName, 'Queued at randomized starting location', 0, 1, @now, @money, 0,
                      @zoneId, @x, @y, @z, @region, 1, 0, 0, @region, @x, @y, @z,
-                     'Awaiting staggered login queue', @placement, @now, 0)
+                     'Awaiting staggered login queue', @placement, @now, 0, @preferredSpec)
                 """;
             insert.Parameters.AddWithValue("@name", identity.Name);
             insert.Parameters.AddWithValue("@level", level);
@@ -2251,6 +2415,7 @@ internal sealed partial class MainForm : Form
                 : "Classic starting area");
             insert.Parameters.AddWithValue("@placement",
                 $"Launcher assigned a realm/race/class-valid random start in region {start.RegionId} before server startup");
+            insert.Parameters.AddWithValue("@preferredSpec", preferredSpec);
             insert.ExecuteNonQuery();
             if (level == 50)
             {
@@ -2272,6 +2437,25 @@ internal sealed partial class MainForm : Form
         UpdatePopulationTarget(connection, transaction);
         transaction.Commit();
         return identities;
+    }
+
+    private static void EnsurePreferredSpecColumn(SQLiteConnection connection, SQLiteTransaction transaction)
+    {
+        using (var info = connection.CreateCommand())
+        {
+            info.Transaction = transaction;
+            info.CommandText = "PRAGMA table_info(offline_world_bots)";
+            using var reader = info.ExecuteReader();
+            while (reader.Read())
+            {
+                if (string.Equals(reader.GetString(1), "PreferredSpecType", StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
+        }
+        using var alter = connection.CreateCommand();
+        alter.Transaction = transaction;
+        alter.CommandText = "ALTER TABLE offline_world_bots ADD COLUMN PreferredSpecType INTEGER NOT NULL DEFAULT -1";
+        alter.ExecuteNonQuery();
     }
 
     private sealed record BotStartingLocation(int RegionId, int X, int Y, int Z, int ZoneId = 0, string ZoneName = "");
@@ -2627,15 +2811,33 @@ internal sealed partial class MainForm : Form
 
     private void SelectBot(string name)
     {
-        foreach (DataGridViewRow row in _grid.Rows)
+        if (string.IsNullOrWhiteSpace(name) || _grid.IsDisposed || !_grid.IsHandleCreated)
+            return;
+        System.Collections.IList list = _botSource.List;
+        int index = -1;
+        for (int i = 0; i < list.Count; i++)
         {
-            if (row.DataBoundItem is BotRow bot && bot.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            if (list[i] is BotRow bot && bot.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
             {
-                row.Selected = true;
-                _grid.CurrentCell = row.Cells[0];
+                index = i;
                 break;
             }
         }
+        if (index < 0 || index >= _botSource.Count || index >= _grid.Rows.Count || _grid.Columns.Count == 0)
+            return;
+        try
+        {
+            _botSource.Position = index;
+            DataGridViewRow row = _grid.Rows[index];
+            if (!row.Visible || row.Cells.Count == 0)
+                return;
+            row.Selected = true;
+            DataGridViewCell cell = row.Cells[0];
+            if (cell.Visible)
+                _grid.CurrentCell = cell;
+        }
+        catch (ArgumentOutOfRangeException) { }
+        catch (InvalidOperationException) { }
     }
 
     private BotGoalsSettingsControl? _botGoalsSettings;

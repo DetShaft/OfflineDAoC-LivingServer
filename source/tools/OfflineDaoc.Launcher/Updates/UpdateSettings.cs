@@ -11,6 +11,24 @@ public sealed class UpdateSettings
     /// <summary>Look for a new Living Server when the launcher starts (at most once a day).</summary>
     public bool CheckAutomatically { get; set; } = true;
 
+    /// <summary>
+    /// After a quiet automatic check finds a newer build, download and install it without asking — only when nothing
+    /// from the game is running. Off by default.
+    /// </summary>
+    public bool InstallAutomatically { get; set; } = false;
+
+    /// <summary>
+    /// Offer GitHub prereleases as well as final releases. Off by default; when on, the launcher lists /releases
+    /// instead of /releases/latest.
+    /// </summary>
+    public bool AllowPrereleases { get; set; } = false;
+
+    /// <summary>
+    /// GitHub owner/repo that publishes Living Server packages. Defaults to DetShaft/OfflineDAoC-LivingServer on this
+    /// fork. Invalid values fall back to that default when the feed is configured.
+    /// </summary>
+    public string ReleaseRepository { get; set; } = ReleaseFeed.DefaultRepository;
+
     /// <summary>The build the player chose "Skip this version" for; it isn't offered again until a newer one.</summary>
     public string? SkippedVersion { get; set; }
 
@@ -26,7 +44,11 @@ public sealed class UpdateSettings
         {
             string path = Path.Combine(updatesFolder, FileName);
             if (File.Exists(path))
-                return JsonSerializer.Deserialize<UpdateSettings>(File.ReadAllText(path), Options) ?? new UpdateSettings();
+            {
+                UpdateSettings settings = JsonSerializer.Deserialize<UpdateSettings>(File.ReadAllText(path), Options) ?? new UpdateSettings();
+                settings.ReleaseRepository = ReleaseFeed.NormalizeRepository(settings.ReleaseRepository);
+                return settings;
+            }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -38,6 +60,7 @@ public sealed class UpdateSettings
     public void Save(string updatesFolder)
     {
         Directory.CreateDirectory(updatesFolder);
+        ReleaseRepository = ReleaseFeed.NormalizeRepository(ReleaseRepository);
         string path = Path.Combine(updatesFolder, FileName);
         File.WriteAllText(path + ".tmp", JsonSerializer.Serialize(this, Options));
         File.Move(path + ".tmp", path, true);
@@ -66,16 +89,26 @@ public static class UpdatePolicy
     }
 
     /// <summary>
-    /// Whether this release is an update to offer: a final release of a newer build, with a package to install, that
-    /// the player didn't skip. A skipped build is still shown when the player asked for a check.
+    /// Whether this release is an update to offer: a usable release of a newer build, with a package to install, that
+    /// the player didn't skip. A skipped build is still shown when the player asked for a check. Prereleases count
+    /// only when AllowPrereleases is on.
     /// </summary>
     public static bool ShouldOffer(ReleaseInfo? latest, BuildVersion? installed, UpdateSettings settings, bool asked)
     {
-        if (latest is not { IsUsable: true } || installed == null || latest.Package == null)
+        if (latest == null || installed == null || latest.Package == null)
+            return false;
+        if (!latest.IsUsableWith(settings.AllowPrereleases))
             return false;
         BuildVersion version = latest.Version!;
         if (!version.IsNewerThan(installed))
             return false;
         return asked || !version.SameBuildAs(BuildVersion.Parse(settings.SkippedVersion));
     }
+
+    /// <summary>
+    /// Whether a quiet automatic check should also install: InstallAutomatically on, CheckAutomatically on, and a
+    /// release was offered. The running-game gate still belongs to ApplyUpdate / RunningParts.
+    /// </summary>
+    public static bool ShouldInstallAutomatically(UpdateSettings settings, bool asked) =>
+        !asked && settings.CheckAutomatically && settings.InstallAutomatically;
 }

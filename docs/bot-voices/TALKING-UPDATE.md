@@ -143,8 +143,10 @@ out"), follow-ups were missed, "inc" read as income and tells about groups as in
   "the one by the inn?", "whered they go", "o ya what stats", "into what"; "no thanks" to a bot's offer; "ty" to the bot
   that just helped (not for its own "gz" or "np"); a laugh to the joker; "x" or "me" to a bot's call for a group.
 - **New kinds of line**: good news ("finally hit 50") gets grats, an offer ("need buffs?") thanks, "wait for me" an ok,
-  "wb" a thanks, an order ("heal me") a plain "k" (bots don't act on orders, so they don't promise to) or an honest
-  "cant heal, im a thane", a warning a "ty for the heads up",
+  "wb" a thanks, an order outside the fixed leader vocabulary ("heal me") a plain "k" or an honest
+  "cant heal, im a thane". The group leader's short orders `attack` / `assist me` / `buff us` /
+  `follow` / `stay` (server property `bot_group_orders`) do move grouped bots and get a short ack.
+  A warning a "ty for the heads up",
   real-life talk (late nights, school, food, the computer, pets, weather, TV, work, a sore back) a reply in kind.
 - **Fewer misreadings**: "inc" as income, "group" only talked about ("my old group quit", "love this group"), sarcasm
   ("thanks for the train"), insults aimed at a class rather than a person ("ppl say spiritmasters are useless"), "pc"

@@ -74,13 +74,13 @@ public class UpdateReleaseJsonTests
         Assert.That(release.TagName, Is.EqualTo("v1.1-beta"));
         Assert.That(release.Version!.Name, Is.EqualTo("1.1-beta"));
         Assert.That(release.IsUsable, Is.True);
-        Assert.That(release.PageUrl, Is.EqualTo("https://github.com/chris4aker/OfflineDAoC-LivingServer/releases/tag/v1.1-beta"));
+        Assert.That(release.PageUrl, Does.Contain("/OfflineDAoC-LivingServer/releases/tag/v1.1-beta"));
         Assert.That(release.Assets, Has.Count.EqualTo(2));
         ReleaseAsset package = release.Package!;
         Assert.That(package.Name, Is.EqualTo("OfflineDAoC-LivingServer-1.1-beta.zip"), "the zip, not Setup's exe");
         Assert.That(package.Size, Is.EqualTo(30841579));
         Assert.That(package.Digest, Is.EqualTo("sha256:67374b96ec6a33a233447682d21499fed581a1ce03e6a5b81c843eb8bb828b97"));
-        Assert.That(package.DownloadUrl, Does.StartWith(ReleaseFeed.DownloadPrefix));
+        Assert.That(package.DownloadUrl, Does.Contain("/OfflineDAoC-LivingServer/releases/download/"));
     }
 
     [Test]
@@ -95,12 +95,15 @@ public class UpdateReleaseJsonTests
     }
 
     [Test]
-    public void APrereleaseIsNeverUsable()
+    public void APrereleaseIsNeverUsableUnlessAllowed()
     {
         ReleaseInfo release = ReleaseInfo.Parse(UpdateFixtures.Read("release-v1.1.1-beta-prerelease.json"))!;
         Assert.That(release.Prerelease, Is.True);
         Assert.That(release.IsUsable, Is.False);
+        Assert.That(release.IsUsableWith(allowPrereleases: true), Is.True);
         Assert.That(UpdatePolicy.ShouldOffer(release, BuildVersion.Parse("1.1-beta"), new UpdateSettings(), asked: true), Is.False);
+        Assert.That(UpdatePolicy.ShouldOffer(release, BuildVersion.Parse("1.1-beta"),
+            new UpdateSettings { AllowPrereleases = true }, asked: true), Is.True);
     }
 
     [TestCase("")]
@@ -245,16 +248,56 @@ public class UpdatePolicyTests
         string dir = UpdateFixtures.TempFolder();
         try
         {
-            new UpdateSettings { CheckAutomatically = false, SkippedVersion = "1.1.2-beta", LastCheckUtc = Now }.Save(dir);
+            new UpdateSettings
+            {
+                CheckAutomatically = false,
+                InstallAutomatically = true,
+                AllowPrereleases = true,
+                ReleaseRepository = "DetShaft/OfflineDAoC-LivingServer",
+                SkippedVersion = "1.1.2-beta",
+                LastCheckUtc = Now,
+            }.Save(dir);
             UpdateSettings read = UpdateSettings.Load(dir);
             Assert.That(read.CheckAutomatically, Is.False);
+            Assert.That(read.InstallAutomatically, Is.True);
+            Assert.That(read.AllowPrereleases, Is.True);
+            Assert.That(read.ReleaseRepository, Is.EqualTo(ReleaseFeed.DefaultRepository));
             Assert.That(read.SkippedVersion, Is.EqualTo("1.1.2-beta"));
             Assert.That(read.LastCheckUtc, Is.EqualTo(Now));
             File.WriteAllText(Path.Combine(dir, UpdateSettings.FileName), "{ broken");
-            Assert.That(UpdateSettings.Load(dir).CheckAutomatically, Is.True);
+            UpdateSettings fallback = UpdateSettings.Load(dir);
+            Assert.That(fallback.CheckAutomatically, Is.True);
+            Assert.That(fallback.InstallAutomatically, Is.False);
+            Assert.That(fallback.AllowPrereleases, Is.False);
+            Assert.That(fallback.ReleaseRepository, Is.EqualTo(ReleaseFeed.DefaultRepository));
             Assert.That(UpdateSettings.Load(Path.Combine(dir, "missing")).CheckAutomatically, Is.True);
         }
         finally { Directory.Delete(dir, true); }
+    }
+
+    [Test]
+    public void AutomaticInstallNeedsBothCheckAndInstallFlags()
+    {
+        Assert.That(UpdatePolicy.ShouldInstallAutomatically(new UpdateSettings(), asked: false), Is.False);
+        Assert.That(UpdatePolicy.ShouldInstallAutomatically(
+            new UpdateSettings { CheckAutomatically = true, InstallAutomatically = true }, asked: true), Is.False);
+        Assert.That(UpdatePolicy.ShouldInstallAutomatically(
+            new UpdateSettings { CheckAutomatically = true, InstallAutomatically = true }, asked: false), Is.True);
+        Assert.That(UpdatePolicy.ShouldInstallAutomatically(
+            new UpdateSettings { CheckAutomatically = false, InstallAutomatically = true }, asked: false), Is.False);
+    }
+
+    [Test]
+    public void TheReleaseFeedDefaultsToTheDetShaftFork()
+    {
+        ReleaseFeed.Configure(null);
+        Assert.That(ReleaseFeed.Repository, Is.EqualTo("DetShaft/OfflineDAoC-LivingServer"));
+        Assert.That(ReleaseFeed.LatestUrl, Does.Contain("DetShaft/OfflineDAoC-LivingServer"));
+        Assert.That(ReleaseFeed.DownloadPrefix, Does.StartWith("https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/download/"));
+        ReleaseFeed.Configure("someone/else");
+        Assert.That(ReleaseFeed.Repository, Is.EqualTo("someone/else"));
+        Assert.That(ReleaseFeed.NormalizeRepository("not-a-repo"), Is.EqualTo(ReleaseFeed.DefaultRepository));
+        ReleaseFeed.Configure(ReleaseFeed.DefaultRepository);
     }
 }
 

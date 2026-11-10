@@ -117,7 +117,12 @@ namespace DOL.GS
 					Spell sp = SkillBase.GetSpellByID(id);
 					if (sp != null)
 						m_spells.Add(sp);
-					else log.Error("Tried to load a null spell into NPC template " + m_templateId + " spell ID: " + id);
+					else if (id != 0)
+					{
+						StartupLogHygiene.WarnOnce(log, "NpcTemplateSpell",
+							$"{m_templateId}:{id}",
+							$"NpcTemplate {m_templateId} references missing spell {id} (reported once).");
+					}
 				}
 			}
 

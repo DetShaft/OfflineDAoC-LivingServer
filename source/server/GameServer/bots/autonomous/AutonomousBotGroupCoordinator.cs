@@ -752,6 +752,21 @@ public static partial class AutonomousBotGroupCoordinator
             return TryGetSession(bot.Group, out Session session) && session.Recovery.IsRegrouping;
     }
 
+    /// <summary>
+    /// True while an autonomous PvE group session is waiting for a resurrection
+    /// before release-and-rejoin. Healers use this to walk to corpses even when
+    /// lingering combat flags would otherwise block the rez approach.
+    /// </summary>
+    public static bool IsWaitingForResurrection(GameBot bot)
+    {
+        if (bot?.IsAutonomousWorldBot != true || bot.IsTemporaryGroupHelper || bot.IsPlayerLedGroup || bot.Group == null)
+            return false;
+        lock (Sync)
+            return TryGetSession(bot.Group, out Session session) &&
+                   session.ObjectiveKind == eAutonomousObjectiveKind.GroupPve &&
+                   session.Phase == "Waiting for resurrection";
+    }
+
     public static bool IsInitialMeetup(GameBot bot)
     {
         if (bot?.IsAutonomousWorldBot != true || bot.IsTemporaryGroupHelper || bot.IsPlayerLedGroup || bot.Group == null)
@@ -2108,6 +2123,19 @@ public static partial class AutonomousBotGroupCoordinator
                 session.RecoveringBetweenPulls = true;
                 foreach (GameBot member in members.Where(member => member.IsAlive))
                     session.CorpseCombatClearSince.Remove(MemberKey(member));
+                // Nudge surviving healers to attempt rez on this pulse. After a wipe
+                // they often sit in IDLE and would otherwise miss CheckHeals until
+                // the release timeout (log: AUTONOMOUS_GROUP_RESURRECTION_TIMEOUT).
+                foreach (GameBot healer in members.Where(member =>
+                             member.IsAlive && member.ResurrectionSpell != null &&
+                             member.Brain is BotBrain))
+                {
+                    if (healer.Brain is BotBrain brain)
+                    {
+                        brain.AlreadyCheckedHeals = false;
+                        brain.CheckHeals();
+                    }
+                }
                 WriteSessionMetadata(session, members);
                 return true;
             }
@@ -2744,9 +2772,14 @@ public static partial class AutonomousBotGroupCoordinator
                 wait = (deaths, GameLoop.GameLoopTime);
                 session.CorpseCombatClearSince[corpseKey] = wait;
             }
+            // Prefer members who know a rez spell; if none are loaded yet (low level),
+            // still give healing-class survivors a short window to approach before release.
             bool potentialResurrection = rescuers.Any(member =>
                 member.IsAlive && member.ResurrectionSpell != null);
-            long waitMilliseconds = potentialResurrection ? 60_000 : 20_000;
+            bool healingClassNearby = !potentialResurrection && rescuers.Any(member =>
+                member.IsAlive && member.CharacterClass != null &&
+                BotPartyRoles.IsHealingClass((eCharacterClass)member.CharacterClass.ID));
+            long waitMilliseconds = potentialResurrection ? 60_000 : healingClassNearby ? 35_000 : 20_000;
             if (GameLoop.GameLoopTime - wait.SinceTick < waitMilliseconds)
                 return PveCorpseDisposition.HoldForResurrection;
             long deadline = wait.SinceTick + waitMilliseconds;
@@ -2758,11 +2791,22 @@ public static partial class AutonomousBotGroupCoordinator
                 return PveCorpseDisposition.HoldForResurrection;
             string roleName = session.PveRoles.TryGetValue(MemberKey(deadBot), out BotPveGroupRole role)
                 ? BotPartyRoles.GroupRoleLabel(role) : "unknown";
+            string resurrectorDiag = string.Join(";", members.Where(m => m.ResurrectionSpell != null).Select(m =>
+                $"{m.Name}:alive={m.IsAlive}:region={m.CurrentRegionID}:distance={m.GetDistanceTo(deadBot)}:mana={m.ManaPercent}:casting={m.IsCasting}:interrupted={m.IsBeingInterruptedByOther}"));
+            if (string.IsNullOrEmpty(resurrectorDiag))
+            {
+                // Empty ResurrectionSpell list: still name nearby healing classes so the
+                // timeout log shows why nobody cast (level/spell loadout vs AI idle).
+                resurrectorDiag = string.Join(";", rescuers.Where(m =>
+                        m.CharacterClass != null &&
+                        BotPartyRoles.IsHealingClass((eCharacterClass)m.CharacterClass.ID))
+                    .Select(m =>
+                        $"{m.Name}:alive={m.IsAlive}:class={m.CharacterClass.Name}:rezSpell=none:mana={m.ManaPercent}"));
+            }
             Log.Warn($"AUTONOMOUS_GROUP_RESURRECTION_TIMEOUT group={session.Id} bot=\"{deadBot.Name}\" " +
                      $"role=\"{roleName}\" combatClearSeconds={waitMilliseconds / 1000} action=release-and-rejoin " +
                      $"corpse={deadBot.CurrentRegionID}:{deadBot.X},{deadBot.Y},{deadBot.Z} " +
-                     $"resurrectors=\"{string.Join(";", members.Where(m => m.ResurrectionSpell != null).Select(m =>
-                         $"{m.Name}:alive={m.IsAlive}:region={m.CurrentRegionID}:distance={m.GetDistanceTo(deadBot)}:mana={m.ManaPercent}:casting={m.IsCasting}:interrupted={m.IsBeingInterruptedByOther}"))}\"");
+                     $"resurrectors=\"{resurrectorDiag}\"");
             // A missed resurrection is a member-recovery problem, not a party
             // wipe.  The dead bot releases to bind and uses its normal
             // return-to-party route while the surviving PvE roster continues.
