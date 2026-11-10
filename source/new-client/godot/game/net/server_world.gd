@@ -117,6 +117,7 @@ func _on_world(kind: String, d: Dictionary) -> void:
 		"los": _los(int(d.source), int(d.target))
 		"merchant": _merchant(d)
 		"pet_window": _pet_window(d)
+		"find_group": _find_group(d)
 		"visual_effect": _visual_effect(d)
 		"model_change": _model_change(d)
 		"riding": _riding(d)
@@ -1672,6 +1673,24 @@ func _pet_window(d: Dictionary) -> void:
 	var st: NpcState = by_oid.get(pet_oid)
 	var mode: String = {1: "aggressive", 2: "defensive", 3: "passive"}.get(int(d.aggro), "defensive")
 	PlayerData.set_pet({"name": String(st.spawn.name) if st else "Pet", "health": st.health if st else 1.0, "mode": mode})
+
+
+## FindGroupUpdate (0x86): fill the Looking For Group window (players + advertising bots).
+func _find_group(d: Dictionary) -> void:
+	if viewer == null or viewer.ui == null or not viewer.ui.has_method("lfg_entries"):
+		return
+	var rows: Array = []
+	for e in d.get("entries", []):
+		if e is Dictionary:
+			rows.append({
+				"name": String(e.get("name", "")),
+				"level": int(e.get("level", 0)),
+				"class": String(e.get("class", "")),
+				"zone": str(int(e.get("zone", 0))),
+				"grouped": bool(e.get("grouped", false)),
+				"bot": bool(e.get("bot", false)),
+			})
+	viewer.ui.lfg_entries(rows)
 
 
 # ---------------------------------------------------------------- keeps: doors, siege weapons, relics (owner 2026-10-14)

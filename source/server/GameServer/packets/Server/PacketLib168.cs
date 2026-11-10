@@ -1376,6 +1376,11 @@ namespace DOL.GS.PacketHandler
 
 		public virtual void SendFindGroupWindowUpdate(GamePlayer[] list)
 		{
+			SendFindGroupWindowUpdate(ToLfgEntries(list));
+		}
+
+		public virtual void SendFindGroupWindowUpdate(LfgWindowEntry[] list)
+		{
 			if (m_gameClient.Player == null)
 				return;
 			using (var pak = PooledObjectFactory.GetForTick<GSTCPPacketOut>().Init(GetPacketCode(eServerPackets.FindGroupUpdate)))
@@ -1385,22 +1390,18 @@ namespace DOL.GS.PacketHandler
 					pak.WriteByte((byte) list.Length);
 					byte nbleader = 0;
 					byte nbsolo = 0x1E;
-					foreach (GamePlayer player in list)
+					foreach (LfgWindowEntry entry in list)
 					{
-						if (player.Group != null)
-						{
+						if (entry.IsGrouped)
 							pak.WriteByte(nbleader++);
-						}
 						else
-						{
 							pak.WriteByte(nbsolo++);
-						}
-						pak.WriteByte(player.Level);
-						pak.WritePascalString(player.Name);
-						pak.WriteString(player.CharacterClass.Name, 4);
+						pak.WriteByte(entry.Level);
+						pak.WritePascalString(entry.Name ?? string.Empty);
+						pak.WriteString(entry.ClassName ?? string.Empty, 4);
 						//Dinberg:Instances - have to write zoneskinID, it uses this to display the text 'x is in y'.
-						if (player.CurrentZone != null)
-							pak.WriteByte((byte) player.CurrentZone.ZoneSkinID);
+						if (entry.ZoneSkinId != 0)
+							pak.WriteByte((byte) entry.ZoneSkinId);
 						else
 							pak.WriteByte(255);
 					}
@@ -1411,6 +1412,16 @@ namespace DOL.GS.PacketHandler
 				}
 				SendTCP(pak);
 			}
+		}
+
+		protected static LfgWindowEntry[] ToLfgEntries(GamePlayer[] list)
+		{
+			if (list == null)
+				return null;
+			var entries = new LfgWindowEntry[list.Length];
+			for (int i = 0; i < list.Length; i++)
+				entries[i] = LfgWindowEntry.FromPlayer(list[i]);
+			return entries;
 		}
 
 		public virtual void SendGroupInviteCommand(GamePlayer invitingPlayer, string inviteMessage)

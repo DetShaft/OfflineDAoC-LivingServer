@@ -658,6 +658,7 @@ namespace DOL.GS.PacketHandler
 
         void SendRiding(GameObject rider, GameObject steed, bool dismount);
         void SendFindGroupWindowUpdate(GamePlayer[] list);
+        void SendFindGroupWindowUpdate(LfgWindowEntry[] list);
         void SendGroupInviteCommand(GamePlayer invitingPlayer, string inviteMessage);
 
         void SendDialogBox(eDialogCode code, ushort data1, ushort data2, ushort data3, ushort data4, eDialogType type,

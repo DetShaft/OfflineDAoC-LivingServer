@@ -898,6 +898,8 @@ public static class AutonomousBotChatCoordinator
         string formatted = lfg ? $"[LFG] {bot.Name} ({bot.Level}, {bot.CharacterClass?.Name ?? bot.ClassName}): {safe}" : $"[Trade] {bot.Name}: {safe}";
         foreach (GamePlayer player in ClientService.Instance.GetPlayersOfRealm(bot.Realm))
             player.Out.SendMessage(formatted, lfg ? eChatType.CT_LFG : eChatType.CT_Trade, eChatLoc.CL_ChatWindow);
+        if (lfg)
+            BotLfgAds.Note(bot);
         BotChatTranscript.Bot(channel, bot.Name, bot.Realm, safe);
         AutonomousChatBudget.Meter.Count(lfg ? AutonomousChatBudget.Channel.Lfg : AutonomousChatBudget.Channel.Trade, (long)bot.Realm, GameLoop.GameLoopTime);
         AutonomousChatExchange.NoteLine(MarketLane(channel, bot.Realm), bot.Name, GameLoop.GameLoopTime);

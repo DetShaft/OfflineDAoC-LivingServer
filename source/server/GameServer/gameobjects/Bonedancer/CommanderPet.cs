@@ -5,6 +5,7 @@ using System.Threading;
 using DOL.AI.Brain;
 using DOL.Database;
 using DOL.GS.PacketHandler;
+using DOL.GS.Styles;
 using DOL.Language;
 
 namespace DOL.GS
@@ -49,6 +50,89 @@ namespace DOL.GS
 		/// Are the minions assisting this commander?
 		/// </summary>
 		public bool MinionsAssisting { get; protected set; } = true;
+
+		/// <summary>
+		/// Style the commander prefers when set (sticky via styleComponent.NextCombatStyle).
+		/// Null means the NPC auto-picker chooses.
+		/// </summary>
+		public Style PreferredCombatStyle { get; private set; }
+
+		/// <summary>Player-facing taunt toggle for the commander window / /commander command.</summary>
+		public void SetTaunting(bool taunting) => Taunting = taunting;
+
+		/// <summary>Player-facing minion-assist toggle for the commander window / /commander command.</summary>
+		public void SetMinionsAssisting(bool assisting)
+		{
+			MinionsAssisting = assisting;
+			if (ControlledNpcList == null || ControlledNpcList.Length < 1)
+				return;
+			if (Brain is not IControlledBrain commBrain)
+				return;
+			foreach (IControlledBrain minBrain in ControlledNpcList)
+			{
+				if (minBrain != null)
+					minBrain.SetAggressionState(commBrain.AggressionState);
+			}
+		}
+
+		/// <summary>Player-facing Guardian/Lich preferred-spell pick.</summary>
+		public void SetPreferredSpell(eCommanderPreferredSpell preferred) => PreferredSpell = preferred;
+
+		/// <summary>Sticky preferred style, or null to resume auto styles.</summary>
+		public void SetPreferredCombatStyle(Style style)
+		{
+			PreferredCombatStyle = style;
+			if (styleComponent != null)
+				styleComponent.NextCombatStyle = style;
+		}
+
+		/// <summary>Whether this commander type can swap into the given weapon slot.</summary>
+		public bool AllowsWeaponSlot(eActiveWeaponSlot slot) => CanUseWeaponSlot(slot);
+
+		/// <summary>Weapon types this commander may equip (for /commander and the UI).</summary>
+		public IList<eWeaponType> AvailableWeaponTypes()
+		{
+			var list = new List<eWeaponType>();
+			if (CanUseWeaponSlot(eActiveWeaponSlot.Standard))
+			{
+				list.Add(eWeaponType.OneHandAxe);
+				list.Add(eWeaponType.OneHandHammer);
+				list.Add(eWeaponType.OneHandSword);
+			}
+			if (CanUseWeaponSlot(eActiveWeaponSlot.TwoHanded))
+			{
+				list.Add(eWeaponType.TwoHandAxe);
+				list.Add(eWeaponType.TwoHandHammer);
+				list.Add(eWeaponType.TwoHandSword);
+			}
+			if (CanUseWeaponSlot(eActiveWeaponSlot.Distance))
+				list.Add(eWeaponType.Bow);
+			return list;
+		}
+
+		/// <summary>Parse a short weapon token (axe, 1h-sword, bow, …) into a weapon type.</summary>
+		public static bool TryParseWeaponType(string token, out eWeaponType weaponType)
+		{
+			weaponType = eWeaponType.None;
+			if (string.IsNullOrWhiteSpace(token))
+				return false;
+			string key = token.Trim().ToLowerInvariant().Replace('_', '-').Replace(' ', '-');
+			weaponType = key switch
+			{
+				"1h-axe" or "1haxe" or "onehandaxe" or "axe1h" => eWeaponType.OneHandAxe,
+				"1h-hammer" or "1hhammer" or "onehandhammer" or "hammer1h" => eWeaponType.OneHandHammer,
+				"1h-sword" or "1hsword" or "onehandsword" or "sword1h" => eWeaponType.OneHandSword,
+				"2h-axe" or "2haxe" or "twohandaxe" or "axe2h" => eWeaponType.TwoHandAxe,
+				"2h-hammer" or "2hhammer" or "twohandhammer" or "hammer2h" => eWeaponType.TwoHandHammer,
+				"2h-sword" or "2hsword" or "twohandsword" or "sword2h" => eWeaponType.TwoHandSword,
+				"bow" or "archer" or "distance" => eWeaponType.Bow,
+				"axe" => eWeaponType.OneHandAxe,
+				"hammer" => eWeaponType.OneHandHammer,
+				"sword" => eWeaponType.OneHandSword,
+				_ => eWeaponType.None,
+			};
+			return weaponType != eWeaponType.None;
+		}
 
 		/// <summary>
 		/// Create a commander.
@@ -164,24 +248,39 @@ namespace DOL.GS
 		private static string NormalizeCommanderName(string value) =>
 			new string((value ?? string.Empty).Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
 
-		static CommanderPet()
+		/// <summary>
+		/// Load BD pet weapon templates on first use. Deferred from a static ctor so pure
+		/// helpers (TryParseWeaponType, enums) work in unit tests without GameServer.Database.
+		/// </summary>
+		private static void EnsureWeaponTemplates()
 		{
-			// Get weapon templates, creating them if necessary.
-			for (int i = (int)eWeaponType.MIN; i <= (int)eWeaponType.MAX; i++)
-			{
-				DbItemTemplate itemTemp = GameServer.Database.FindObjectByKey<DbItemTemplate>(WEAPON_KEYS[i]);
+			if (WEAPON_TEMPLATES.Count > 0)
+				return;
 
-				if (itemTemp == null)
+			lock (WeaponTemplatesLock)
+			{
+				if (WEAPON_TEMPLATES.Count > 0)
+					return;
+
+				if (GameServer.Database == null)
+					return;
+
+				for (int i = (int)eWeaponType.MIN; i <= (int)eWeaponType.MAX; i++)
 				{
-					itemTemp = CreateBdPetWeapon((eWeaponType)i);
+					DbItemTemplate itemTemp = GameServer.Database.FindObjectByKey<DbItemTemplate>(WEAPON_KEYS[i]);
 
 					if (itemTemp == null)
-						log.Error($"Unable to find item template: {WEAPON_KEYS[i]}, could not create a new template.");
-					else
-						log.Info($"Unable to find item template: {WEAPON_KEYS[i]}, using default template.");
-				}
+					{
+						itemTemp = CreateBdPetWeapon((eWeaponType)i);
 
-				WEAPON_TEMPLATES.Add(itemTemp);
+						if (itemTemp == null)
+							log.Error($"Unable to find item template: {WEAPON_KEYS[i]}, could not create a new template.");
+						else
+							log.Info($"Unable to find item template: {WEAPON_KEYS[i]}, using default template.");
+					}
+
+					WEAPON_TEMPLATES.Add(itemTemp);
+				}
 			}
 		}
 
@@ -509,7 +608,8 @@ namespace DOL.GS
 			"BD_Guardian_Round_Buckler"
 		};
 
-		private static readonly List<DbItemTemplate> WEAPON_TEMPLATES = new List<DbItemTemplate>((int)eWeaponType.MAX);
+		private static readonly List<DbItemTemplate> WEAPON_TEMPLATES = new List<DbItemTemplate>((int)eWeaponType.MAX + 1);
+		private static readonly object WeaponTemplatesLock = new();
 
 		/// <summary>
 		/// 1.65 Bonedancer pet weapons (owner 2026-10-13): plain Norse weapons from the 1.64 retail client, not the
@@ -544,6 +644,10 @@ namespace DOL.GS
 		public static DbItemTemplate GetWeaponTemplate(eWeaponType type)
 		{
 			if (type < eWeaponType.MIN || type > eWeaponType.MAX)
+				return null;
+
+			EnsureWeaponTemplates();
+			if (WEAPON_TEMPLATES.Count <= (int)type)
 				return null;
 
 			return WEAPON_TEMPLATES[(int)type];

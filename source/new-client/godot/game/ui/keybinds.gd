@@ -55,6 +55,9 @@ func _ready() -> void:
 	# the guild window (owner 2026-10-17, a roster window beyond 1.65 - GuildWindow): Shift+G, free in every preset
 	actions.append({"id": "show_guild", "label": "Guild Window", "category": "Show",
 			"presets": {"rpg": ["Shift+G"], "fps": ["Shift+G"], "mmo": ["Shift+G"]}})
+	# Looking For Group browser (Shift+L): FindGroupUpdate + /lfg list
+	actions.append({"id": "show_lfg", "label": "Looking For Group", "category": "Show",
+			"presets": {"rpg": ["Shift+L"], "fps": ["Shift+L"], "mmo": ["Shift+L"]}})
 	# modern friends window (activity + invite/tell): Shift+F
 	actions.append({"id": "show_friends", "label": "Friends Window", "category": "Show",
 			"presets": {"rpg": ["Shift+F"], "fps": ["Shift+F"], "mmo": ["Shift+F"]}})

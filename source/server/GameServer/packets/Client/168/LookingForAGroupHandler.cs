@@ -1,42 +1,31 @@
-using System.Collections;
+using System.Collections.Generic;
 
 namespace DOL.GS.PacketHandler.Client.v168
 {
 	[PacketHandlerAttribute(PacketHandlerType.TCP, eClientPackets.LookingForGroup, "handle Looking for a group", eClientStatus.PlayerInGame)]
 	public class LookingForAGroupHandler : PacketHandler
 	{
-		//rewritten by Corillian so if it doesn't work you know who to yell at ;)
 		protected override void HandlePacketInternal(GameClient client, GSPacketIn packet)
 		{
 			byte grouped = (byte)packet.ReadByte();
-			ArrayList list = new ArrayList();
-			if (grouped != 0x00)
+			// Mixed list: open groups (when requested), flagged players, and advertising / seeking gamebots.
+			IList<LfgWindowEntry> entries = LfgBrowser.BuildFor(client.Player);
+			if (grouped == 0x00)
 			{
-				var groups = GroupMgr.ListGroupByStatus(0x00);
-				if (groups != null)
+				// Solo-only view: drop open-group leaders.
+				var solos = new List<LfgWindowEntry>();
+				foreach (LfgWindowEntry entry in entries)
 				{
-					foreach (Group group in groups)
-						if (GameServer.ServerRules.IsAllowedToGroup(group.Leader, client.Player, true))
-						{
-							list.Add(group.Leader);
-						}
+					if (!entry.IsGrouped)
+						solos.Add(entry);
 				}
+				entries = solos;
 			}
 
-			var Lfg = GroupMgr.LookingForGroupPlayers();
-
-			if (Lfg != null)
-			{
-				foreach (GamePlayer player in Lfg)
-				{
-					if (player != client.Player && GameServer.ServerRules.IsAllowedToGroup(client.Player, player, true))
-					{
-						list.Add(player);
-					}
-				}
-			}
-
-			client.Out.SendFindGroupWindowUpdate((GamePlayer[])list.ToArray(typeof(GamePlayer)));
+			var array = new LfgWindowEntry[entries.Count];
+			for (int i = 0; i < entries.Count; i++)
+				array[i] = entries[i];
+			client.Out.SendFindGroupWindowUpdate(array);
 		}
 	}
 }

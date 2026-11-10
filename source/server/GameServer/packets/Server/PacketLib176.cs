@@ -25,6 +25,11 @@ namespace DOL.GS.PacketHandler
 
 		public override void SendFindGroupWindowUpdate(GamePlayer[] list)
 		{
+			SendFindGroupWindowUpdate(ToLfgEntries(list));
+		}
+
+		public override void SendFindGroupWindowUpdate(LfgWindowEntry[] list)
+		{
 			if (m_gameClient.Player == null)
 				return;
 
@@ -35,30 +40,23 @@ namespace DOL.GS.PacketHandler
 					pak.WriteByte((byte)list.Length);
 					byte nbleader = 0;
 					byte nbsolo = 0x1E;
-					foreach (GamePlayer player in list)
+					foreach (LfgWindowEntry entry in list)
 					{
-						if (player.Group != null)
-						{
+						if (entry.IsGrouped)
 							pak.WriteByte(nbleader++);
-						}
 						else
-						{
 							pak.WriteByte(nbsolo++);
-						}
-						pak.WriteByte(player.Level);
-						pak.WritePascalString(player.Name);
-						pak.WriteString(player.CharacterClass.Name, 4);
+						pak.WriteByte(entry.Level);
+						pak.WritePascalString(entry.Name ?? string.Empty);
+						pak.WriteString(entry.ClassName ?? string.Empty, 4);
 						//Dinberg:Instances - We use ZoneSkinID to bluff our way to victory and
 						//trick the client for positioning objects (as IDs are hard coded).
-						if (player.CurrentZone != null)
-							pak.WriteShort(player.CurrentZone.ZoneSkinID);
-						else
-							pak.WriteShort(0); // ?
+						pak.WriteShort(entry.ZoneSkinId);
 						pak.WriteByte(0); // duration
-						pak.WriteByte(0); // objective
+						pak.WriteByte(entry.IsBot ? (byte)1 : (byte)0); // objective: bot marker for new client
 						pak.WriteByte(0);
 						pak.WriteByte(0);
-						pak.WriteByte((byte) (player.Group != null ? 1 : 0));
+						pak.WriteByte((byte)(entry.IsGrouped ? 1 : 0));
 						pak.WriteByte(0);
 					}
 				}

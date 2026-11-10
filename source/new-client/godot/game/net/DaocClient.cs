@@ -486,6 +486,22 @@ public partial class DaocClient : Node
 		Send(0x8A, w);
 	}
 
+	// LookingForAGroupHandler (0x85): request the find-group window. grouped != 0 includes open groups.
+	public void LookingForGroup(bool includeGroups = true)
+	{
+		var w = new Writer();
+		w.Byte((byte)(includeGroups ? 1 : 0));
+		Send(0x85, w);
+	}
+
+	// LookingForAGroupFlagHandler (0x84): 1 = flag LFG, 0 = clear.
+	public void LookingForGroupFlag(bool looking)
+	{
+		var w = new Writer();
+		w.Byte((byte)(looking ? 1 : 0));
+		Send(0x84, w);
+	}
+
 	// PlayerTrainWindowHandler: the trainer window wherever you are (the client's own /train; the server answers with
 	// SendTrainerWindow when you may train there - ALLOW_TRAIN_ANYWHERE).
 	// EmblemDialogReponseHandler: the guild emblem chosen in the picker (primary colour, secondary, pattern, logo) - the
@@ -1253,6 +1269,32 @@ public partial class DaocClient : Node
 				for (int i = 0; i < count; i++) icons.Add(r.Short());
 				d["icons"] = icons;
 				return d;
+			case 0x86:                                    // FindGroupUpdate (PacketLib176 / 1.127): LFG browser rows
+			{
+				// Crash packets also use 0x86 with first byte 0xFF — ignore those.
+				if (r.Left > 0 && r.At(0) == 0xFF)
+					return null;
+				d["kind"] = "find_group";
+				int n = r.Left > 0 ? (int)r.Byte() : 0;
+				var rows = new Godot.Collections.Array();
+				for (int i = 0; i < n && r.Left > 2; i++)
+				{
+					var e = new Godot.Collections.Dictionary();
+					e["index"] = (int)r.Byte();
+					e["level"] = (int)r.Byte();
+					e["name"] = r.Pascal();
+					e["class"] = r.Fixed(4).Trim();
+					e["zone"] = r.Short();                // ZoneSkinID (ushort from PacketLib176)
+					r.Byte();                             // duration
+					e["bot"] = (int)r.Byte() != 0;        // objective byte: bot marker from Living Server
+					r.Byte(); r.Byte();
+					e["grouped"] = (int)r.Byte() != 0;
+					r.Byte();
+					rows.Add(e);
+				}
+				d["entries"] = rows;
+				return d;
+			}
 			case 0x7B:                                    // TrainerWindow (1105): your trainer's window opens
 			{
 				// count, points, code (0 specs: the window opens; 1 the class's realm abilities; 4 / 5 skill names
