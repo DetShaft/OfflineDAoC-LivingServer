@@ -196,7 +196,8 @@ namespace DOL.GS
 			}
 			else if (entry == null)
 			{
-				log.Error("No npctemplate with ID " + templateId + " found.");
+				StartupLogHygiene.WarnOnce(log, "NpcTemplateMissing", templateId.ToString(),
+					$"NpcTemplate {templateId} is not in the world database (reported once).");
 				return null;
 			}
 			return (NpcTemplate)entry;

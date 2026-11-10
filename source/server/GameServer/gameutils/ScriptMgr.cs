@@ -227,6 +227,13 @@ namespace DOL.GS
                             {
                                 foreach (string alias in attrib.Aliases)
                                 {
+                                    if (m_gameCommands.ContainsKey(alias))
+                                    {
+                                        if (log.IsInfoEnabled)
+                                            log.Info($"Command alias {alias} from {script.GetName()} skipped; already registered as {m_gameCommands[alias].m_cmd}.");
+                                        continue;
+                                    }
+
                                     m_gameCommands.Add(alias, cmd);
                                 }
                             }

@@ -85,8 +85,7 @@ still be cleaned in a later release world.
 
 ### Live dashboard snapshot: access denied
 
-**Status: fixed in code 2026-10-27, not yet deployed.** The move is retried up to 4 times, 100 ms apart, on the dashboard's timer
-thread. If the file stays locked, a one-line warning replaces the stack trace.
+**Status: fixed in code 2026-10-27; dashboard pause on access denied added 2026-11-10.** The move is retried up to 4 times, 100 ms apart. If the path stays locked or access is denied, one warning is logged and further snapshot writes are skipped for the session.
 
 - **Seen:** 5 times, e.g. 06:10:45 and 06:30:45 (build af39287):
   `Live bot dashboard snapshot failed ... System.UnauthorizedAccessException: Access to the path is denied.
@@ -147,7 +146,7 @@ server. Fix them as data clean-ups when convenient.
 | 60 | NpcTemplate | `Tried to load a null spell into NPC template # spell ID: #` (incl. spell 0) | Template spell lists with bad IDs |
 | 140 | DoorMgr | `Failed to register door in pathfinding provider, possible navmesh/object location mismatch` (Postern Door, Keep Door, Relic Gate, door) | Doors off the navmesh. Check per door; no global navmesh rebuilds |
 | 8 | Region | `Error loading NPC ClassType: DOL.GS.Scripts.RPTradeInMerchant` (GameNPC used instead) | The class doesn't exist in this build |
-| 4 | ScriptMgr | `LoadCommands: An item with the same key has already been added. Key: &tc` | Two command handlers claimed `/tc`. **Fixed 2026-10-27 (not deployed):** `/transfercorpse` lost its `/tc` alias; `/tc` is the Realm Exchange teleport |
+| 4 | ScriptMgr | `LoadCommands: An item with the same key has already been added. Key: &tc` | Two command handlers claimed `&tc`. **Fixed:** `/tc` / `&tc` = Realm Exchange; corpse summon is `/transfercorpse` or `/tfcorpse`; duplicate aliases are skipped instead of throwing |
 | 4 each | ScriptMgr | `Couldn't find a SpellHandler constructor for UniPortal / UniPortalKeep / ArmorFactorBuff` | Spell types without handlers |
 | 4 | SkillBase | `Requested value 'ground' was not found ... spellid` | Bad enum value in a spell row |
 | 4 each | LootGeneratorOneTimeDrop | `Can't find MobName Hrodrek / Dob / Murgar / Neese / Cheshire` | One-time drops for mobs not in the world |
