@@ -13,6 +13,7 @@ The exe carries two payloads:
 """
 import argparse
 import hashlib
+import os
 import shutil
 import subprocess
 import sys
@@ -24,7 +25,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 PAYLOAD = HERE / "payload"
 DIST = HERE / "dist"
-REPO = "chris4aker/OfflineDAoC-LivingServer"
+REPO = os.environ.get("GITHUB_REPOSITORY", "DetShaft/OfflineDAoC-LivingServer")
 
 # shadowofze/OfflineDAoC Get-OfflineDAoC.ps1 at tags v0.37, v0.37b and v0.37c (identical); checked 2026-10-27.
 DOWNLOADER_SHA256 = "8f000a12d11fa3d69d89a6bae0149adb2b345990b9f7eb33fbef1bf4592557b4"

@@ -3,12 +3,12 @@ using OfflineDaoc.Updates;
 namespace OfflineDaoc.Launcher;
 
 // Living Server updates in the launcher's window (the work itself is in Updates/LauncherUpdater.cs):
-// - beside the version, the Living Server build, a "Check for updates" link, the "Check automatically" setting and
+// - beside the version, the Living Server build, a "Check for updates" link, the check/install/prerelease settings and
 //   a line for news (a newer build and the first line of its release notes, the download, the last update's result);
 // - when a newer build is out, START SERVER reads GET UPDATE until the player decides: Install, Later or Skip this
-//   version;
+//   version (unless Install automatically is on and nothing from the game is running);
 // - Install only with the server, the game and any other launcher closed; the launcher then hands over to the
-//   package's INSTALL.cmd and closes, and the update step opens it again. Nothing installs without the player's click.
+//   package's INSTALL.cmd and closes, and the update step opens it again.
 internal sealed partial class MainForm
 {
     private static readonly Color StartAccent = Color.FromArgb(110, 128, 70);
@@ -51,6 +51,22 @@ internal sealed partial class MainForm
         Font = new Font("Georgia", 8f),
         Margin = new Padding(0, 1, 8, 0),
     };
+    private readonly CheckBox _autoInstallCheck = new()
+    {
+        AutoSize = true,
+        Text = "Install automatically",
+        ForeColor = DaocTheme.Muted,
+        Font = new Font("Georgia", 8f),
+        Margin = new Padding(0, 1, 8, 0),
+    };
+    private readonly CheckBox _allowPrereleasesCheck = new()
+    {
+        AutoSize = true,
+        Text = "Allow prereleases",
+        ForeColor = DaocTheme.Muted,
+        Font = new Font("Georgia", 8f),
+        Margin = new Padding(0, 1, 8, 0),
+    };
     private readonly ProgressBar _updateProgress = new() { Width = 110, Height = 12, Visible = false, Margin = new Padding(0, 4, 8, 0) };
     private readonly Label _updateStatus = new()
     {
@@ -69,8 +85,9 @@ internal sealed partial class MainForm
     {
         if (LauncherBuild.Version == null)
             return; // a build without a Living Server name has nothing to compare
+        ReleaseFeed.Configure(Updater.Settings.ReleaseRepository);
         _updateBuild.Text = "LIVING SERVER " + LauncherBuild.Version.DisplayName.ToUpperInvariant();
-        _updateStrip.Controls.AddRange([_updateBuild, _checkUpdatesLink, _autoUpdateCheck, _updateProgress]);
+        _updateStrip.Controls.AddRange([_updateBuild, _checkUpdatesLink, _autoUpdateCheck, _autoInstallCheck, _allowPrereleasesCheck, _updateProgress]);
         titlePanel.Controls.Add(_updateStrip);
         titlePanel.Controls.Add(_updateStatus);
         titlePanel.Layout += (_, _) =>
@@ -82,14 +99,35 @@ internal sealed partial class MainForm
         };
         _checkUpdatesLink.LinkClicked += async (_, _) => await CheckForUpdatesAsync(asked: true);
         _autoUpdateCheck.Checked = Updater.Settings.CheckAutomatically;
+        _autoInstallCheck.Checked = Updater.Settings.InstallAutomatically;
+        _allowPrereleasesCheck.Checked = Updater.Settings.AllowPrereleases;
         _autoUpdateCheck.CheckedChanged += (_, _) =>
         {
             Updater.Settings.CheckAutomatically = _autoUpdateCheck.Checked;
+            if (!_autoUpdateCheck.Checked && _autoInstallCheck.Checked)
+                _autoInstallCheck.Checked = false;
             Updater.SaveSettings();
             Updater.Log.Write("Automatic update checks " + (_autoUpdateCheck.Checked ? "on." : "off."));
         };
+        _autoInstallCheck.CheckedChanged += (_, _) =>
+        {
+            Updater.Settings.InstallAutomatically = _autoInstallCheck.Checked;
+            if (_autoInstallCheck.Checked && !_autoUpdateCheck.Checked)
+                _autoUpdateCheck.Checked = true;
+            Updater.SaveSettings();
+            Updater.Log.Write("Automatic install " + (_autoInstallCheck.Checked ? "on." : "off."));
+        };
+        _allowPrereleasesCheck.CheckedChanged += (_, _) =>
+        {
+            Updater.Settings.AllowPrereleases = _allowPrereleasesCheck.Checked;
+            Updater.SaveSettings();
+            Updater.Log.Write("Allow prereleases " + (_allowPrereleasesCheck.Checked ? "on." : "off."));
+        };
         SetToolTip(_autoUpdateCheck, "When the launcher starts, look for a new Living Server on GitHub (at most once a day). " +
-                                     "Only the release's version is asked for; nothing about you or your game is sent.");
+                                     "Feed: " + Updater.Settings.ReleaseRepository + ". Only the release's version is asked for; nothing about you or your game is sent.");
+        SetToolTip(_autoInstallCheck, "After a quiet automatic check finds a newer Living Server, download and install it without asking — " +
+                                      "only when the server, game and any other launcher are closed. Off by default.");
+        SetToolTip(_allowPrereleasesCheck, "Also offer GitHub prereleases from " + Updater.Settings.ReleaseRepository + ". Off by default.");
         ShowLastUpdateResult();
     }
 
@@ -138,6 +176,20 @@ internal sealed partial class MainForm
                 OfferUpdate(offer);
                 if (asked)
                     ShowUpdateDialog();
+                else if (UpdatePolicy.ShouldInstallAutomatically(Updater.Settings, asked: false))
+                {
+                    List<string> running = RunningGameParts();
+                    if (running.Count == 0)
+                    {
+                        Updater.Log.Write("Install automatically: applying " + offer.Version!.Name + ".");
+                        await ApplyUpdateAsync(offer);
+                    }
+                    else
+                    {
+                        Updater.Log.Write("Install automatically deferred while running: " + string.Join(", ", running));
+                        SetUpdateStatus($"{offer.Version!.DisplayName} is out (install when {string.Join(", ", running)} is closed).", DaocTheme.GoldLight);
+                    }
+                }
             }
             else if (asked)
             {
@@ -202,7 +254,7 @@ internal sealed partial class MainForm
             Caption = "Living Server update",
             Heading = $"Update to Living Server {name}? Your characters and world are kept.",
             Text = (notes.Count > 0 ? string.Join(Environment.NewLine, notes) + Environment.NewLine + Environment.NewLine : "") +
-                   $"The launcher downloads {release.Package?.Name} ({(release.Package?.Size ?? 0) / 1048576.0:0.0} MB) from GitHub and checks it, " +
+                   $"The launcher downloads {release.Package?.Name} ({(release.Package?.Size ?? 0) / 1048576.0:0.0} MB) from {Updater.Settings.ReleaseRepository} and checks it, " +
                    "then closes while the package's INSTALL.cmd runs in its own window. It backs up every file it replaces " +
                    "(ROLLBACK.cmd undoes it), and the launcher opens again when it's done.",
             Footnote = release.PageUrl != null ? new TaskDialogFootnote(release.PageUrl) : null,

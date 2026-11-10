@@ -13,7 +13,7 @@ namespace LivingServerSetup
 {
     internal static class Program
     {
-        public const string ProjectUrl = "https://github.com/chris4aker/OfflineDAoC-LivingServer";
+        public const string ProjectUrl = "https://github.com/DetShaft/OfflineDAoC-LivingServer";
         public static bool IsWindows => Environment.OSVersion.Platform == PlatformID.Win32NT;
         public static bool Silent;
         public static bool DemoMode;

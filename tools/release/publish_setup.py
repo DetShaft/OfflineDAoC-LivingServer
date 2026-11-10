@@ -30,7 +30,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-REPO = os.environ.get("GITHUB_REPOSITORY", "chris4aker/OfflineDAoC-LivingServer")
+REPO = os.environ.get("GITHUB_REPOSITORY", "DetShaft/OfflineDAoC-LivingServer")
 API = os.environ.get("GITHUB_API_URL", "https://api.github.com")
 PLACEHOLDER = "(filled in when the exe is built)"
 TAG = re.compile(r"^v(\d+(?:\.\d+)+-beta)$")
