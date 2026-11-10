@@ -2432,6 +2432,18 @@ namespace DOL.GS.ServerProperties
 		public static bool BOT_INCOMING_FIRE_REACTION;
 
 		/// <summary>
+		/// Cleric/Druid/Healer support bots assist with nukes or melee when nobody needs healing.
+		/// </summary>
+		[ServerProperty("bots", "healer_idle_combat", "When a Cleric, Druid or Healer is the exclusive support in a group: if nobody needs healing, the group is fighting, mana is at least 40%, and stance is not Passive, the healer may nuke, debuff or melee the group's target instead of standing idle. Healing, cures and resurrection still come first. False keeps healers support-only (buff/follow only while grouped).", true)]
+		public static bool HEALER_IDLE_COMBAT;
+
+		/// <summary>
+		/// The group leader can give grouped bots a small set of chat orders in /group.
+		/// </summary>
+		[ServerProperty("bots", "bot_group_orders", "When on: the group leader (you) can order grouped bots in /group with a small fixed vocabulary — attack, assist me, buff us, follow, stay. Only exact short phrases are accepted. Bots acknowledge in /group. False keeps chat-only replies with no action.", true)]
+		public static bool BOT_GROUP_ORDERS;
+
+		/// <summary>
 		/// Autonomous gamebots speak lines from the bot-voices corpus in their own writing style.
 		/// </summary>
 		[ServerProperty("bots", "bot_voices_enabled", "Autonomous gamebots say pre-written, period lines (docs/bot-voices/DESIGN.md) chosen by personality, level, realm, class and situation, each in its own writing style, without repeating a line in a realm within 6 hours. On by default since Beta 1.1 (the talking update). False keeps the old lines.", true)]
