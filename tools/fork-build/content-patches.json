@@ -448,5 +448,58 @@
   "Fixed": "20c43b9d96c88bbd45ba88b32b8241370d46734341f3d18aa23956fb035554cf",
   "Size": 18108908,
   "File": "content/pregame-splash.mpk"
+ },
+ {
+  "Path": "new-client/godot/game/ui/game_ui.gd",
+  "Released": "219cd58ad3e9d227e0436358379b8697fe147ad62df8c61d4d07234a8817d1b2",
+  "Fixed": "e791ba08ef518f774df8a8dcf58e035d51902bdfe58142e5071ecf25a6cd94c2",
+  "Size": 78959,
+  "File": "content/godot/game/ui/game_ui.gd"
+ },
+ {
+  "Path": "new-client/godot/game/ui/keybinds.gd",
+  "Released": "6a1be69702a57e79f08d71b785aa488e5e2d34d4198b1ed6588d365a24f31c78",
+  "Fixed": "716af2e51ceaf061e333afaea0826f42f5705a03c78e69ef5f193d3bc7fae84e",
+  "Size": 12291,
+  "File": "content/godot/game/ui/keybinds.gd"
+ },
+ {
+  "Path": "new-client/godot/game/net/server_world.gd",
+  "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
+  "Fixed": "18c270e3fc2c3d59d62ea0095a149ab67fac34b43f538247704fd5967cfc382a",
+  "Size": 86718,
+  "File": "content/godot/game/net/server_world.gd"
+ },
+ {
+  "Path": "new-client/godot/game/ui/friends_window.gd",
+  "Released": "",
+  "Fixed": "8c42ee4322a84013ebc99dd5e76f1bcce1b3dab10e47b91402440ee8f953f8a6",
+  "Size": 6096,
+  "File": "content/godot/game/ui/friends_window.gd",
+  "Create": true
+ },
+ {
+  "Path": "new-client/godot/game/ui/lfg_window.gd",
+  "Released": "",
+  "Fixed": "12faf8f702f1a28a8ac86547fe246fb559e283fca96251582469e8dbc05652f2",
+  "Size": 6049,
+  "File": "content/godot/game/ui/lfg_window.gd",
+  "Create": true
+ },
+ {
+  "Path": "new-client/godot/game/ui/commander_panel.gd",
+  "Released": "",
+  "Fixed": "fa33be761dcde570bad494cd6794100468233eabad9a4da5bbc50c41e41e04e6",
+  "Size": 3152,
+  "File": "content/godot/game/ui/commander_panel.gd",
+  "Create": true
+ },
+ {
+  "Path": "new-client/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll",
+  "Released": "569c22253243dfb1adabeab7e5d47b5722007568a35b8b68659548fc98b7b06c",
+  "Fixed": "f187d91c49130361cdec7e5759c418f2f7102c3ff462c17be466cbe6519b952a",
+  "Size": 167424,
+  "File": "content/new-client-network/MMOEngine.dll",
+  "ReplaceAny": true
  }
 ]

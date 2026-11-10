@@ -135,7 +135,9 @@ function Get-BackupName([string]$Folder) { return ($Folder -replace '[\\/]', '_'
 # released file, so no game file ships whole. A file is changed only when it has the released fingerprint, and the
 # result must have the fixed one. Beta 1.0: Hall of the Corrupt's navmesh and eight new-client gate models; Beta 1.1:
 # the game's loading screen (pregame/splash.mpk, shipped whole under content/); Beta 1.1.1: the new client's quest
-# marker script (godot/game/quests/quest_markers.gd), a text file patched the same way.
+# marker script (godot/game/quests/quest_markers.gd), a text file patched the same way. Beta 1.1.5: friends / LFG /
+# commander .gd scripts and MMOEngine.dll — Create for brand-new scripts, ReplaceAny for the compiled network client
+# (0.37c loads loose .gd from new-client/godot, not a .pck).
 function Read-ContentPatches([string]$BuildDir) {
     $path = Join-Path $BuildDir 'content-patches.json'
     if (!(Test-Path -LiteralPath $path)) { return @() }

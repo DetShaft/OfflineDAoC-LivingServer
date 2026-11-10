@@ -8,6 +8,13 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.5 — 2026-11-10
+
+Packages the new-client friends, LFG and commander Godot scripts (and `MMOEngine.dll`) so 0.37c actually gets
+Shift+F / Shift+L and the panels. 1.1.4 had the server and launcher bits but omitted `new-client\godot` from the
+zip. INSTALL now Create/ReplaceAny those files; ROLLBACK restores or removes them
+([docs/RELEASE-NOTES-1.1.5.md](docs/RELEASE-NOTES-1.1.5.md)).
+
 ## Beta 1.1.4 — 2026-11-10
 
 DetShaft fork test release after merging the open Living Server change-plan PRs (#1 server fixes,

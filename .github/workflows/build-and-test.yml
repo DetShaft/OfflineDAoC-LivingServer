@@ -22,6 +22,7 @@ jobs:
       - name: Check the README and release versions agree
         run: |
           python3 tools/release/check_versions.py
+          python3 tools/release/check_newclient_packaged.py
           python3 -m unittest discover -s tools/release/tests -v
 
   # The epic encounter catalog (docs/encounters) must match the boss scripts it was read from: a script change without

@@ -12,6 +12,13 @@ upstream so `PackageCheck` and the download-prefix trust check accept the packag
 
 Do **not** create a tag or publish a release from this change alone. When Jay is ready:
 
+## 0. New-client scripts (0.37c)
+
+The Godot client loads loose `.gd` files from `new-client\godot` (not a `.pck`). Ship UI/net changes through
+`tools/fork-build/content-patches.json` (File or Ops) and payloads under `tools/fork-build/content/`, then
+`INSTALL.cmd` / `install-server-build.ps1`. New scripts use `"Create": true`; `MMOEngine.dll` uses `"ReplaceAny": true`.
+CI runs `python3 tools/release/check_newclient_packaged.py` so a `game/ui` or `game/net` change without a patch fails.
+
 ## 1. Name the release on `main`
 
 1. Merge this work (and any other approved PRs) to `main`.

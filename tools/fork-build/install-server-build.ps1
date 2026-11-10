@@ -191,23 +191,45 @@ if (@($launcherPlan | Where-Object { $_.State -eq 'unknown' }).Count -gt 0 -and 
     Stop-WithMessage ("A launcher (OfflineDAoC.dll) above is neither the original $base file nor a fork build this script installed. " +
         'Restore the original first, or run with -Force to replace it anyway (it is still backed up).')
 }
-# Game files this build fixes in place: only the released file is changed.
+# Game files this build fixes in place: the released file (or, for Create / ReplaceAny entries, a missing or any file).
 $contentPlan = @()
 foreach ($patch in $contentPatches) {
     $path = Get-ContentPath $game $patch.Path
-    if (!(Test-Path -LiteralPath $path)) { $state = 'not in this game, skipped' }
+    $create = [bool]$patch.Create
+    $replaceAny = [bool]$patch.ReplaceAny
+    $exists = Test-Path -LiteralPath $path
+    if (!$exists) {
+        if ($create -or $replaceAny) {
+            $state = 'missing, will be created'
+            if ($patch.File) {
+                $shipped = Get-ContentPatchFile $patch $buildDir
+                if (!(Test-Path -LiteralPath $shipped) -or (Get-Sha256 $shipped) -ne $patch.Fixed) {
+                    Stop-WithMessage "$($patch.File) is missing or doesn't match content-patches.json (damaged download?). Download the build again."
+                }
+            } else {
+                Stop-WithMessage "$($patch.Path) is Create/ReplaceAny but has no File payload."
+            }
+            $contentPlan += [pscustomobject]@{ Patch = $patch; Path = $path; Hash = ''; Created = $true }
+        } else {
+            $state = 'not in this game, skipped'
+        }
+    }
     else {
         $hash = Get-Sha256 $path
         if ($hash -eq $patch.Fixed) { $state = 'fixed already' }
-        elseif ($hash -eq $patch.Released) {
-            $state = 'released file, will be fixed'
+        elseif (($patch.Released -and $hash -eq $patch.Released) -or $replaceAny) {
+            $state = if ($replaceAny -and !($patch.Released -and $hash -eq $patch.Released)) {
+                'will be replaced (ReplaceAny)'
+            } else {
+                'released file, will be fixed'
+            }
             if ($patch.File) {
                 $shipped = Get-ContentPatchFile $patch $buildDir
                 if (!(Test-Path -LiteralPath $shipped) -or (Get-Sha256 $shipped) -ne $patch.Fixed) {
                     Stop-WithMessage "$($patch.File) is missing or doesn't match content-patches.json (damaged download?). Download the build again."
                 }
             }
-            $contentPlan += [pscustomobject]@{ Patch = $patch; Path = $path; Hash = $hash }
+            $contentPlan += [pscustomobject]@{ Patch = $patch; Path = $path; Hash = $hash; Created = $false }
         }
         else { $state = 'not the released file, left alone' }
     }
@@ -319,9 +341,14 @@ $contentEntries = @()
 foreach ($item in $contentPlan) {
     $saved = Join-Path (Join-Path $backup 'content') ($item.Patch.Path.Replace('/', [IO.Path]::DirectorySeparatorChar))
     New-Item -ItemType Directory -Path (Split-Path -Parent $saved) -Force | Out-Null
-    Copy-Item -LiteralPath $item.Path -Destination $saved
-    if ((Get-Sha256 $saved) -ne $item.Hash) { Stop-WithMessage "Backup of $($item.Patch.Path) failed verification." }
-    $contentEntries += [pscustomobject]@{ Path = $item.Patch.Path; OldHash = $item.Hash; NewHash = $item.Patch.Fixed }
+    if ($item.Created -or !$item.Hash) {
+        # New file: nothing to back up; rollback deletes it.
+        $contentEntries += [pscustomobject]@{ Path = $item.Patch.Path; OldHash = $null; NewHash = $item.Patch.Fixed; Created = $true }
+    } else {
+        Copy-Item -LiteralPath $item.Path -Destination $saved
+        if ((Get-Sha256 $saved) -ne $item.Hash) { Stop-WithMessage "Backup of $($item.Patch.Path) failed verification." }
+        $contentEntries += [pscustomobject]@{ Path = $item.Patch.Path; OldHash = $item.Hash; NewHash = $item.Patch.Fixed; Created = $false }
+    }
 }
 
 # Helper scripts (settings switches) go to tools\claude-version, where they find the database.
@@ -375,8 +402,10 @@ try {
         }
     }
     foreach ($item in $contentPlan) {
-        $fixed = Expand-ContentPatch $item.Patch ([IO.File]::ReadAllBytes($item.Path)) $buildDir
+        $releasedBytes = if ($item.Created -or !(Test-Path -LiteralPath $item.Path)) { [byte[]]@() } else { [IO.File]::ReadAllBytes($item.Path) }
+        $fixed = Expand-ContentPatch $item.Patch $releasedBytes $buildDir
         if ((Get-BytesSha256 $fixed) -ne $item.Patch.Fixed) { throw "The fix for $($item.Patch.Path) didn't come out right." }
+        New-Item -ItemType Directory -Path (Split-Path -Parent $item.Path) -Force | Out-Null
         [IO.File]::WriteAllBytes($item.Path, $fixed)
         if ((Get-Sha256 $item.Path) -ne $item.Patch.Fixed) { throw "Writing $($item.Patch.Path) failed verification." }
     }

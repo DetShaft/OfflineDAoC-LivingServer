@@ -66,15 +66,25 @@ if ($ToRelease) {
         else { $missing += $rel }
     }
     # Game files an install fixed in place (content-patches.json) go back to the released copy it backed up.
+    # Created files (no OldHash) are removed instead.
     foreach ($record in Get-InstallRecords $game) {
         foreach ($entry in @($record.ContentFiles)) {
             if ($null -eq $entry) { continue }
             $path = Get-ContentPath $game $entry.Path
+            $created = [bool]$entry.Created -or !$entry.OldHash
+            if ($created) {
+                if ((Test-Path -LiteralPath $path) -and (Get-Sha256 $path) -eq $entry.NewHash) {
+                    if (!($restore | Where-Object { $_.Path -eq $entry.Path })) {
+                        $restore += [pscustomobject]@{ Path = $entry.Path; From = $null; Hash = $null; Delete = $true }
+                    }
+                }
+                continue
+            }
             if (!(Test-Path -LiteralPath $path) -or (Get-Sha256 $path) -ne $entry.NewHash) { continue }
             $saved = Join-Path (Join-Path $record.BackupFolder 'content') ($entry.Path.Replace('/', [IO.Path]::DirectorySeparatorChar))
             if ((Test-Path -LiteralPath $saved) -and (Get-Sha256 $saved) -eq $entry.OldHash) {
                 if (!($restore | Where-Object { $_.Path -eq $entry.Path })) {
-                    $restore += [pscustomobject]@{ Path = $entry.Path; From = $saved; Hash = $entry.OldHash }
+                    $restore += [pscustomobject]@{ Path = $entry.Path; From = $saved; Hash = $entry.OldHash; Delete = $false }
                 }
             } else { $missing += $entry.Path }
         }
@@ -84,10 +94,21 @@ if ($ToRelease) {
             "`nThe update's downloader can repair the game (or install it fresh and bring your progress over).")
     }
     if ($restore.Count -eq 0) { Write-Host 'The released server and launcher files are already in place.' -ForegroundColor Green }
-    foreach ($item in $restore) { Write-Host "  $($item.Path)  <-  $($item.From)" }
+    foreach ($item in $restore) {
+        if ($item.Delete) { Write-Host "  $($item.Path)  (remove Living Server file)" }
+        else { Write-Host "  $($item.Path)  <-  $($item.From)" }
+    }
     if ($DryRun) { Write-Host ''; Write-Host 'Dry run: every check passed. Nothing was changed.' -ForegroundColor Green; exit 0 }
     foreach ($item in $restore) {
         $target = Get-ContentPath $game $item.Path
+        if ($item.Delete) {
+            if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Force }
+            if (Test-Path -LiteralPath $target) {
+                Write-Host "RESTORE STOPPED PART-WAY: $($item.Path) could not be removed. Close everything and run it again." -ForegroundColor Red
+                exit 1
+            }
+            continue
+        }
         Copy-Item -LiteralPath $item.From -Destination $target -Force
         if ((Get-Sha256 $target) -ne $item.Hash) {
             Write-Host "RESTORE STOPPED PART-WAY: $($item.Path) failed verification. Close everything and run it again." -ForegroundColor Red
@@ -143,11 +164,18 @@ foreach ($entry in @($record.ContentFiles)) {
     if ($null -eq $entry) { continue }
     $path = Get-ContentPath $game $entry.Path
     $current = if (Test-Path -LiteralPath $path) { Get-Sha256 $path } else { '' }
+    $created = [bool]$entry.Created -or !$entry.OldHash
+    if ($created) {
+        if ($current -eq '') { continue }
+        if ($current -ne $entry.NewHash) { Write-Host "  $($entry.Path) changed since that install; left as it is." -ForegroundColor Yellow; continue }
+        $contentRestore += [pscustomobject]@{ Entry = $entry; Path = $path; Saved = $null; Delete = $true }
+        continue
+    }
     if ($current -eq $entry.OldHash) { continue }
     if ($current -ne $entry.NewHash) { Write-Host "  $($entry.Path) changed since that install; left as it is." -ForegroundColor Yellow; continue }
     $saved = Join-Path (Join-Path $record.BackupFolder 'content') ($entry.Path.Replace('/', [IO.Path]::DirectorySeparatorChar))
     if (!(Test-Path -LiteralPath $saved) -or (Get-Sha256 $saved) -ne $entry.OldHash) { Stop-WithMessage "The backup of $($entry.Path) is damaged." }
-    $contentRestore += [pscustomobject]@{ Entry = $entry; Path = $path; Saved = $saved }
+    $contentRestore += [pscustomobject]@{ Entry = $entry; Path = $path; Saved = $saved; Delete = $false }
 }
 if ($DryRun) {
     Write-Host ''
@@ -195,8 +223,13 @@ foreach ($helper in @($record.Helpers)) {
     }
 }
 foreach ($item in $contentRestore) {
-    Copy-Item -LiteralPath $item.Saved -Destination $item.Path -Force
-    if ((Get-Sha256 $item.Path) -ne $item.Entry.OldHash) { Stop-RestoreFailed "Restoring $($item.Entry.Path) failed verification." }
+    if ($item.Delete) {
+        Remove-Item -LiteralPath $item.Path -Force
+        if (Test-Path -LiteralPath $item.Path) { Stop-RestoreFailed "Removing $($item.Entry.Path) failed." }
+    } else {
+        Copy-Item -LiteralPath $item.Saved -Destination $item.Path -Force
+        if ((Get-Sha256 $item.Path) -ne $item.Entry.OldHash) { Stop-RestoreFailed "Restoring $($item.Entry.Path) failed verification." }
+    }
 }
 Set-Content -LiteralPath (Join-Path $record.BackupFolder 'rolled-back.txt') -Value "Rolled back at $(Get-Date -Format o)."
 Write-Host ''
