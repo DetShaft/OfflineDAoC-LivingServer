@@ -114,14 +114,11 @@ namespace DOL.GS
 				else
 				{
 					// Track doors that can't be opened via interaction, so they can be treated as obstacles.
-					if (!door.CanBeOpenedViaInteraction && !PathfindingProvider.Instance.RegisterDoor(door) && log.IsErrorEnabled)
+					if (!door.CanBeOpenedViaInteraction && !PathfindingProvider.Instance.RegisterDoor(door))
 					{
-						log.Error($"Failed to register door in pathfinding provider, possible navmesh/object location mismatch " +
-							$"(Id: {door.DoorId}) " +
-							$"(Name: {door.Name}) " +
-							$"(Loc: {door.X},{door.Y},{door.Z}) " +
-							$"(ZoneId: {door.CurrentZone?.ID}) " +
-							$"(RegionId: {door.CurrentRegionID})");
+						StartupLogHygiene.WarnOnce(log, "DoorPathing", door.DoorId.ToString(),
+							$"Door {door.DoorId} ({door.Name}) could not register with pathfinding (reported once); " +
+							$"loc={door.X},{door.Y},{door.Z} zone={door.CurrentZone?.ID} region={door.CurrentRegionID}");
 					}
 				}
 

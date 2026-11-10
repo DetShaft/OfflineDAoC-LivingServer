@@ -5,10 +5,14 @@ namespace DOL.GS.Commands
 {
     [CmdAttribute(
         "&transfercorpse",
-        // No "/tc" alias: /tc is the Realm Exchange teleport (TeleportToExchangeCommand); both registered it and the
-        // second failed at every start ("An item with the same key has already been added. Key: &tc", 2026-10-27).
-        ePrivLevel.Player, // Set to player.
+        // No &tc: Realm Exchange teleport owns /tc (TeleportToExchangeCommand). Short corpse alias is &tfcorpse (2026-11-10).
+        ePrivLevel.Player,
         "/transfercorpse <Keep name> ie: /transfercorpse dun crauchon")]
+    [CmdAttribute(
+        "&tfcorpse",
+        ePrivLevel.Player,
+        "Summon your corpse to an owned frontier keep (short alias; /tc is Realm Exchange)",
+        "/tfcorpse <Keep name> ie: /tfcorpse dun crauchon")]
     public class transfercorpseCommandHandler : AbstractCommandHandler, ICommandHandler
     {
         public void OnCommand(GameClient client, string[] args)

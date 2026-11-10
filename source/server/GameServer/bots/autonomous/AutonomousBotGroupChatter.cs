@@ -218,7 +218,18 @@ public static class AutonomousBotGroupChatter
         AutonomousBeggars.OnPlayerAsked(player, message, "group");
         if (player?.Group != null && !string.IsNullOrWhiteSpace(message))
             BotChatTranscript.Player("group", player, message);
-        if (!AutonomousBotVoices.Enabled || player?.Group == null || string.IsNullOrWhiteSpace(message))
+        if (player?.Group == null || string.IsNullOrWhiteSpace(message))
+            return;
+        // Fixed vocabulary orders from the group leader (attack / assist me / buff us /
+        // follow / stay). Runs even when bot voices are off; free-form chat still
+        // does not move bots.
+        if (AutonomousBotGroupOrders.TryHandle(player, message, out GameBot ordered, out string ack))
+        {
+            if (ordered != null && !string.IsNullOrEmpty(ack))
+                AutonomousBotGroupOrders.SendAcknowledgement(ordered, ack);
+            return;
+        }
+        if (!AutonomousBotVoices.Enabled)
             return;
         // Beta 1.1.2: the screen runs before every route, the thread follow-ups too (round 3).
         if (AutonomousBotChatCoordinator.Screened(player, message, "group"))
