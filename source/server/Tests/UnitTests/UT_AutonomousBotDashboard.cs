@@ -70,5 +70,22 @@ namespace DOL.UnitTests
                 File.Delete(temporaryPath);
             }
         }
+
+        [Test]
+        public void PublishAccessDeniedDisablesFurtherSnapshots()
+        {
+            Type dashboard = typeof(AutonomousBotDashboard);
+            MethodInfo publish = dashboard.GetMethod("Publish", BindingFlags.Static | BindingFlags.NonPublic);
+            FieldInfo disabled = dashboard.GetField("_publishDisabled", BindingFlags.Static | BindingFlags.NonPublic);
+            try
+            {
+                disabled!.SetValue(null, 1);
+                Assert.That(publish!.Invoke(null, new object[] { true, "denied" }), Is.False);
+            }
+            finally
+            {
+                disabled!.SetValue(null, 0);
+            }
+        }
     }
 }

@@ -21,6 +21,10 @@ namespace DOL.GS
 		private static readonly Logger log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
 		private static readonly ConcurrentDictionary<string, byte> m_reportedUnknownAbilities = new(StringComparer.OrdinalIgnoreCase);
 
+		private static bool IsMissingSpellReference(Exception exception) =>
+			exception is KeyNotFoundException ||
+			exception.Message.Contains("key not present", StringComparison.OrdinalIgnoreCase);
+
 		/// <summary>
 		/// Flag to Check if SkillBase has been pre-loaded.
 		/// </summary>
@@ -236,7 +240,13 @@ namespace DOL.GS
 						}
 						catch (Exception e)
 						{
-							if (log.IsErrorEnabled)
+							if (IsMissingSpellReference(e))
+							{
+								StartupLogHygiene.WarnOnce(log, "LineXSpell",
+									$"{lxs.LineName}:{lxs.SpellID}",
+									$"LineXSpell missing spell reference (reported once): Line {lxs.LineName}, Spell {lxs.SpellID}, Level {lxs.Level}");
+							}
+							else if (log.IsErrorEnabled)
 								log.Error($"LineXSpell Spell Adding Error : {e.Message}, Line {lxs.LineName}, Spell {lxs.SpellID}, Level {lxs.Level}");
 						}
 					}
@@ -250,6 +260,7 @@ namespace DOL.GS
 
 				if (log.IsInfoEnabled)
 					log.Info($"Total spell lines X Spell loaded: {count}");
+				StartupLogHygiene.LogSessionSummary(log);
 			}
 			finally
 			{
@@ -369,7 +380,13 @@ namespace DOL.GS
 							}
 							catch (Exception e)
 							{
-								if (log.IsErrorEnabled)
+								if (IsMissingSpellReference(e))
+								{
+									StartupLogHygiene.WarnOnce(log, "LineXSpell",
+										$"{lxs.LineName}:{lxs.SpellID}",
+										$"LineXSpell missing spell reference (reported once): Line {lxs.LineName}, Spell {lxs.SpellID}, Level {lxs.Level}");
+								}
+								else if (log.IsErrorEnabled)
 									log.Error($"LineXSpell Adding Error : {e.Message}, Line {lxs.LineName}, Spell {lxs.SpellID}, Level {lxs.Level}");
 							}
 						}

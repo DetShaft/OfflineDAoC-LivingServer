@@ -992,8 +992,9 @@ NORMAL PLAYER COMMANDS
   e.g. /train Dual Wield 50
   Handler: DOL.GS.Commands.TrainCommandHandler
 
-/transfercorpse (aliases: /tc)
+/transfercorpse (aliases: /tfcorpse)
   /transfercorpse <Keep name> ie: /transfercorpse dun crauchon
+  /tc is Realm Exchange teleport, not corpse summon.
   Handler: DOL.GS.Commands.transfercorpseCommandHandler
 
 /vault
