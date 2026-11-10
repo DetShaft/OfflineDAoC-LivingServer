@@ -749,7 +749,16 @@ namespace DOL.AI.Brain
             if (BotPartyRoles.IsSupport(BotBody))
             {
                 TryCommandCompanionDruidPet(target);
-                HoldSupportCombat();
+                // Healers stay support-first, but may join the fight when idle combat
+                // assist is on and nobody needs healing (see PerformGroupSupport).
+                if (MaySupportIdleCombatAssist(target))
+                {
+                    if (BotBody.IsRecoveryResting) BotBody.WakeRecoveryRest();
+                    AddToAggroList(target, Math.Max(100, target.EffectiveLevel * 10));
+                    FSM.SetCurrentState(eFSMStateType.AGGRO);
+                }
+                else
+                    HoldSupportCombat();
                 NextThinkTick = GameLoop.GameLoopTime;
                 return;
             }
@@ -759,6 +768,60 @@ namespace DOL.AI.Brain
                 OrderPull(target);
                 NextThinkTick = GameLoop.GameLoopTime;
             }
+        }
+
+        /// <summary>
+        /// Chat/group order: attack or assist this target without going through the
+        /// tank-pull gate. Support bots still heal first via PerformGroupSupport.
+        /// </summary>
+        public virtual void OrderAssistCombat(GameLiving target)
+        {
+            if (target == null || !target.IsAlive || !CanAggroTarget(target))
+                return;
+            if (BotBody?.IsTemporaryCompanionRestLocked == true)
+                return;
+            if (BotBody.IsRecoveryResting) BotBody.WakeRecoveryRest();
+            CompanionEngagementMode.RememberPull(AssistedPlayer, target);
+            if (BotPartyRoles.IsSupport(BotBody))
+            {
+                TryCommandCompanionDruidPet(target);
+                if (MaySupportIdleCombatAssist(target) ||
+                    GS.ServerProperties.Properties.HEALER_IDLE_COMBAT)
+                {
+                    AddToAggroList(target, Math.Max(100, target.EffectiveLevel * 10));
+                    FSM.SetCurrentState(eFSMStateType.AGGRO);
+                }
+                else
+                    HoldSupportCombat();
+                NextThinkTick = GameLoop.GameLoopTime;
+                return;
+            }
+            AddToAggroList(target, Math.Max(100, target.EffectiveLevel * 10));
+            FSM.SetCurrentState(eFSMStateType.AGGRO);
+            AttackMostWanted();
+            NextThinkTick = GameLoop.GameLoopTime;
+        }
+
+        /// <summary>Chat/group order: refresh group and self buffs when safe.</summary>
+        public virtual void OrderBuffs()
+        {
+            AlreadyCheckedHeals = false;
+            if (CheckHeals())
+                return;
+            _nextMaintenanceBuffTick = 0;
+            if (!TryMaintainTravelAndClassBuffs())
+                CheckSpells(eCheckSpellType.Defensive);
+        }
+
+        /// <summary>Chat/group order: follow the player leader.</summary>
+        public virtual void OrderFollow(GamePlayer leader)
+        {
+            if (leader == null || !leader.IsAlive)
+                return;
+            if (BotBody.IsRecoveryResting) BotBody.WakeRecoveryRest();
+            WalkState = eWalkState.Follow;
+            FSM.SetCurrentState(eFSMStateType.FOLLOW);
+            Follow(leader);
         }
 
         public virtual void PrepareForTankPull()
@@ -836,6 +899,42 @@ namespace DOL.AI.Brain
             ((eCharacterClass?)BotBody?.CharacterClass?.ID != eCharacterClass.Minstrel ||
              RecentDirectAttacker() is not GameLiving attacker ||
              !Body.IsWithinRadius(attacker, Body.MeleeAttackRange + 35));
+
+        /// <summary>
+        /// Support bots may join the fight when heals are not needed: property on,
+        /// not Passive, enough mana, and a legal combat target already in play.
+        /// </summary>
+        public const byte SupportIdleAssistManaFloor = 40;
+
+        public bool MaySupportIdleCombatAssist(GameLiving target = null)
+        {
+            if (!GS.ServerProperties.Properties.HEALER_IDLE_COMBAT)
+                return false;
+            if (!BotPartyRoles.IsSupport(BotBody))
+                return false;
+            if (BotBody.Stance == eBotStance.Passive)
+                return false;
+            // No mana pool (or not yet initialized) is not a reason to refuse assist.
+            if (Body.MaxMana > 0 && Body.ManaPercent < SupportIdleAssistManaFloor)
+                return false;
+            if (Body.IsStunned || Body.IsMezzed || Body.IsSilenced)
+                return false;
+
+            GameLiving focus = target ?? CalculateNextAttackTarget() ??
+                PlayerLedPullCoordinator.FindLeaderTarget(AssistedPlayer);
+            if (focus == null || !focus.IsAlive || !CanAggroTarget(focus))
+                return false;
+
+            // Only assist an active fight — do not invent pulls for support.
+            bool groupFighting = Body.InCombat || HasAggro || Body.IsAttacking ||
+                AssistedPlayer is { IsAlive: true } leader &&
+                (leader.InCombat || leader.IsAttacking ||
+                 PlayerLedPullCoordinator.FindLeaderTarget(leader) != null) ||
+                Body.Group != null && Body.Group.GetMembersInTheGroup().Any(member =>
+                    member != Body && member.IsAlive &&
+                    (member.InCombat || member.IsAttacking));
+            return groupFighting;
+        }
 
         private int PlayerLedCasterEngagementRange(GameLiving target)
         {
@@ -2787,12 +2886,18 @@ namespace DOL.AI.Brain
                     return;
                 }
 
+                // Autonomous bot parties leave AGGRO into IDLE after a wipe.
+                // Without this, healers never attempt resurrection (CheckHeals is
+                // otherwise only reached from FOLLOW/AGGRO/support paths).
+                if (_brain.GroupNeedsResurrectionAttention() && _brain.CheckHeals())
+                    return;
+
                 GamePlayer leader = _brain.AssistedPlayer;
                 if (leader != null && leader.IsAlive)
                 {
                     // Check if owner is attacking something
                     if (leader.TargetObject is GameLiving ownerTarget
-                        && !BotPartyRoles.IsSupport(_brain.BotBody)
+                        && (!_brain.HoldsExclusiveSupportRole() || _brain.MaySupportIdleCombatAssist(ownerTarget))
                         && PlayerLedPullCoordinator.Available(_brain.BotBody, leader)
                         && _brain.Body.IsWithinRadius(ownerTarget, GROUP_DEFENSE_ASSIST_RADIUS)
                         && (leader.IsAttacking || (leader.IsCasting && leader.castingComponent?.SpellHandler?.Spell?.IsHarmful == true))
@@ -2854,7 +2959,7 @@ namespace DOL.AI.Brain
                 {
                     // Try to get owner's target
                     if (leader.TargetObject is GameLiving ownerTarget
-                        && !BotPartyRoles.IsSupport(_brain.BotBody)
+                        && (!_brain.HoldsExclusiveSupportRole() || _brain.MaySupportIdleCombatAssist(ownerTarget))
                         && PlayerLedPullCoordinator.Available(_brain.BotBody, leader)
                         && _brain.Body.IsWithinRadius(ownerTarget, GROUP_DEFENSE_ASSIST_RADIUS)
                         && ownerTarget.IsAlive
@@ -3654,6 +3759,17 @@ namespace DOL.AI.Brain
             }
         }
 
+        /// <summary>
+        /// True when a grouped corpse is waiting and this bot knows a resurrection spell.
+        /// Used so IDLE autonomous healers still attempt rez after a wipe.
+        /// </summary>
+        public bool GroupNeedsResurrectionAttention() =>
+            Body?.Group != null && BotBody?.ResurrectionSpell != null && BotBody.IsAlive &&
+            Body.Group.GetMembersInTheGroup().Any(member =>
+                member != Body && !member.IsAlive &&
+                member.ObjectState == GameObject.eObjectState.Active &&
+                member.CurrentRegionID == Body.CurrentRegionID);
+
         private void HoldSupportCombat()
         {
             Body.StopAttack();
@@ -3666,8 +3782,21 @@ namespace DOL.AI.Brain
         {
             if (CompanionFollowPolicy.SendsDruidPet(BotBody))
                 TryCommandCompanionDruidPet(CalculateNextAttackTarget());
+
+            // Healing, cures and resurrection always outrank idle offense.
+            if (CheckHeals() || TryPvpCrowdControl())
+            {
+                HoldSupportCombat();
+                return;
+            }
+
+            // When the party is healthy and fighting, healers may nuke/melee/debuff
+            // instead of standing still (healer_idle_combat).
+            if (TrySupportIdleCombatAssist())
+                return;
+
             HoldSupportCombat();
-            if (!CheckHeals() && !TryPvpCrowdControl()) CheckSpells(eCheckSpellType.Defensive);
+            CheckSpells(eCheckSpellType.Defensive);
             if (BotBody.IsPlayerLedGroup)
             {
                 if (!Body.IsCasting && Body.castingComponent?.HasPendingSkillRequests != true)
@@ -3675,6 +3804,51 @@ namespace DOL.AI.Brain
                 else
                     FollowDuringMobileSong();
             }
+        }
+
+        /// <summary>
+        /// Low-priority offense for exclusive support while nobody needs healing.
+        /// Returns true when an offensive action was taken.
+        /// </summary>
+        private bool TrySupportIdleCombatAssist()
+        {
+            if (!MaySupportIdleCombatAssist())
+                return false;
+
+            GameLiving target = CalculateNextAttackTarget() ??
+                PlayerLedPullCoordinator.FindLeaderTarget(AssistedPlayer);
+            if (target == null && Body.Group != null)
+            {
+                target = Body.Group.GetMembersInTheGroup()
+                    .Where(member => member != Body && member.IsAlive &&
+                        (member.InCombat || member.IsAttacking))
+                    .Select(member => member.TargetObject as GameLiving)
+                    .FirstOrDefault(candidate => candidate != null && CanAggroTarget(candidate));
+            }
+            if (target == null || !MaySupportIdleCombatAssist(target))
+                return false;
+
+            AddToAggroList(target, Math.Max(1, target.EffectiveLevel));
+            Body.TargetObject = target;
+            if (!UsesDefensiveOnlyPet)
+                TryCommandCompanionDruidPet(target);
+
+            // Prefer nukes/debuffs; fall back to melee when the class has nothing to cast.
+            if (CheckSpells(eCheckSpellType.Offensive))
+                return true;
+            if (Body.IsCasting || Body.castingComponent?.HasPendingSkillRequests == true)
+                return true;
+
+            if (!Body.IsWithinRadius(target, Math.Max(Body.MeleeAttackRange, 200)) &&
+                PrefersCurrentSpellRange())
+            {
+                // Casters walk into spell range without starting a useless melee chase.
+                ApproachPlayerLedPullTarget(target);
+                return true;
+            }
+
+            Body.StartAttack(target);
+            return true;
         }
 
         private void FollowDuringMobileSong()
@@ -5642,7 +5816,17 @@ namespace DOL.AI.Brain
                 }
                 ReportResurrectionBlock(resurrection, null);
             }
-            if (resurrection == null || Body.Group == null || Body.InCombat || Body.Group.GetMembersInTheGroup().Any(m => m.IsAlive && m.InCombat) || Body.IsCasting || !CheckHealSpell(resurrection))
+            // After a wipe the group coordinator parks in "Waiting for resurrection".
+            // Lingering InCombat flags on distant members used to block the walk-to-corpse
+            // fallback, so healers timed out with an empty cast. Prefer approaching the
+            // corpse whenever the party is in that wait (or this bot is not personally fighting).
+            bool waitingForGroupRez = AutonomousBotGroupCoordinator.IsWaitingForResurrection(BotBody);
+            bool selfBusyFighting = Body.InCombat || Body.IsAttacking ||
+                (HasAggro && !waitingForGroupRez);
+            bool alliesFighting = !waitingForGroupRez && Body.Group.GetMembersInTheGroup()
+                .Any(m => m.IsAlive && m.InCombat && Body.IsWithinRadius(m, GROUP_DEFENSE_ASSIST_RADIUS));
+            if (resurrection == null || Body.Group == null || selfBusyFighting || alliesFighting ||
+                Body.IsCasting || !CheckHealSpell(resurrection))
                 return false;
 
             int range = BotBody.castingComponent.CalculateSpellRange(resurrection);
@@ -5652,7 +5836,7 @@ namespace DOL.AI.Brain
                                  member.CurrentRegionID == Body.CurrentRegionID)
                 // Raise nearby casualties, but do not abandon recovery to chase
                 // a distant corpse back into the failed pull/dungeon room.
-                .Where(member => !regrouping || BotBody.IsWithinRadius(member, range))
+                .Where(member => !regrouping || waitingForGroupRez || BotBody.IsWithinRadius(member, range))
                 .OrderBy(member => member == AssistedPlayer ? 0 : 1)
                 .ThenBy(Body.GetDistanceTo)
                 .FirstOrDefault();
