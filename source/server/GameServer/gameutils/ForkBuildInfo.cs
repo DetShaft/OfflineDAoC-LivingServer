@@ -51,6 +51,7 @@ public static class ForkBuildInfo
         string guildParts = string.Join(",", new[]
         {
             ("social", Properties.BOT_GUILD_SOCIAL), ("recruit", Properties.BOT_GUILD_RECRUIT_PLAYER),
+            ("recruit_gate", Properties.BOT_GUILD_RECRUIT_GATE),
             ("claims", Properties.BOT_GUILD_CLAIMS_KEEPS), ("economy", Properties.BOT_GUILD_ECONOMY),
             ("alliances", Properties.BOT_GUILD_ALLIANCES),
         }.Where(part => part.Item2).Select(part => part.Item1));

@@ -55,6 +55,9 @@ func _ready() -> void:
 	# the guild window (owner 2026-10-17, a roster window beyond 1.65 - GuildWindow): Shift+G, free in every preset
 	actions.append({"id": "show_guild", "label": "Guild Window", "category": "Show",
 			"presets": {"rpg": ["Shift+G"], "fps": ["Shift+G"], "mmo": ["Shift+G"]}})
+	# modern friends window (activity + invite/tell): Shift+F
+	actions.append({"id": "show_friends", "label": "Friends Window", "category": "Show",
+			"presets": {"rpg": ["Shift+F"], "fps": ["Shift+F"], "mmo": ["Shift+F"]}})
 	categories.append("Quickbars")
 	for bar in range(1, QUICKBARS + 1):
 		for slot in range(1, QUICKBAR_SLOTS + 1):

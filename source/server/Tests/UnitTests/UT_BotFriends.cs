@@ -137,6 +137,26 @@ namespace DOL.UnitTests
             Assert.That(BotFriends.SocialLine(3, "Haralhelm", 34, 22, "Vale of Mularn"), Is.EqualTo("F,3,Haralhelm,34,22,\"Vale of Mularn\""));
         }
 
+        [Test]
+        public void WhereWithActivity_JoinsZoneAndLabel()
+        {
+            Assert.That(BotFriends.WhereWithActivity("Vale of Mularn", "grinding"), Is.EqualTo("Vale of Mularn — grinding"));
+            Assert.That(BotFriends.WhereWithActivity("Vale of Mularn", ""), Is.EqualTo("Vale of Mularn"));
+            Assert.That(BotFriends.WhereWithActivity("", "idle in town"), Is.EqualTo("idle in town"));
+        }
+
+        [TestCase(false, false, "Town idling", "Idle in Mag Mell", "idle in town")]
+        [TestCase(true, true, "Following the player's group", "", "in group")]
+        [TestCase(true, false, "Waiting for group members", "", "in group")]
+        [TestCase(false, false, "Grinding bandits", "Kill bandits", "grinding")]
+        [TestCase(false, false, "Marching to the frontier", "Keep take", "frontier")]
+        [TestCase(false, false, "Selling at the vendor", "", "in town")]
+        [TestCase(false, false, "", "", "online")]
+        public void ActivityLabel_SummarizesPlannerText(bool inGroup, bool playerLed, string activity, string goal, string expected)
+        {
+            Assert.That(BotFriends.ActivityLabel(inGroup, playerLed, activity, goal), Is.EqualTo(expected));
+        }
+
         [TestCase(true, (byte)1)]
         [TestCase(false, (byte)0)]
         public void FriendNotice_HasTheOldClientsFormat(bool entered, byte flag)

@@ -2395,6 +2395,13 @@ namespace DOL.GS.ServerProperties
 		public static bool BOT_GUILD_RECRUIT_PLAYER;
 
 		/// <summary>
+		/// Erenshor-style guild recruitment gate: Friendly/Application/Closed bot guilds require memory/deeds of
+		/// grouping with the player before inviting. Open guilds stay open. Off keeps today's open recruiting.
+		/// </summary>
+		[ServerProperty("guild", "bot_guild_recruit_gate", "When bot guild recruiting is on: guild invites follow an Open/Friendly/Application/Closed policy from the guild's charter. Friendly and tighter guilds only invite once bot memory shows you grouped or rezzed with their members (grouping itself is never refused). False keeps every bot guild open to invites as before.", false)]
+		public static bool BOT_GUILD_RECRUIT_GATE;
+
+		/// <summary>
 		/// Bot guilds claim keeps and towers their realm takes, under the usual claim rules.
 		/// </summary>
 		[ServerProperty("guild", "bot_guild_claims_keeps", "When bot guilds are on: after a realm takes a keep or tower, a bot guild with enough members inside claims it (claim_num, half for towers; guilds_claim_limit), never while a real player of that realm is inside. Its warbands answer first when that keep is attacked.", true)]

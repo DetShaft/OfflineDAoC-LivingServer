@@ -255,6 +255,7 @@ something (docs/bot-voices/DESIGN.md 3.7). The lines in `AutonomousBotGuildChatL
 | `bot_guild_min_level` | 5 | lowest level that joins a bot guild |
 | `bot_guild_social` | True | guild chat, greetings, replies, recruiting (phase 2) |
 | `bot_guild_recruit_player` | True | bot officers may invite you (phase 2) |
+| `bot_guild_recruit_gate` | False | Erenshor-style gate: Friendly/Application/Closed policies from charter; invites need memory/deeds with guild members. Off keeps open recruiting. |
 | `bot_guild_claims_keeps` | True | keep claims and claim defense (phase 4) |
 | `bot_guild_economy` | True | dues, merit points, buffs (phase 5) |
 | `bot_guild_alliances` | True | realm alliances (phase 6) |

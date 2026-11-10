@@ -700,21 +700,50 @@ public static class AutonomousBotGuildSocial
 
         var choices = new List<GuildChoice>();
         var speakerByGuild = new Dictionary<string, GameBot>(StringComparer.Ordinal);
+        var gatedOut = new List<(Guild Guild, AutonomousBotRealmGuilds.BotGuildInfo Info, GameBot Speaker)>();
         foreach (Guild guild in BotGuildsOfRealm(player.Realm))
         {
-            GameBot speaker = guild.GetOnlineBotMembers()
+            GameBot[] members = guild.GetOnlineBotMembers();
+            GameBot speaker = members
                 .Where(Eligible)
                 .Where(bot => faction || bot.CurrentRegion == player.CurrentRegion && bot.IsWithinRadius(player, WorldMgr.SAY_DISTANCE))
                 .OrderBy(bot => bot.GuildRank?.RankLevel ?? AutonomousBotGuildPlanner.LowestRank)
                 .FirstOrDefault();
+            AutonomousBotRealmGuilds.TryGetBotGuild(guild.GuildID, out AutonomousBotRealmGuilds.BotGuildInfo info);
+            if (speaker != null && !AutonomousBotGuildRecruitment.GuildMayInvitePlayer(player, info, members))
+            {
+                gatedOut.Add((guild, info, speaker));
+                continue;
+            }
             if (speaker != null)
                 speakerByGuild[guild.GuildID] = speaker;
-            AutonomousBotRealmGuilds.TryGetBotGuild(guild.GuildID, out AutonomousBotRealmGuilds.BotGuildInfo info);
-            choices.Add(new GuildChoice(guild.GuildID, info?.Charter ?? BotGuildCharter.Social, guild.GetOnlineBotMembers().Length, speaker != null));
+            choices.Add(new GuildChoice(guild.GuildID, info?.Charter ?? BotGuildCharter.Social, members.Length, speaker != null));
         }
         string chosenId = ChooseGuildForPlayer(choices, player.Level, openGuildId);
         if (chosenId == null || !speakerByGuild.TryGetValue(chosenId, out GameBot officer))
+        {
+            // Gate on and every speaking guild refused: answer in character instead of silence.
+            if (AutonomousBotGuildRecruitment.GateEnabled && gatedOut.Count > 0)
+            {
+                var refuse = gatedOut[Random.Shared.Next(gatedOut.Count)];
+                BotGuildRecruitmentPolicy policy = AutonomousBotGuildRecruitment.PolicyFor(
+                    refuse.Info?.Charter ?? BotGuildCharter.Social, refuse.Info?.Ordinal ?? 0);
+                string hint = AutonomousBotGuildRecruitment.GateRefusalHint(policy);
+                string line = $"{player.Name}, {hint}";
+                _ = new ECSGameTimer(refuse.Speaker, _ =>
+                {
+                    if (!Eligible(refuse.Speaker) || player.ObjectState != GameObject.eObjectState.Active)
+                        return 0;
+                    if (faction)
+                        AutonomousBotChatCoordinator.BroadcastFaction(refuse.Speaker.Name, refuse.Speaker.Realm, line);
+                    else
+                        refuse.Speaker.Say(line);
+                    return 0;
+                }, 2_000 + Random.Shared.Next(2_000));
+                return true;
+            }
             return false;
+        }
         Guild chosen = GuildMgr.GetGuildByGuildID(chosenId);
         if (chosen == null)
             return false;
@@ -798,6 +827,13 @@ public static class AutonomousBotGuildSocial
     {
         eRealm realm = officer.Realm;
         int minLevel = Math.Max(1, Properties.BOT_GUILD_MIN_LEVEL);
+        // Erenshor-style gate: Closed never posts; Friendly only whispers after standing (TryOfferNearby).
+        if (AutonomousBotGuildRecruitment.GateEnabled)
+        {
+            BotGuildRecruitmentPolicy policy = AutonomousBotGuildRecruitment.PolicyFor(info.Charter, info.Ordinal);
+            if (!AutonomousBotGuildRecruitment.MayAdvertiseInFaction(policy))
+                return false;
+        }
         bool audience = ClientService.Instance.GetPlayersOfRealm(realm)
             .Any(player => CountsAsGuildless(player.Guild) && player.Level >= minLevel);
         if (!audience)
@@ -818,6 +854,7 @@ public static class AutonomousBotGuildSocial
         if (officer.CurrentRegion == null || Random.Shared.NextDouble() >= 0.25)
             return false;
         int minLevel = Math.Max(1, Properties.BOT_GUILD_MIN_LEVEL);
+        AutonomousBotRealmGuilds.TryGetBotGuild(guild.GuildID, out AutonomousBotRealmGuilds.BotGuildInfo info);
         DateTime now = DateTime.UtcNow;
         GamePlayer target = null;
         lock (Sync)
@@ -827,6 +864,8 @@ public static class AutonomousBotGuildSocial
                 if (player.ObjectState != GameObject.eObjectState.Active || player.Realm != officer.Realm || !CountsAsGuildless(player.Guild) ||
                     player.Level < minLevel || Math.Abs(player.Level - officer.Level) > 10 || player.InCombat ||
                     !officer.IsWithinRadius(player, WorldMgr.SAY_DISTANCE))
+                    continue;
+                if (!AutonomousBotGuildRecruitment.GuildMayInvitePlayer(player, info, guild.GetOnlineBotMembers()))
                     continue;
                 string key = PlayerKey(player);
                 if (DeclinedUntil.TryGetValue(key, out DateTime until) && until > now)
