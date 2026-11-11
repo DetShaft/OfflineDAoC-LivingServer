@@ -8,6 +8,14 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.10 — 2026-11-11
+
+The new client can print a world-entry smoke line. Start it with `--smoke` and, after the zone is built
+and the player is in the world, it logs `LS_SMOKE ZONE_BUILT <zone>` and `LS_SMOKE IN_WORLD <zone>`,
+then quits. `tools/smoke` stages a copy of a Windows install (junctions for the big asset folders, so
+the live game is not modified), installs a release zip into that copy, and checks those lines.
+([docs/RELEASE-NOTES-1.1.10.md](docs/RELEASE-NOTES-1.1.10.md))
+
 ## Beta 1.1.9 — 2026-11-11
 
 Fixes the grey screen after 1.1.8. INSTALL deleted `global_script_class_cache.cfg`, and the launcher's
