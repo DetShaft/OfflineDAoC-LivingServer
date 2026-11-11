@@ -2874,7 +2874,7 @@ internal sealed partial class MainForm : Form
 
     private void SelectBot(string name)
     {
-        if (string.IsNullOrWhiteSpace(name) || _grid.IsDisposed || !_grid.IsHandleCreated)
+        if (string.IsNullOrWhiteSpace(name) || _grid.IsDisposed)
             return;
         System.Collections.IList list = _botSource.List;
         int index = -1;
@@ -2886,11 +2886,15 @@ internal sealed partial class MainForm : Form
                 break;
             }
         }
-        if (index < 0 || index >= _botSource.Count || index >= _grid.Rows.Count || _grid.Columns.Count == 0)
+        if (index < 0 || index >= _botSource.Count)
+            return;
+        // Always move the CurrencyManager; grid selection needs a created handle (tests create the form without Show).
+        try { _botSource.Position = index; }
+        catch (ArgumentException) { return; }
+        if (!_grid.IsHandleCreated || index >= _grid.Rows.Count || _grid.Columns.Count == 0)
             return;
         try
         {
-            _botSource.Position = index;
             DataGridViewRow row = _grid.Rows[index];
             if (!row.Visible || row.Cells.Count == 0)
                 return;
