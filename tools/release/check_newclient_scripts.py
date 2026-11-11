@@ -35,6 +35,7 @@ CONTENT = ROOT / "tools/fork-build/content/godot"
 RELEASE_COMMIT = "ab4df02a1ad26192357477dbc912756c6703fb66"
 SHIPPED = [
     "game/ui/game_ui.gd",
+    "game/ui/chat_window.gd",
     "game/ui/keybinds.gd",
     "game/ui/friends_window.gd",
     "game/ui/lfg_window.gd",
@@ -50,6 +51,7 @@ CREATE_ONLY = [
 ]
 RELEASED_PATHS = [
     "game/ui/game_ui.gd",
+    "game/ui/chat_window.gd",
     "game/ui/keybinds.gd",
     "game/net/server_world.gd",
     "game/combat/spell_fx.gd",
