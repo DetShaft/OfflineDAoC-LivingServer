@@ -6,9 +6,13 @@ extends ClassicWindow
 
 signal keyword(npc_id: String, word: String)
 
+## Eden's commander box ends with this hint. The label helper forces capitals, so the window sets the text itself.
+const HINT := "Click on HIGHLIGHTED text"
+
 var npc_id := ""
 var _title: Label
 var _body: RichTextLabel
+var _hint: Label
 var _compact := false
 
 
@@ -29,6 +33,11 @@ func build() -> void:
 	_body.meta_clicked.connect(func(m): keyword.emit(npc_id, String(m)))
 	UiArt.themed(_body)
 	add_child(_body)
+	_hint = UiArt.label("", 9, UiArt.GOLD_HI, false)
+	_hint.text = HINT
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hint.visible = false
+	add_child(_hint)
 
 
 ## "[word]" becomes a gold link the click handler whispers back.
@@ -63,6 +72,10 @@ func _fit(compact: bool) -> void:
 	resizable = true
 	min_size = Vector2(220, 120)
 	set_frame("npctalk")
-	set_window_size(Vector2(280, 176) if compact else Vector2(384, 320))
+	set_window_size(Vector2(280, 196) if compact else Vector2(384, 320))
 	_title.size = Vector2(size.x - 28, 16)
-	_body.size = Vector2(size.x - 24, size.y - 56)
+	var footer := 18 if compact else 0
+	_body.size = Vector2(size.x - 24, size.y - 56 - footer)
+	_hint.visible = compact
+	_hint.position = Vector2(8, size.y - 20)
+	_hint.size = Vector2(size.x - 16, 14)
