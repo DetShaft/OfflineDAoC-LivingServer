@@ -199,7 +199,9 @@ function Get-GodotCacheClasses([string]$CacheText) {
 }
 
 function Get-GodotCacheEntry([string]$CacheText, [string]$Name) {
-    $pattern = '(?s)\{\s*"base":.*?"class":\s*&"' + [regex]::Escape($Name) + '".*?\}'
+    # One cache object only. A greedy match from the first "base" would copy every earlier class
+    # when appending FriendsWindow / LfgWindow / CommanderPanel onto a stock cache.
+    $pattern = '(?s)\{\s*"base":(?:(?!\{).)*?"class":\s*&"' + [regex]::Escape($Name) + '"(?:(?!\{).)*?\}'
     $m = [regex]::Match($CacheText, $pattern)
     if ($m.Success) { return $m.Value }
     return $null
