@@ -83,6 +83,26 @@ try {
     if ($ok -and $info['launcher/OfflineDAoC.dll']) {
         $ok = (Sha (Join-Path $GameFolder 'runtime\OfflineDAoC.dll')) -eq $info['launcher/OfflineDAoC.dll'].ToLowerInvariant()
     }
+    # 1.1.8: when the game has the new client, also require content-patches Fixed hashes for Living Server's
+    # new-client/godot/game/*.gd File payloads (same folder the launcher starts with --path). 1.1.7 reported
+    # success after updating only the server/launcher while leaving 1.1.6's typed game_ui.gd alone.
+    if ($ok -and (Test-Path -LiteralPath (Join-Path $GameFolder 'new-client\godot\project.godot'))) {
+        $patchesPath = Join-Path $PackageFolder 'content-patches.json'
+        if (Test-Path -LiteralPath $patchesPath) {
+            $patches = Get-Content -LiteralPath $patchesPath -Raw | ConvertFrom-Json
+            foreach ($patch in @($patches)) {
+                $rel = [string]$patch.Path
+                if (!$patch.File -or !$rel.StartsWith('new-client/godot/game/') -or !$rel.EndsWith('.gd')) { continue }
+                $onDisk = Join-Path $GameFolder ($rel -replace '/', '\')
+                if (!(Test-Path -LiteralPath $onDisk) -or (Sha $onDisk) -ne ([string]$patch.Fixed).ToLowerInvariant()) {
+                    Say "new-client script check failed: $rel (launcher --path folder did not get this build's Fixed hash)"
+                    $ok = $false
+                    break
+                }
+                Say "new-client script ok: $rel"
+            }
+        }
+    }
     if ($ok) { Finish 'installed' "Living Server $Build is installed. ROLLBACK.cmd in $PackageFolder undoes it." }
     Finish 'not installed' 'INSTALL.cmd did not install it (its output is above and in the log); the game is as it was before.'
 } catch {

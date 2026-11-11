@@ -10,22 +10,22 @@ zip's SHA-256 is filled in when publishing.
 
 1.1.8 is a **DetShaft fork prerelease**. Same Offline DAoC **0.37 / 0.37b / 0.37c** base.
 
-**Why 1.1.7 still hung:** INSTALL content patches only replace a file when it still has the *Released* (stock
+**Why 1.1.7 still hung (confirmed on Jay's 20:41 run):** not a second folder and not a `.gdc` cache. INSTALL
+and the launcher both use the same game-root `new-client\godot` (launcher `--path` is
+`new-client\runtime\..\godot`). Content patches only replace a file when it still has the *Released* (stock
 0.37c) hash, unless the entry sets `ReplaceAny`. After 1.1.6, `game_ui.gd` was already a Living Server Fixed
-hash, so 1.1.7 left it alone ("not the released file, left alone"). Jay's Godot log still showed parse errors at
-the old typed lines (`LfgWindow` at :812, etc.) — that is the 1.1.6 `game_ui.gd`, not the 1.1.7 preload file.
-Server WorldInit completed because the hang is client-side.
+hash, so 1.1.7 left it alone (`not the released file, left alone`) while still updating the server/launcher —
+apply-update only checked those DLLs. Jay's Godot log still showed parse errors at the old typed lines
+(`LfgWindow` at :812, etc.): that is the 1.1.6 `game_ui.gd`, not the published 1.1.7 preload file (where
+:808–818 is siege/guild code). Server WorldInit completed because the hang is client-side.
 
 **1.1.8 client:** restores **stock 0.37c** `game_ui.gd` / `keybinds.gd` / `server_world.gd` (friends / LFG /
 commander stay as optional Create scripts but are **not wired**; feature flag off). `game_ui.gd` prints
 `LivingServer client patch 1.1.8` at startup so godot logs show which script loaded. The `game_ui` patch uses
-`ReplaceAny` so prior 1.1.5/1.1.6 Fixed copies are overwritten. INSTALL clears
-`new-client/godot/.godot/global_script_class_cache.cfg` (and `uid_cache.bin`, any loose `.gdc`) after new-client
-script changes.
-
-**Launcher paths:** INSTALL and the new-client launcher both use the game folder's `new-client\godot` beside
-`new-client\runtime` (Setup installs Living Server into the chosen Offline DAoC root; start the launcher from
-that root's `new-client\runtime` or `runtime`, not an older Download-OfflineDAoC playable copy).
+`ReplaceAny`; INSTALL also always replaces any Living Server `new-client/godot/game/**.gd` File payload even
+if a future entry forgets the flag. INSTALL clears `new-client/godot/.godot/global_script_class_cache.cfg`
+(and `uid_cache.bin`, any loose `.gdc`) after new-client script changes. apply-update verifies those `.gd`
+Fixed hashes under the launcher's godot folder before reporting success.
 
 **Server:** keeps the `TryResurrectGroupMember` null-guard from 1.1.7.
 

@@ -390,6 +390,31 @@ $createRollback = RunIn $patched 'rollback-server-build.ps1' @('-GameFolder', $c
 Check ($createRollback.Code -eq 0 -and !(Test-Path $friendsPath)) "content: rollback removes a Created new-client script`n$($createRollback.Output)"
 Check ([IO.File]::ReadAllText($dllPath) -eq $dllOld) "content: rollback restores the previous MMOEngine.dll`n$($createRollback.Output)"
 
+# Beta 1.1.8: a prior Living Server Fixed game_ui.gd (not the 0.37c Released hash) must be overwritten by the next
+# build's File payload even when content-patches.json omits ReplaceAny — that silent skip is why 1.1.7 left 1.1.6's
+# typed UI under a 1.1.7 launcher while the server still updated.
+$oldUi = 'typed LfgWindow game_ui from 1.1.6'
+$newUi = 'stock 0.37c game_ui plus LivingServer client patch banner'
+$uiPatches = @(
+    [pscustomobject]@{ Path = 'new-client/godot/game/ui/game_ui.gd'; Released = (TextSha 'stock 0.37c game_ui'); Fixed = (TextSha $newUi); Size = $newUi.Length
+        File = 'content/godot/game/ui/game_ui.gd' })
+New-Item -ItemType Directory -Path (Join-Path $patched 'content\godot\game\ui') -Force | Out-Null
+[IO.File]::WriteAllText((Join-Path $patched 'content\godot\game\ui\game_ui.gd'), $newUi)
+[IO.File]::WriteAllText((Join-Path $patched 'content-patches.json'), (ConvertTo-Json -InputObject $uiPatches -Depth 6))
+$infoLines = @(Get-Content -LiteralPath (Join-Path $patched 'BUILD-INFO.txt') | Where-Object { $_ -notlike 'content-patches.json=*' })
+$infoLines += "content-patches.json=$(Sha (Join-Path $patched 'content-patches.json'))"
+Set-Content -LiteralPath (Join-Path $patched 'BUILD-INFO.txt') -Value $infoLines -Encoding UTF8
+$uiGame = Join-Path $work 'content-prior-fixed-ui'
+New-FakeGame $uiGame $base -NewClient
+New-Item -ItemType Directory -Path (Join-Path $uiGame 'new-client\godot\game\ui') -Force | Out-Null
+[IO.File]::WriteAllText((Join-Path $uiGame 'new-client\godot\game\ui\game_ui.gd'), $oldUi)
+# Launcher --path target marker (apply-update / install log the same folder).
+Set-Content -LiteralPath (Join-Path $uiGame 'new-client\godot\project.godot') -Value '; fake' -Encoding UTF8
+$uiInstall = RunIn $patched 'install-server-build.ps1' @('-GameFolder', $uiGame)
+$uiPath = Join-Path $uiGame 'new-client\godot\game\ui\game_ui.gd'
+Check ($uiInstall.Code -eq 0 -and [IO.File]::ReadAllText($uiPath) -eq $newUi) "content: prior Living Server Fixed game_ui.gd is replaced without ReplaceAny flag`n$($uiInstall.Output)"
+Check ($uiInstall.Output -match 'Living Server \.gd File|ReplaceAny') "content: install log names the Living Server .gd replace path`n$($uiInstall.Output)"
+
 [IO.File]::WriteAllText((Join-Path $patched 'content-patches.json'), '[]')
 $damaged = Join-Path $work 'content-damaged'
 New-PatchedGame $damaged

@@ -20,7 +20,9 @@
 #   that folder's data\ folder, verified the same way (Living Server 1.1.2). The game is closed, so the files are a
 #   consistent set. ROLLBACK.cmd never puts it back (that would undo your play since); README.txt says how to restore it;
 # - fixes game files listed in content-patches.json in place, only where the file is the released one (anything else is
-#   left alone and reported), backed up the same way.
+#   left alone and reported), backed up the same way — except Living Server's own new-client/godot/game/*.gd File
+#   payloads, which always ReplaceAny so a prior Living Server Fixed hash (e.g. 1.1.6 typed game_ui) is overwritten
+#   on the next update instead of being silently left alone while the server/launcher still update.
 param(
     [string]$GameFolder = '',
     [switch]$DryRun,
@@ -194,13 +196,25 @@ if (@($launcherPlan | Where-Object { $_.State -eq 'unknown' }).Count -gt 0 -and 
 # Game files this build fixes in place: the released file (or, for Create / ReplaceAny entries, a missing or any file).
 # Create/ReplaceAny under new-client/ only apply when the game already has the new client (0.37c). Otherwise a
 # classic install would grow a half-empty new-client tree from friends/LFG/commander Create entries.
+# Living Server ships full File payloads for new-client/godot/game/*.gd (UI/net). Those always ReplaceAny so a
+# previous Living Server Fixed hash is overwritten — Jay's 1.1.7 hang: INSTALL updated the server/launcher under
+# E:\Offline DAOC but left 1.1.6's typed game_ui.gd because Fixed ≠ Released and ReplaceAny was unset. The
+# launcher starts new-client\godot beside new-client\runtime (same game root INSTALL patches).
 $hasNewClient = Test-Path -LiteralPath (Join-Path $game 'new-client')
+$godotProject = Join-Path $game 'new-client\godot'
+if ($hasNewClient) {
+    Write-Host "  new-client godot project (launcher --path): $godotProject"
+}
 $contentPlan = @()
+$leftAloneScripts = @()
 foreach ($patch in $contentPatches) {
     $path = Get-ContentPath $game $patch.Path
     $create = [bool]$patch.Create
-    $replaceAny = [bool]$patch.ReplaceAny
-    $newClientOnly = [string]$patch.Path -like 'new-client/*'
+    $patchPath = [string]$patch.Path
+    # Full File payloads under new-client/godot/game/**.gd are Living Server's own scripts: always replace.
+    $livingServerGd = [bool]$patch.File -and $patchPath.StartsWith('new-client/godot/game/') -and $patchPath.EndsWith('.gd')
+    $replaceAny = [bool]$patch.ReplaceAny -or $livingServerGd
+    $newClientOnly = $patchPath -like 'new-client/*'
     $exists = Test-Path -LiteralPath $path
     if (!$exists) {
         if (($create -or $replaceAny) -and $newClientOnly -and !$hasNewClient) {
@@ -226,7 +240,11 @@ foreach ($patch in $contentPatches) {
         if ($hash -eq $patch.Fixed) { $state = 'fixed already' }
         elseif (($patch.Released -and $hash -eq $patch.Released) -or $replaceAny) {
             $state = if ($replaceAny -and !($patch.Released -and $hash -eq $patch.Released)) {
-                'will be replaced (ReplaceAny)'
+                if ($livingServerGd -and ![bool]$patch.ReplaceAny) {
+                    'will be replaced (Living Server .gd File)'
+                } else {
+                    'will be replaced (ReplaceAny)'
+                }
             } else {
                 'released file, will be fixed'
             }
@@ -238,9 +256,18 @@ foreach ($patch in $contentPatches) {
             }
             $contentPlan += [pscustomobject]@{ Patch = $patch; Path = $path; Hash = $hash; Created = $false }
         }
-        else { $state = 'not the released file, left alone' }
+        else {
+            $state = 'not the released file, left alone'
+            # File-payload .gd should never reach here (auto ReplaceAny). If one does, refuse: silent skip is what
+            # left 1.1.6's game_ui in place under a 1.1.7 launcher while the server still updated.
+            if ($livingServerGd) { $leftAloneScripts += $patchPath }
+        }
     }
     Write-Host "  $($patch.Path): $state"
+}
+if ($leftAloneScripts.Count -gt 0) {
+    Stop-WithMessage ("These Living Server new-client scripts were neither the Fixed hash nor replaceable:`n  " +
+        ($leftAloneScripts -join "`n  ") + "`nThat is the 1.1.7 hang failure mode. Re-download the package.")
 }
 if (@($plan | Where-Object { $_.State -ne 'this build' }).Count -eq 0 -and
     @($corePlan | Where-Object { $_.State -ne 'this build' }).Count -eq 0 -and
