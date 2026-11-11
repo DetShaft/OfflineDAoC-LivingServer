@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using DOL.Database;
 using DOL.GS;
 using DOL.GS.PropertyCalc;
+using DOL.GS.Styles;
 using DOL.Logging;
 using NUnit.Framework;
 
@@ -69,6 +71,74 @@ public sealed class UT_BonedancerPetEquipment
         Assert.That(commander.Inventory.GetItem(eInventorySlot.TwoHandWeapon)?.Model, Is.EqualTo(572));
         Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Null);
     }
+
+    [Test]
+    public void OneHandedSwapBroadcastsAndDropsTheOtherWeaponsStyles()
+    {
+        CommanderPet commander = new CommanderPet(Template(50, "skeletal commander"));
+        Style havoc = StyleOf("Havoc", eObjectType.Axe, 11);
+        Style polar = StyleOf("Polar Rift", eObjectType.Sword, 12);
+        commander.Styles = new List<Style> { havoc, polar };
+
+        Assert.That(commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.OneHandSword, false), Is.True);
+        commander.SetPreferredCombatStyle(polar);
+        int updates = commander.SameSlotEquipmentUpdates;
+        Assert.That(commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.OneHandAxe, false), Is.True);
+        Assert.That(commander.ActiveWeaponSlot, Is.EqualTo(eActiveWeaponSlot.Standard));
+        Assert.That(commander.ActiveWeapon.Object_Type, Is.EqualTo((int)eObjectType.Axe));
+        Assert.That(commander.SameSlotEquipmentUpdates, Is.EqualTo(updates + 1));
+        Assert.That(commander.PreferredCombatStyle, Is.Null);
+        Assert.That(commander.styleComponent.NextCombatStyle, Is.Null);
+        Assert.That(commander.StylesForEquippedWeapon().Select(s => s.Name), Is.EqualTo(new[] { "Havoc" }));
+        Assert.That(commander.DialogMenu(), Does.Contain("[Havoc]"));
+        Assert.That(commander.DialogMenu(), Does.Not.Contain("Polar Rift"));
+
+        commander.styleComponent.NextCombatStyle = polar;
+        Assert.That(commander.styleComponent.GetStyleToUse(), Is.Not.EqualTo(polar));
+        Assert.That(commander.PreferredCombatStyle, Is.Null);
+
+        int beforeTwoHand = commander.SameSlotEquipmentUpdates;
+        Assert.That(commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.TwoHandSword, false), Is.True);
+        Assert.That(commander.ActiveWeaponSlot, Is.EqualTo(eActiveWeaponSlot.TwoHanded));
+        Assert.That(commander.SameSlotEquipmentUpdates, Is.EqualTo(beforeTwoHand));
+        Assert.That(commander.StylesForEquippedWeapon().Select(s => s.Name), Is.EqualTo(new[] { "Polar Rift" }));
+    }
+
+    [Test]
+    public void DialogKeywordsRunTheOrderAndAppendTheReply()
+    {
+        CommanderPet commander = new CommanderPet(Template(50, "skeletal commander"));
+        string menu = commander.DialogMenu();
+        Assert.That(menu, Does.Contain("[Twohanded Sword]"));
+        Assert.That(menu, Does.Contain("[Twohanded Axe]"));
+        Assert.That(menu, Does.Contain("[Hammer]"));
+        Assert.That(menu, Does.Contain("[Sword]"));
+        Assert.That(menu, Does.Contain("[Axe]"));
+        Assert.That(menu, Does.Contain("[assist]"));
+        Assert.That(menu, Does.Contain("[split]"));
+        Assert.That(menu, Does.Contain("[taunt]"));
+
+        Assert.That(commander.ReplyToKeyword("assist"), Is.EqualTo("My minions will assist me."));
+        Assert.That(commander.MinionsAssisting, Is.True);
+        Assert.That(commander.ReplyToKeyword("split"), Is.EqualTo("My minions will split."));
+        Assert.That(commander.MinionsAssisting, Is.False);
+        commander.SetTaunting(true);
+        Assert.That(commander.ReplyToKeyword("taunt"), Is.EqualTo("I will no longer taunt."));
+        Assert.That(commander.Taunting, Is.False);
+
+        Assert.That(commander.ReplyToKeyword("Twohanded Sword"), Is.EqualTo("I will wield the Twohanded Sword."));
+        Assert.That(commander.ActiveWeaponSlot, Is.EqualTo(eActiveWeaponSlot.TwoHanded));
+        Assert.That(commander.ActiveWeapon.Object_Type, Is.EqualTo((int)eObjectType.Sword));
+    }
+
+    private static Style StyleOf(string name, eObjectType weapon, int id) => new(new DbStyle
+    {
+        Name = name,
+        ID = id,
+        StyleID = id,
+        SpecKeyName = "None",
+        WeaponTypeRequirement = (int)weapon,
+    }, null);
 
     [Test]
     public void BonePatrollerHasANorseHammerAndNoBuckler()
