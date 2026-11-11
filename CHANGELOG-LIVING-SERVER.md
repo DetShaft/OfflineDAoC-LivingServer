@@ -16,6 +16,20 @@ the template's Polar Rift and Havoc. Each weapon line now always gives at least 
 a favorite (Thor's Anvil for the hammer). A line filed under other classes in the style table is still found, and the
 server log warns once if the table has no styles for a line. Tests only: not yet seen in a log from Jay's PC.
 
+**Spell effects in the new client.** Most spell effects did not show, yours included (Jay, 2026-11-11). The cause
+was the new client's performance governor, not the spells or the server. With a target frame rate of 120 on a
+144 Hz vsync display it could only give detail back above 144 fps, which vsync never allows. So after the first
+busy moment it stayed at its heaviest savings, and those kept only 30 spell effects within 10 m of the camera and
+the hand glows of casters within 6 m. Jay-PC's performance log shows it there 74% of the time (4,250 of 5,751
+samples), 1,122 of them at 115 to 144 fps. Three changes:
+- Effects in your own fight always show: anything on you, aimed at you, or within 25 m of your character (your
+  target, your group, bots casting beside you). Distance is measured from your character, not from the camera.
+- The governor's goal is the target frame rate or the display's cap (frame limit or vsync refresh), whichever is
+  lower, and it gives detail back once the frame rate is near that cap.
+- At its heaviest it now keeps 60 effects within 30 m (was 30 within 10 m) and hand glows within 15 m (was 6 m).
+New-client scripts `game/combat/spell_fx.gd` and `game/perf_governor.gd`, installed by INSTALL like the other
+client fixes. Tests only: not yet seen in game.
+
 ## Beta 1.1.12 — 2026-11-11
 
 **Commander.** Right-click your commander to talk to it; a left click only targets it, and the ORDERS button

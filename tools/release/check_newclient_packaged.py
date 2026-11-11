@@ -4,7 +4,8 @@
 tools/fork-build/content-patches.json (Ops or File payloads), the same path as quest_markers.gd. Beta 1.1.4
 merged friends/LFG/commander into source but never packaged them, so Shift+F / Shift+L did nothing in game.
 
-This check covers source/new-client/godot/game/ui and game/net (the windows and packet client). Each file that
+This check covers source/new-client/godot/game/ui and game/net (the windows and packet client), and since 1.1.13
+game/combat and game/perf_governor.gd (spell effects and the performance governor). Each file that
 differs from the 0.37 release commit BASE must have a content-patches entry whose Fixed hash matches the current
 file; brand-new files need Create: true; .cs changes require the MMOEngine.dll File entry.
 
@@ -24,6 +25,8 @@ BASE = "ab4df02a"
 SCAN_ROOTS = (
     ROOT / "source/new-client/godot/game/ui",
     ROOT / "source/new-client/godot/game/net",
+    ROOT / "source/new-client/godot/game/combat",
+    ROOT / "source/new-client/godot/game/perf_governor.gd",
 )
 PATCHES = ROOT / "tools/fork-build/content-patches.json"
 DLL_PATH = "new-client/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll"
@@ -71,7 +74,7 @@ def main() -> int:
         return 1
 
     for scan in SCAN_ROOTS:
-        for path in sorted(scan.rglob("*")):
+        for path in [scan] if scan.is_file() else sorted(scan.rglob("*")):
             if not path.is_file() or path.suffix in {".uid", ".import"}:
                 continue
             rel = path.relative_to(ROOT / "source/new-client/godot").as_posix()

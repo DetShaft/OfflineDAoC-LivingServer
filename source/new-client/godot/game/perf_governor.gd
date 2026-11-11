@@ -58,6 +58,18 @@ func load_settings() -> void:
 	_apply()
 
 
+## The most frames a second the game can show: the frame cap (Engine.max_fps), else the display's refresh rate while
+## vsync is on, else no limit. The governor never asks for more than this (game_menu.gd sets the cap and vsync).
+func _fps_ceiling() -> float:
+	if Engine.max_fps > 0:
+		return float(Engine.max_fps)
+	if DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED:
+		var hz := DisplayServer.screen_get_refresh_rate()
+		if hz > 1.0:
+			return hz
+	return INF
+
+
 func set_option(key: String, value) -> void:
 	match key:
 		"target_fps": target_fps = int(value)
@@ -97,20 +109,27 @@ func _process(delta: float) -> void:
 			level = 0.0
 			_apply()
 		return
-	var target_ms := 1000.0 / target_fps
-	var behind := fps < target_fps * 0.95
+	# The frame rate the game can reach at all: the target, or the display's cap when that is lower. Living Server
+	# 1.1.13 (owner 2026-11-11, "most spell effects missing, even my own"): Jay-PC ran target 120 on a 144 Hz vsync
+	# display. Recovery needed fps above 1.2 x 120 = 144, which vsync never allows, so once a busy moment raised the
+	# levels they stayed at 1.0 (74% of 5,751 perf_live samples, 1,122 of them at 115-144 fps) and the effect culling
+	# below kept only 30 effects within 10 m of the camera.
+	var goal := minf(float(target_fps), _fps_ceiling())
+	var target_ms := 1000.0 / goal
+	var behind := fps < goal * 0.95
+	var comfortable := fps > minf(goal * 1.2, _fps_ceiling() * 0.95)
 	# whose fault is a slow frame: the card is the limit when its own work nearly fills the frame or the target
 	var gpu_bound := gpu_ms > 0.0 and (gpu_ms >= _frame_ms * 0.85 or gpu_ms >= target_ms * 0.9)
 	var cpu_bound := gpu_ms <= 0.0 or gpu_ms < _frame_ms * 0.85            # (no GPU timer: treat as the CPU)
-	var step := 0.15 if fps < target_fps * 0.75 else 0.06
+	var step := 0.15 if fps < goal * 0.75 else 0.06
 	var changed := false
 	if behind and cpu_bound:
 		cpu_level = minf(cpu_level + step, 1.0)
 		_cpu_good = 0.0
 		changed = true
-	elif cpu_level > 0.0 and (fps > target_fps * 1.2 or not behind):
+	elif cpu_level > 0.0 and (comfortable or not behind):
 		_cpu_good += 0.5
-		if _cpu_good >= 3.0 and fps > target_fps * 1.2:
+		if _cpu_good >= 3.0 and comfortable:
 			cpu_level = maxf(cpu_level - 0.04, 0.0)
 			changed = true
 	if behind and gpu_bound:
@@ -121,7 +140,7 @@ func _process(delta: float) -> void:
 		# the card has room (its work well inside the target): give its detail back - even while the frame is slow
 		# for another reason; textures never stay smudged for a CPU-bound crowd
 		var roomy := gpu_ms > 0.0 and gpu_ms < target_ms * 0.6
-		if roomy or fps > target_fps * 1.2:
+		if roomy or comfortable:
 			_gpu_good += 0.5
 			if _gpu_good >= (1.5 if roomy else 3.0):
 				gpu_level = maxf(gpu_level - (0.08 if roomy else 0.04), 0.0)
@@ -230,9 +249,11 @@ func _apply() -> void:
 	anim_range = lerpf(1.0, 0.15, c)
 	anim_budget = int(lerpf(60.0, 8.0, c))
 	voices = int(lerpf(48.0, 16.0, c))
-	max_effects = int(lerpf(300.0, 30.0, sqrt(both)))
-	fx_range = lerpf(80.0, 10.0, sqrt(both))
-	gather_range = lerpf(80.0, 6.0, sqrt(both))
+	# (floors raised in Living Server 1.1.13: 30 effects within 10 m hid most spells in an ordinary fight; the ones in
+	# your own fight are never culled now - SpellFx.near_you)
+	max_effects = int(lerpf(300.0, 60.0, sqrt(both)))
+	fx_range = lerpf(80.0, 30.0, sqrt(both))
+	gather_range = lerpf(80.0, 15.0, sqrt(both))
 	npc_shadow_m = lerpf(60.0, 8.0, both)                   # shadows cost both: each caster drawn again per split
 	# the graphics card's savings only
 	particle_ratio = lerpf(1.0, 0.25, g)
