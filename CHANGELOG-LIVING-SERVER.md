@@ -8,6 +8,14 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.12 (in development)
+
+The Friends and Looking For Group windows fill their frame (a dark backing under the stone frame closes the gap
+that showed the world through the top edge), and their column headers sort: click one to sort by it, again to
+reverse it. Looking For Group shows full class names and real zone names in place of the four-letter class codes
+and zone numbers the packet carries, drops the LFG/LFM column, and its CLASS / LEVEL / ZONE filters are boxed
+fields above the headers instead of loose hint text over them. Friends that do not fit scroll.
+
 ## Beta 1.1.11 — 2026-11-11
 
 The commander's orders are a small dialog with clickable [keywords], the way Eden's commander
