@@ -49,20 +49,34 @@ static func links(text: String) -> String:
 ## Show an NPC's words. "[word]" becomes a gold link.
 ## Several things one NPC says at one moment stack (a trainer's greeting and the quests it offers you) instead of the
 ## last one replacing the rest (owner 2026-10-09: Magus Oreal's quest offer vanished under his training line).
-## append keeps the earlier lines (a commander's reply under the menu). compact is the small commander window.
+## append keeps the earlier lines. compact is the small commander window: the commander sends its whole dialog at
+## once (its answer to your last order on top, then what you can order next), so it replaces the text instead of
+## piling every answer under the last one (owner 2026-11-11: "should read more like a dialogue").
 var _frame := -1
 
 
 func say(id: String, npc_name: String, text: String, append := false, compact := false) -> void:
-	var stack := (append or Engine.get_process_frames() == _frame) and id == npc_id and visible
+	var stack := (append or (not compact and Engine.get_process_frames() == _frame)) and id == npc_id and visible
 	_frame = Engine.get_process_frames()
 	_fit(compact)
 	npc_id = id
 	_title.text = npc_name.to_upper()
-	var bb := links(text)
+	var bb := spoken(text) if compact else links(text)
 	_body.scroll_following = stack
 	_body.text = (_body.text + "\n\n" + bb) if stack else bb
+	if not stack:
+		_body.scroll_to_line(0)
 	show_window()
+
+
+## The commander's dialog: its first line (what it answers you) in the speech colour, the rest as its offers, with the
+## [keywords] as links.
+static func spoken(text: String) -> String:
+	var cut := text.find("\n")
+	var first := text if cut < 0 else text.substr(0, cut)
+	var rest := "" if cut < 0 else text.substr(cut + 1)
+	var bb := "[color=#e8d8a8]%s[/color]" % links(first)
+	return bb if rest.is_empty() else bb + "\n\n" + links(rest)
 
 
 func _fit(compact: bool) -> void:
@@ -72,7 +86,7 @@ func _fit(compact: bool) -> void:
 	resizable = true
 	min_size = Vector2(220, 120)
 	set_frame("npctalk")
-	set_window_size(Vector2(280, 196) if compact else Vector2(384, 320))
+	set_window_size(Vector2(320, 240) if compact else Vector2(384, 320))
 	_title.size = Vector2(size.x - 28, 16)
 	var footer := 18 if compact else 0
 	_body.size = Vector2(size.x - 24, size.y - 56 - footer)
