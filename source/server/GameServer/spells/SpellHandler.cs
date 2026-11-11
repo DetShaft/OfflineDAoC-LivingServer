@@ -1033,7 +1033,10 @@ namespace DOL.GS.Spells
 		{
 			if (!Spell.IsHarmful) return;
 			if (Caster is GamePlayer player)
+			{
 				PlayerLedPullCoordinator.LeaderEngaged(player, Target);
+				PetAssistMode.OwnerEngaged(player, Target);
+			}
 			else if (Caster is GameNPC { Brain: ControlledMobBrain { Owner: GamePlayer owner } } &&
 				owner.ControlledBrain?.Body == Caster)
 				PlayerLedPullCoordinator.LeaderEngaged(owner, Target);

@@ -1057,7 +1057,8 @@ func _build_minipet() -> void:
 	var hb := _bar(w, "redfull", Rect2(8, 17, 112, 6))
 	hb.name = "PetHealth"
 	_pet_bar = hb
-	var rows := [["AGGRESSIVE", "DEFENSIVE"], ["PASSIVE", "FOLLOW"], ["STAY", "ATTACK"], ["RELEASE"]]
+	# ASSIST (Living Server 1.1.12): the pet attacks your target as soon as you do (server: /petassist, PetAssistMode)
+	var rows := [["AGGRESSIVE", "DEFENSIVE"], ["PASSIVE", "FOLLOW"], ["STAY", "ATTACK"], ["RELEASE", "ASSIST"]]
 	for r in rows.size():
 		var cols: Array = rows[r]
 		var bw := (112.0 - (cols.size() - 1) * 2.0) / cols.size()
