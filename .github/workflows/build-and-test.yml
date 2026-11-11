@@ -16,7 +16,8 @@ jobs:
   # same release (audit 2026-11-03 §8.6; main said Beta 1.1 after 1.1.1 was out). Also the release scripts' own tests.
   versions:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Godot download + headless script check (cache miss) needs more than the old 5 minutes.
+    timeout-minutes: 15
     steps:
       # Full history: check_newclient_packaged.py diffs game/ui + game/net against the 0.37
       # release commit (ab4df02a). A shallow clone makes every script look brand-new and fails.
@@ -28,6 +29,11 @@ jobs:
           python3 tools/release/check_versions.py
           python3 tools/release/check_newclient_packaged.py
           python3 -m unittest discover -s tools/release/tests -v
+      - name: Headless Godot check of shipped new-client .gd (class-cache gap)
+        env:
+          # Cache Godot under the runner temp so the script can reuse it within a job.
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: python3 tools/release/check_newclient_scripts.py
 
   # The epic encounter catalog (docs/encounters) must match the boss scripts it was read from: a script change without
   # a regenerated catalog, or with a hand check now out of date, fails here (source/tools/epic_encounter_catalog.py).

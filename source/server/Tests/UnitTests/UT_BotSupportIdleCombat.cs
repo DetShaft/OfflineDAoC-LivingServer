@@ -229,6 +229,19 @@ namespace DOL.UnitTests
             Assert.That(B(healer).GroupNeedsResurrectionAttention(), Is.False);
         }
 
+        [Test]
+        public void TryResurrectGroupMemberReturnsFalseWithoutGroup()
+        {
+            // Ungrouped healers still reach TryResurrectGroupMember from CheckHeals; Body.Group
+            // must be null-guarded before GetMembersInTheGroup (Jay's 1.1.6 NpcService NREs).
+            Bot healer = MakeBot(new ClassCleric());
+            Assert.That(healer.Group, Is.Null);
+            MethodInfo method = typeof(BotBrain).GetMethod("TryResurrectGroupMember", Hidden);
+            Assert.That(method, Is.Not.Null);
+            Assert.That(() => method.Invoke(B(healer), null), Throws.Nothing);
+            Assert.That((bool)method.Invoke(B(healer), null), Is.False);
+        }
+
         private (Player, Bot, Enemy) PartyWithHealer()
         {
             Player player = Actor<Player>();

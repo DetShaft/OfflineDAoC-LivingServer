@@ -8,6 +8,13 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.7 — 2026-11-11
+
+Fixes the new-client hang on "Entering Offline DAoC" after 1.1.6: `game_ui.gd` no longer type-annotates
+Create-only global classes (`FriendsWindow` / `LfgWindow` / `CommanderPanel`) that a packaged 0.37c
+class cache does not list. Also null-guards `BotBrain.TryResurrectGroupMember` when the healer has no
+group ([docs/RELEASE-NOTES-1.1.7.md](docs/RELEASE-NOTES-1.1.7.md)).
+
 ## Beta 1.1.6 — 2026-11-11
 
 Republish of the 1.1.5 package so the launcher update check can offer it after 1.1.5: same new-client
