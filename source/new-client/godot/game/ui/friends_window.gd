@@ -7,8 +7,8 @@ extends ClassicWindow
 const BODY := Vector2(520, 300)
 const ROW_H := 16.0
 const TOP := 52.0
-const COLS := [["name", "NAME", 14, 110], ["level", "LVL", 126, 28], ["class", "CLASS", 156, 88],
-		["zone", "ZONE", 246, 120], ["activity", "ACTIVITY", 368, 100]]
+const COLS := [["name", "NAME", 14, 110], ["level", "LVL", 128, 36], ["class", "CLASS", 168, 88],
+		["zone", "ZONE", 260, 120], ["activity", "ACTIVITY", 384, 110]]
 
 var friends: Array = []                          # [{name, level, class, zone, activity, online}]
 var selected := ""
@@ -40,14 +40,20 @@ func build() -> void:
 	_headers.size = Vector2(BODY.x, 14)
 	add_child(_headers)
 	for col in COLS:
-		var h := UiArt.label(String(col[1]), 8, UiArt.GOLD)
+		var h := UiArt.label(String(col[1]), 10, UiArt.GOLD)
 		h.position = Vector2(col[2], 0)
 		h.size = Vector2(col[3], 14)
 		_headers.add_child(h)
+	var line := ColorRect.new()
+	line.color = Color(UiArt.GOLD, 0.45)
+	line.position = Vector2(12, 14)
+	line.size = Vector2(BODY.x - 24, 1)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_headers.add_child(line)
 	_rows = VBoxContainer.new()
-	_rows.position = Vector2(8, TOP + 16)
-	_rows.size = Vector2(BODY.x - 16, BODY.y - TOP - 70)
-	_rows.add_theme_constant_override("separation", 0)
+	_rows.position = Vector2(8, TOP + 18)
+	_rows.size = Vector2(BODY.x - 16, BODY.y - TOP - 72)
+	_rows.add_theme_constant_override("separation", 1)
 	add_child(_rows)
 	_empty = UiArt.label("", 9, UiArt.DIM)
 	_empty.position = Vector2(20, TOP + 40)
@@ -155,7 +161,7 @@ func _row(f: Dictionary) -> Control:
 	var row := Button.new()
 	row.flat = true
 	row.focus_mode = Control.FOCUS_NONE
-	row.custom_minimum_size = Vector2(BODY.x - 20, ROW_H)
+	row.custom_minimum_size = Vector2(BODY.x - 20, ROW_H + 2)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var name: String = f.name
 	row.pressed.connect(func():
@@ -172,7 +178,7 @@ func _row(f: Dictionary) -> Control:
 		[f.activity, COLS[4][2], COLS[4][3]],
 	]
 	for p in parts:
-		var lab := UiArt.label(String(p[0]), 8, color)
+		var lab := UiArt.label(String(p[0]), 10, color)
 		lab.position = Vector2(float(p[1]) - 8, 1)
 		lab.size = Vector2(float(p[2]), ROW_H - 2)
 		lab.clip_text = true
