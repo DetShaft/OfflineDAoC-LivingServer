@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using DOL.GS;
 using DOL.GS.Commands;
 using NUnit.Framework;
 
@@ -38,7 +39,7 @@ namespace DOL.UnitTests
         {
             TellReplies.Record("Jay", "Jay");
             TellReplies.Record("Jay", " ");
-            TellReplies.Record(null, "Aldwin");
+            TellReplies.Record((string) null, "Aldwin");
             Assert.That(TellReplies.TryGetLastSender("Jay", out _), Is.False);
         }
 
