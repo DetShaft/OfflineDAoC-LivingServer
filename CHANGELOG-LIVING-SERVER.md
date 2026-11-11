@@ -26,6 +26,15 @@ reverse it. Looking For Group shows full class names and real zone names in plac
 and zone numbers the packet carries, drops the LFG/LFM column, and its CLASS / LEVEL / ZONE filters are boxed
 fields above the headers instead of loose hint text over them. Friends that do not fit scroll. Tests only: not yet seen in game.
 
+Snarls, the named wolf in East Svealand, can be targeted once it shows itself. It hides (no name, can't be
+targeted, can't fight) until three of its wolves die; when it came out, the classic client kept it untargetable and
+nameless while it attacked, and it killed a group's bots that the player could not help. Any change to an NPC's
+can't-target, don't-show-name, peace or ghost flag now removes the NPC from every client and creates it again, so
+the client takes the new flags (this also covers Stripe and the other mobs that hide until their adds die, and the
+day/night spawns). Snarls sets its hidden flags instead of toggling them and drops any aggro while hidden. The new
+client rebuilds an NPC whose targeting flags change instead of keeping the old ones. Tests only; not yet checked
+in game.
+
 **Pet assist mode.** Every pet with a pet window can now assist you, the way your party bots do: it attacks
 your target the moment you swing at it, shoot it or start a harmful spell on it, and follows you onto your
 next target. Pick ASSIST on the new client's pet window (it sits beside RELEASE, and can be dragged onto a
