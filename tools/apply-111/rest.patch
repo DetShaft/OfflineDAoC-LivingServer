@@ -1,0 +1,172 @@
+diff --git a/CHANGELOG-LIVING-SERVER.md b/CHANGELOG-LIVING-SERVER.md
+index 0f9ba641..827bb8ba 100644
+--- a/CHANGELOG-LIVING-SERVER.md
++++ b/CHANGELOG-LIVING-SERVER.md
+@@ -8,6 +8,17 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
+ language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
+ Older entries below keep the names they were written with.
+ 
++## Beta 1.1.11 — 2026-11-11
++
++The commander's orders are a small dialog with clickable [keywords], the way Eden's commander
++talks: the commander's name on the title, replies appended underneath, and a footer that says
++Click on HIGHLIGHTED text. One click swaps a weapon and the client is told even when the slot does not change
++(a one-handed sword and a one-handed axe share a slot, so the old model used to stay up).
++Styles in the dialog and the styles the commander actually uses follow the weapon that is out.
++The Looking For Group and Friends windows use aligned columns and grey out Invite and Tell
++until a row is selected.
++([docs/RELEASE-NOTES-1.1.11.md](docs/RELEASE-NOTES-1.1.11.md))
++
+ ## Beta 1.1.10 — 2026-11-11
+ 
+ The new client can print a world-entry smoke line. Start it with `--smoke` and, after the zone is built
+diff --git a/source/new-client/godot/game/net/server_world.gd b/source/new-client/godot/game/net/server_world.gd
+index 0d35dd8c..2b0510e0 100644
+--- a/source/new-client/godot/game/net/server_world.gd
++++ b/source/new-client/godot/game/net/server_world.gd
+@@ -868,6 +868,7 @@ func con_level(player_level: int, npc_level: int) -> int:
+ func select(n: Npc) -> void:
+ 	if n == null or not n.state.alive:
+ 		return
++	var previous := target
+ 	target = n
+ 	target_object = 0
+ 	var nm := String(n.spawn.name)
+@@ -878,6 +879,10 @@ func select(n: Npc) -> void:
+ 			"health": n.state.health, "guild": String(n.spawn.get("guild", ""))})
+ 	if Server.client:
+ 		Server.client.call("Target", int(n.spawn.get("oid", 0)), 0x8000 | 0x6000)
++	# Targeting your commander opens its order dialog. /commander menu, not Interact:
++	# an interact outside visibility makes the server delete the object.
++	if n != previous and pet_oid > 0 and int(n.spawn.get("oid", 0)) == pet_oid and PlayerData.class_id() == 30:
++		Server.command("/commander menu")
+ 
+ 
+ func clear_target() -> void:
+@@ -913,9 +918,14 @@ func _message(d: Dictionary) -> void:
+ 	var kind := String(CHAT_KINDS.get(t, "system"))
+ 	var text := String(d.text)
+ 	if bool(d.get("popup", false)) and viewer and viewer.ui and viewer.ui.npc_dialog:
+-		# an NPC talking to you (SayTo -> the popup window): its words in the NPC window, [keywords] clickable
++		# an NPC talking to you (SayTo -> the popup window): its words in the NPC window, [keywords] clickable.
++		# A leading \u0001 (the commander's reply) appends instead of replacing the dialog.
++		var append := text.begins_with("\u0001")
++		if append:
++			text = text.substr(1)
+ 		var who := String(PlayerData.target.get("name", ""))
+-		viewer.ui.npc_dialog.say("srv%d" % _target_oid(), who, text)
++		var mine := pet_oid > 0 and _target_oid() == pet_oid
++		viewer.ui.npc_dialog.say("srv%d" % _target_oid(), who, text, append, mine)
+ 		PlayerData.message.emit(text, "npc")
+ 		return
+ 	if t >= 0xC8 and t <= 0xCB:                                 # screen centre (zone names, warnings)
+diff --git a/source/new-client/godot/game/ui/game_ui.gd b/source/new-client/godot/game/ui/game_ui.gd
+index 5c84f415..fab5d512 100644
+--- a/source/new-client/godot/game/ui/game_ui.gd
++++ b/source/new-client/godot/game/ui/game_ui.gd
+@@ -33,7 +33,7 @@ const RESTORABLE := [["panel", "CHARACTER PANEL"], ["status", "STATUS"], ["chat"
+ const FriendsWindow := preload("res://game/ui/friends_window.gd")
+ const LfgWindow := preload("res://game/ui/lfg_window.gd")
+ const CommanderPanel := preload("res://game/ui/commander_panel.gd")
+-const LIVING_SERVER_CLIENT_PATCH := "1.1.10"
++const LIVING_SERVER_CLIENT_PATCH := "1.1.11"
+ 
+ var root: Control
+ var ui_scale := 1.0
+@@ -1096,7 +1096,7 @@ func _build_minipet() -> void:
+ 	# Bonedancer commander panel (weapon / style / taunt) — separate script to avoid colliding with friends UI work.
+ 	if living_server_social_windows():
+ 		commander_panel = CommanderPanel.new()
+-		commander_panel.position = Vector2(-136, 0)
++		commander_panel.position = Vector2(-72, 0)
+ 		commander_panel.build()
+ 		commander_panel.command.connect(func(text: String):
+ 			if Server.active:
+diff --git a/source/new-client/godot/game/zone_viewer.gd b/source/new-client/godot/game/zone_viewer.gd
+index 39a23536..d8f088df 100644
+--- a/source/new-client/godot/game/zone_viewer.gd
++++ b/source/new-client/godot/game/zone_viewer.gd
+@@ -159,7 +159,7 @@ func _ready() -> void:
+ 	# (Jay's second 1.1.8 log, zone_viewer.gd:154) instead of saying the UI script did not load.
+ 	var game_ui_script := GameUI as GDScript
+ 	if game_ui_script == null or not game_ui_script.can_instantiate():
+-		push_error("LivingServer: game_ui.gd did not compile, so the interface cannot open. Install 1.1.10 to restore game_ui.gd and the Godot class cache.")
++		push_error("LivingServer: game_ui.gd did not compile, so the interface cannot open. Install 1.1.11 to restore game_ui.gd and the Godot class cache.")
+ 		return
+ 	ui = game_ui_script.new()
+ 	ui.player = player
+diff --git a/tools/fork-build/content/godot/game/net/server_world.gd b/tools/fork-build/content/godot/game/net/server_world.gd
+index 0d35dd8c..2b0510e0 100644
+--- a/tools/fork-build/content/godot/game/net/server_world.gd
++++ b/tools/fork-build/content/godot/game/net/server_world.gd
+@@ -868,6 +868,7 @@ func con_level(player_level: int, npc_level: int) -> int:
+ func select(n: Npc) -> void:
+ 	if n == null or not n.state.alive:
+ 		return
++	var previous := target
+ 	target = n
+ 	target_object = 0
+ 	var nm := String(n.spawn.name)
+@@ -878,6 +879,10 @@ func select(n: Npc) -> void:
+ 			"health": n.state.health, "guild": String(n.spawn.get("guild", ""))})
+ 	if Server.client:
+ 		Server.client.call("Target", int(n.spawn.get("oid", 0)), 0x8000 | 0x6000)
++	# Targeting your commander opens its order dialog. /commander menu, not Interact:
++	# an interact outside visibility makes the server delete the object.
++	if n != previous and pet_oid > 0 and int(n.spawn.get("oid", 0)) == pet_oid and PlayerData.class_id() == 30:
++		Server.command("/commander menu")
+ 
+ 
+ func clear_target() -> void:
+@@ -913,9 +918,14 @@ func _message(d: Dictionary) -> void:
+ 	var kind := String(CHAT_KINDS.get(t, "system"))
+ 	var text := String(d.text)
+ 	if bool(d.get("popup", false)) and viewer and viewer.ui and viewer.ui.npc_dialog:
+-		# an NPC talking to you (SayTo -> the popup window): its words in the NPC window, [keywords] clickable
++		# an NPC talking to you (SayTo -> the popup window): its words in the NPC window, [keywords] clickable.
++		# A leading \u0001 (the commander's reply) appends instead of replacing the dialog.
++		var append := text.begins_with("\u0001")
++		if append:
++			text = text.substr(1)
+ 		var who := String(PlayerData.target.get("name", ""))
+-		viewer.ui.npc_dialog.say("srv%d" % _target_oid(), who, text)
++		var mine := pet_oid > 0 and _target_oid() == pet_oid
++		viewer.ui.npc_dialog.say("srv%d" % _target_oid(), who, text, append, mine)
+ 		PlayerData.message.emit(text, "npc")
+ 		return
+ 	if t >= 0xC8 and t <= 0xCB:                                 # screen centre (zone names, warnings)
+diff --git a/tools/fork-build/content/godot/game/ui/game_ui.gd b/tools/fork-build/content/godot/game/ui/game_ui.gd
+index 5c84f415..fab5d512 100644
+--- a/tools/fork-build/content/godot/game/ui/game_ui.gd
++++ b/tools/fork-build/content/godot/game/ui/game_ui.gd
+@@ -33,7 +33,7 @@ const RESTORABLE := [["panel", "CHARACTER PANEL"], ["status", "STATUS"], ["chat"
+ const FriendsWindow := preload("res://game/ui/friends_window.gd")
+ const LfgWindow := preload("res://game/ui/lfg_window.gd")
+ const CommanderPanel := preload("res://game/ui/commander_panel.gd")
+-const LIVING_SERVER_CLIENT_PATCH := "1.1.10"
++const LIVING_SERVER_CLIENT_PATCH := "1.1.11"
+ 
+ var root: Control
+ var ui_scale := 1.0
+@@ -1096,7 +1096,7 @@ func _build_minipet() -> void:
+ 	# Bonedancer commander panel (weapon / style / taunt) — separate script to avoid colliding with friends UI work.
+ 	if living_server_social_windows():
+ 		commander_panel = CommanderPanel.new()
+-		commander_panel.position = Vector2(-136, 0)
++		commander_panel.position = Vector2(-72, 0)
+ 		commander_panel.build()
+ 		commander_panel.command.connect(func(text: String):
+ 			if Server.active:
+diff --git a/tools/fork-build/content/godot/game/zone_viewer.gd b/tools/fork-build/content/godot/game/zone_viewer.gd
+index 39a23536..d8f088df 100644
+--- a/tools/fork-build/content/godot/game/zone_viewer.gd
++++ b/tools/fork-build/content/godot/game/zone_viewer.gd
+@@ -159,7 +159,7 @@ func _ready() -> void:
+ 	# (Jay's second 1.1.8 log, zone_viewer.gd:154) instead of saying the UI script did not load.
+ 	var game_ui_script := GameUI as GDScript
+ 	if game_ui_script == null or not game_ui_script.can_instantiate():
+-		push_error("LivingServer: game_ui.gd did not compile, so the interface cannot open. Install 1.1.10 to restore game_ui.gd and the Godot class cache.")
++		push_error("LivingServer: game_ui.gd did not compile, so the interface cannot open. Install 1.1.11 to restore game_ui.gd and the Godot class cache.")
+ 		return
+ 	ui = game_ui_script.new()
+ 	ui.player = player
