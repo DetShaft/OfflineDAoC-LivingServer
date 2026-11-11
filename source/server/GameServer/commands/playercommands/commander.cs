@@ -7,14 +7,16 @@ using DOL.GS.Styles;
 namespace DOL.GS.Commands
 {
     /// <summary>
-    /// Bonedancer commander window controls (later live DAoC parity): weapon, style preference, taunt, assist.
-    /// Whisper-based Interact menus are disabled at 1.65; this command (and the new-client panel) is the player path.
+    /// Bonedancer commander controls: weapon, style preference, taunt, assist.
+    /// The new client opens the commander's clickable [keyword] dialog (interact or /commander menu).
+    /// This command is the same orders for a typed line.
     /// </summary>
     [CmdAttribute(
         "&commander",
         ePrivLevel.Player,
         "Control your Bonedancer commander's weapon, styles and taunt",
         "/commander",
+        "/commander menu",
         "/commander weapon <1h-axe|1h-hammer|1h-sword|2h-axe|2h-hammer|2h-sword|bow|axe|hammer|sword>",
         "/commander style [name|auto|list]",
         "/commander taunt [on|off]",
@@ -24,7 +26,19 @@ namespace DOL.GS.Commands
     {
         public void OnCommand(GameClient client, string[] args)
         {
-            if (IsSpammingCommand(client.Player, "commander"))
+            // Weapon clicks used to share the 1500 ms silent drop with every other /commander
+            // line. A second click inside that window did nothing, on top of a same-slot swap
+            // that never told the client the model changed.
+            bool weaponOrMenu = args.Length >= 2 && args[1].ToLowerInvariant() is "weapon" or "menu";
+            if (weaponOrMenu)
+            {
+                if (IsSpammingCommand(client.Player, "commander-" + args[1].ToLowerInvariant(), 250))
+                {
+                    client.Out.SendMessage("Give your commander a moment.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                    return;
+                }
+            }
+            else if (IsSpammingCommand(client.Player, "commander"))
                 return;
 
             GamePlayer player = client.Player;
@@ -63,6 +77,10 @@ namespace DOL.GS.Commands
                     break;
                 case "spell":
                     HandleSpell(client, commander, args);
+                    break;
+                case "menu":
+                case "orders":
+                    commander.ShowDialog(player, append: false);
                     break;
                 case "status":
                 case "info":
@@ -129,11 +147,12 @@ namespace DOL.GS.Commands
                 return;
             }
 
-            commander.CommanderSwitchWeapon(weaponType);
-            // Weapon change may invalidate a preferred style tied to the old weapon; keep preference but let combat
-            // re-evaluate. Clear sticky override so the new weapon's styles can fire until the player re-picks.
-            if (commander.PreferredCombatStyle != null)
-                commander.SetPreferredCombatStyle(commander.PreferredCombatStyle);
+            if (!commander.CommanderSwitchWeapon(weaponType))
+            {
+                client.Out.SendMessage("Your commander could not change weapons.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                return;
+            }
+            // CommanderSwitchWeapon drops a preferred style the new weapon cannot use.
             client.Out.SendMessage($"Commander weapon set to {WeaponToken(weaponType)}.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
         }
 
@@ -144,7 +163,7 @@ namespace DOL.GS.Commands
             {
                 if (styles.Count == 0)
                 {
-                    client.Out.SendMessage("Your commander has no styles loaded.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                    client.Out.SendMessage("Your commander has no styles for the weapon it is holding.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
                     return;
                 }
                 client.Out.SendMessage("Commander styles (pick with /commander style <name>, or 'auto'):",
@@ -258,31 +277,7 @@ namespace DOL.GS.Commands
             client.Out.SendMessage($"Commander spell preference set to {preferred}.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
         }
 
-        private static List<Style> CollectStyles(CommanderPet commander)
-        {
-            var seen = new HashSet<int>();
-            var list = new List<Style>();
-            void AddRange(IEnumerable<Style> styles)
-            {
-                if (styles == null)
-                    return;
-                foreach (Style style in styles)
-                {
-                    if (style == null || !seen.Add(style.ID))
-                        continue;
-                    list.Add(style);
-                }
-            }
-
-            AddRange(commander.Styles);
-            AddRange(commander.StylesAnytime);
-            AddRange(commander.StylesFront);
-            AddRange(commander.StylesSide);
-            AddRange(commander.StylesBack);
-            AddRange(commander.StylesDefensive);
-            AddRange(commander.StylesChain);
-            return list.OrderBy(s => s.Name).ToList();
-        }
+        private static List<Style> CollectStyles(CommanderPet commander) => commander.StylesForEquippedWeapon();
 
         private static string WeaponToken(CommanderPet.eWeaponType type) => type switch
         {
