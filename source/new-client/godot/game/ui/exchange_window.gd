@@ -731,7 +731,7 @@ class ExRow extends Control:
 			_price.text = ExchangeWindow.money_short(int(it.get("price", 0)))
 		else:
 			var p := Server.listing_price(window.chest_slot(index))
-			_price.text = "SET PRICE" if p < 0 else ("NOT FOR SALE" if p == 0 else ExchangeWindow.money_short(p))
+			_price.text = ExchangeWindow.money_short(p) if p > 0 else "SET PRICE"
 		_price.add_theme_color_override("font_color", UiArt.GOLD_HI if window.tab == "browse" or _price.text != "SET PRICE" else UiArt.DIM)
 		_hi.visible = id != "" and window.selected == window.key_at(index)
 		tooltip_text = String(it.get("name", "")).to_upper()

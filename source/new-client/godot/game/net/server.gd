@@ -588,7 +588,6 @@ func _on_world_inner(kind: String, d: Dictionary) -> void:
 		"inventory":
 			on_inventory(d)
 		"market_open":                                    # [Browse the exchange]: the market search window
-			_load_prices()
 			exchange_open.emit("browse")
 		"market":                                         # a page of search results
 			_market_packet(d)
@@ -1369,7 +1368,6 @@ var market_search := {}                           # the filters of the last sear
 var listings := {}                                # chest slot -> runtime ItemDb id "srvc:<slot>"
 var listing_page := 0                             # the chest's page on the server (100 slots each)
 var proceeds := -1                                # sale proceeds waiting (copper; the greeting's amount), -1 unknown
-var _prices := {}                                 # "<character>|<page>|<slot>|<name>" -> copper priced from here
 
 
 func _listings_packet(d: Dictionary, opened: bool) -> void:
@@ -1386,7 +1384,6 @@ func _listings_packet(d: Dictionary, opened: bool) -> void:
 		listings[slot] = id
 	exchange_changed.emit()
 	if opened:
-		_load_prices()
 		exchange_open.emit("listings")
 
 
@@ -1398,6 +1395,17 @@ func _server_item(id: String, it: Dictionary, detail_key: Variant) -> Dictionary
 	if m:
 		count = int(m.get_string(1))
 		nm = m.get_string(2)
+	# A listing's price comes only in its name: the server writes "Name[10 silver]" (WriteItemData, the original
+	# client's way of showing it). Taken off the name here and kept as the listing's price (0 = not offered).
+	var listed := 0
+	var pm := RegEx.create_from_string("^(.+?)\\[([^\\]]*)\\]?$").search(nm)
+	if pm:
+		var tag := pm.get_string(2).strip_edges().to_lower()
+		var bp := RegEx.create_from_string("^([0-9]+) *bp$").search(tag)
+		var copper := int(bp.get_string(1)) if bp else _copper_of(tag)
+		if copper > 0:
+			listed = copper
+			nm = pm.get_string(1).strip_edges()
 	return {"id": id, "name": nm, "count": count, "level": int(it.level), "dps_af": int(it.value1),
 			"spd_abs": int(it.value2), "hand": int(it.hand), "type_damage": int(it.type_damage),
 			"object_type": int(it.object_type), "weight": int(it.get("weight", 0)),
@@ -1405,7 +1413,7 @@ func _server_item(id: String, it: Dictionary, detail_key: Variant) -> Dictionary
 			"maxdurability": 100, "quality": int(it.get("quality", 100)), "bonus": int(it.get("bonus", 0)),
 			"model": int(it.model), "color": int(it.get("color", 0)), "effect": int(it.get("effect", 0)),
 			"emblem": int(it.get("emblem", 0)),
-			"icon": item_icon(int(it.model)), "price": int(it.get("price", 0)), "can_use": bool(it.get("can_use", true)),
+			"icon": item_icon(int(it.model)), "price": int(it.get("price", 0)), "listed_price": listed, "can_use": bool(it.get("can_use", true)),
 			"detail_key": detail_key, "maxcount": 999 if count > 1 else 1, "packsize": 1, "server": true}
 
 
@@ -1446,38 +1454,20 @@ func exchange_buy(place: int, to := -1) -> bool:
 	return true
 
 
-## A listing's price: what this client priced it at (-1 unknown - priced elsewhere, or before this was kept).
+## A listing's price as the server holds it (0 = in the chest, not offered for sale). The server sends it with the
+## listing (in its name); a price set here is shown at once, and the next chest page from the server confirms it.
 func listing_price(slot: int) -> int:
-	return int(_prices.get(_price_key(slot), -1))
+	return int(ItemDb.item(String(listings.get(slot, ""))).get("listed_price", 0))
 
 
 func set_listing_price(slot: int, copper: int) -> void:
 	if client == null or not listings.has(slot):
 		return
 	client.call("SetMarketPrice", slot - CHEST_FIRST, copper)
-	_prices[_price_key(slot)] = copper
-	_save_prices()
+	var it := ItemDb.item(String(listings[slot]))
+	if not it.is_empty():
+		it["listed_price"] = maxi(copper, 0)
 	exchange_changed.emit()
-
-
-func _price_key(slot: int) -> String:
-	var it := ItemDb.item(String(listings.get(slot, "")))
-	return "%s|%d|%d|%s" % [String(selected.get("name", "")), listing_page, slot, String(it.get("name", ""))]
-
-
-const PRICES_PATH := "user://exchange_prices.json"
-
-
-func _load_prices() -> void:
-	if _prices.is_empty() and FileAccess.file_exists(PRICES_PATH):
-		var t = JSON.parse_string(FileAccess.get_file_as_string(PRICES_PATH))
-		_prices = t if t is Dictionary else {}
-
-
-func _save_prices() -> void:
-	var f := FileAccess.open(PRICES_PATH, FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify(_prices))
 
 
 ## The broker's own words, read for the exchange window: the greeting's waiting proceeds, a claim, a sale while you
@@ -1486,7 +1476,6 @@ func _exchange_text(text: String) -> void:
 	if text.begins_with("Welcome to the Realm Exchange"):
 		var m := RegEx.create_from_string("Claim sale proceeds.: *([^\\n]+)").search(text)
 		proceeds = _copper_of(m.get_string(1)) if m else 0
-		_load_prices()
 	elif text.begins_with("You claimed ") and text.contains("Realm Exchange sales"):
 		proceeds = 0
 	elif text.begins_with("Your Realm Exchange listing sold for "):
