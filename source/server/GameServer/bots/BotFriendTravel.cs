@@ -14,8 +14,11 @@ namespace DOL.GS;
 ///   answers "meet up first", as before (BotGroupInvite.CloseEnoughToInviteByName).
 /// - The invite is checked as a normal one first (realm, leader, full group, the bot's duties). If it would be refused, it is
 ///   refused now, with the same words.
-/// - The player is told the friend is on the way, and the friend says so by tell. After <see cref="TravelDelayMs"/> the friend
-///   arrives beside the player and joins the group, and the player is told it arrived.
+/// - The player is told the friend is on the way, and the friend says so by tell. After <see cref="TravelDelayMs"/> (30 seconds,
+///   and 30 more for each zone between them) the friend arrives beside the player and joins the group, and the player is told it
+///   arrived.
+/// - A friend in a group of its own turns the first invite down and asks to be asked again; an invite a minute or more later
+///   takes it out of that group (<see cref="PassesRegroup"/>). This holds for a friend nearby too.
 /// - The wait stands in for the journey, as the wait of a released groupmate in another region does
 ///   (BotGroupRelease.ReturnToLeaderDelayMilliseconds): the bot is moved, it does not walk the realm.
 /// - On arrival everything is checked again. A friend in a fight waits for it to end (up to <see cref="CombatWaits"/> more
@@ -23,11 +26,32 @@ namespace DOL.GS;
 /// </summary>
 public static class BotFriendTravel
 {
-    /// <summary>The journey of a friend in the player's region.</summary>
-    public const int SameRegionDelayMs = 20_000;
+    /// <summary>The journey of a friend in the player's zone (Jay, 2026-11-11: "30 seconds if they are in my region").</summary>
+    public const int BaseDelayMs = 30_000;
 
-    /// <summary>The journey of a friend in another region (another zone set, across the realm).</summary>
-    public const int OtherRegionDelayMs = 30_000;
+    /// <summary>Added for each zone between the friend and the player (Jay: "30 seconds extra per zone they are away").</summary>
+    public const int PerZoneDelayMs = 30_000;
+
+    /// <summary>
+    /// Zones counted for a friend in another region (another zone set: the frontiers, a dungeon, the capital). Regions have no
+    /// shared grid to count zones across, so a friend there counts as this many zones away.
+    /// </summary>
+    public const int OtherRegionZones = 3;
+
+    /// <summary>The size of a standard zone on its region's grid (8 x 8192 units).</summary>
+    public const int ZoneSize = 65_536;
+
+    /// <summary>The longest journey, however far the friend is.</summary>
+    public const int MaxDelayMs = 5 * 60_000;
+
+    /// <summary>
+    /// A friend in a group of its own turns down the first invite (Jay, 2026-11-11) and accepts one that comes at least this long
+    /// after it.
+    /// </summary>
+    public const long RegroupWaitMs = 60_000;
+
+    /// <summary>After this long a turned-down invite is forgotten: the next one is a first invite again.</summary>
+    public const long RegroupMemoryMs = 15 * 60_000;
 
     /// <summary>How long a friend still fighting on arrival (or a player who is dead or between regions) waits before the next check.</summary>
     public const int CombatWaitMs = 5_000;
@@ -36,7 +60,7 @@ public static class BotFriendTravel
     public const int CombatWaits = 6;
 
     /// <summary>A trip left behind (its timer lost with its player) blocks no new invite after this.</summary>
-    public const long StaleTripMs = OtherRegionDelayMs + CombatWaits * CombatWaitMs + 60_000;
+    public const long StaleTripMs = MaxDelayMs + CombatWaits * CombatWaitMs + 60_000;
 
     private static readonly Logging.Logger Log = Logging.LoggerManager.Create(typeof(BotFriendTravel));
 
@@ -44,8 +68,132 @@ public static class BotFriendTravel
 
     private static readonly ConcurrentDictionary<long, Trip> Trips = new();
 
-    /// <summary>The journey's wait. Pure.</summary>
-    public static int TravelDelayMs(bool sameRegion) => sameRegion ? SameRegionDelayMs : OtherRegionDelayMs;
+    /// <summary>When a friend in a group turned down this player's invite: (bot, player) to the tick.</summary>
+    private static readonly ConcurrentDictionary<(long BotId, string Player), long> Declined = new();
+
+    /// <summary>The journey's wait: 30 seconds, 30 more for each zone away, at most <see cref="MaxDelayMs"/>. Pure.</summary>
+    public static int TravelDelayMs(int zonesAway) =>
+        (int)Math.Min(MaxDelayMs, BaseDelayMs + (long)PerZoneDelayMs * Math.Max(0, zonesAway));
+
+    /// <summary>
+    /// How many zones lie between two zones of one region, from their places on the region's grid: 0 for the same zone, 1 for a
+    /// neighbour, and one more for every zone width between them on each axis (a diagonal neighbour is 2, as the way there
+    /// crosses two borders). Pure.
+    /// </summary>
+    public static int ZonesBetween(int ax, int ay, int aw, int ah, int bx, int by, int bw, int bh)
+    {
+        if (ax == bx && ay == by)
+            return 0;
+        return Axis(ax, aw, bx, bw) + Axis(ay, ah, by, bh);
+
+        static int Axis(int a, int aSize, int b, int bSize)
+        {
+            long gap = Math.Max((long)b - ((long)a + Math.Max(1, aSize)), (long)a - ((long)b + Math.Max(1, bSize)));
+            return gap < 0 ? 0 : 1 + (int)(gap / ZoneSize);
+        }
+    }
+
+    /// <summary>How many zones the friend is from the player (<see cref="OtherRegionZones"/> from another region).</summary>
+    public static int ZonesAway(GamePlayer player, GameBot bot)
+    {
+        if (bot.CurrentRegionID != player.CurrentRegionID)
+            return OtherRegionZones;
+        Zone a = bot.CurrentZone, b = player.CurrentZone;
+        if (a == null || b == null)
+            return 1;
+        if (a == b)
+            return 0;
+        return Math.Max(1, ZonesBetween(a.XOffset, a.YOffset, a.Width, a.Height, b.XOffset, b.YOffset, b.Width, b.Height));
+    }
+
+    /// <summary>What a friend in a group does with an invite. Pure.</summary>
+    public enum RegroupAnswer { Join, DeclineFirst, StillWrappingUp }
+
+    /// <summary>
+    /// A friend in a group of its own (not the player's) turns down the first invite, asks to be asked again, and takes an invite
+    /// that comes <see cref="RegroupWaitMs"/> or more after that one. An invite too soon is turned down again without starting the
+    /// wait over; after <see cref="RegroupMemoryMs"/> the turned-down invite is forgotten. Pure.
+    /// </summary>
+    public static RegroupAnswer Regroup(bool inOwnGroup, long? declinedTick, long now)
+    {
+        if (!inOwnGroup)
+            return RegroupAnswer.Join;
+        if (declinedTick is not { } at || now - at >= RegroupMemoryMs)
+            return RegroupAnswer.DeclineFirst;
+        return now - at >= RegroupWaitMs ? RegroupAnswer.Join : RegroupAnswer.StillWrappingUp;
+    }
+
+    /// <summary>What the player is told when a friend in a group turns down the first invite. Pure.</summary>
+    public static string InAGroupMessage(string name, int seconds) =>
+        $"{name} is in a group right now and declines. Ask again in about {Duration(seconds)}.";
+
+    /// <summary>What the player is told when the next invite comes too soon. Pure.</summary>
+    public static string StillWrappingUpMessage(string name, int secondsLeft) =>
+        $"{name} is still wrapping up with their group. Ask again in about {Duration(secondsLeft)}.";
+
+    /// <summary>The friend's tell when it turns down the first invite. Pure.</summary>
+    public static string InAGroupLine(Random random) => random.Next(4) switch
+    {
+        0 => "in a group rn, give me a min to wrap up and ask again",
+        1 => "cant atm, grouped. ask me again in a minute",
+        2 => "finishing something with my group, inv me again in a bit",
+        _ => "one sec, still with my group. try me again in a min",
+    };
+
+    /// <summary>The friend's word as it leaves its group for the player. Pure.</summary>
+    public static string LeavingGroupLine(Random random) => random.Next(3) switch
+    {
+        0 => "ok, done here. coming",
+        1 => "alright, said bye to my group, omw",
+        _ => "ok im free now",
+    };
+
+    /// <summary>Whether the bot is in a group of its own: another group than the player's, with someone else in it.</summary>
+    public static bool InOwnGroup(GamePlayer player, GameBot bot) =>
+        bot.Group != null && bot.Group != player.Group && bot.Group.MemberCount > 1;
+
+    /// <summary>
+    /// The regroup rule for a friend's invite (near or far): true when it may go ahead. Otherwise the player has been told, and on
+    /// a first invite the friend says so by tell.
+    /// </summary>
+    public static bool PassesRegroup(GamePlayer player, GameBot bot)
+    {
+        if (player == null || bot == null || !bot.IsAutonomousWorldBot || !IsFriend(player, bot))
+            return true;
+        long now = GameLoop.GameLoopTime;
+        var key = (bot.DatabaseID, player.Name);
+        long? at = Declined.TryGetValue(key, out long tick) ? tick : null;
+        RegroupAnswer answer = Regroup(InOwnGroup(player, bot), at, now);
+        switch (answer)
+        {
+            case RegroupAnswer.DeclineFirst:
+                Declined[key] = now;
+                ChatUtil.SendSystemMessage(player, InAGroupMessage(bot.Name, Seconds(RegroupWaitMs)));
+                Log.Info($"BOT_FRIEND_TRAVEL bot=\"{bot.Name}\" id={bot.DatabaseID} player=\"{player.Name}\" result=declined_in_group");
+                string line = AutonomousBotVoices.StyleFor(bot, InAGroupLine(Random.Shared));
+                AutonomousLivingServer.Later(player, 1_500 + Random.Shared.Next(1_500), () => AutonomousLivingServer.IsSpeaker(bot) && player.Client != null,
+                    () => AutonomousLivingServer.Tell(bot, player, line));
+                return false;
+            case RegroupAnswer.StillWrappingUp:
+                ChatUtil.SendSystemMessage(player, StillWrappingUpMessage(bot.Name, Seconds(Math.Max(0, RegroupWaitMs - (now - at.Value)))));
+                return false;
+            default:
+                if (at != null)
+                {
+                    Declined.TryRemove(key, out _);
+                    if (InOwnGroup(player, bot))
+                    {
+                        // It leaves its own group now, so that group doesn't pull it into a fight on the way.
+                        if (bot.PlayerGroupLeader == null)
+                            bot.Group.RemoveMember(bot);
+                        string bye = AutonomousBotVoices.StyleFor(bot, LeavingGroupLine(Random.Shared));
+                        AutonomousLivingServer.Later(player, 1_000, () => AutonomousLivingServer.IsSpeaker(bot) && player.Client != null,
+                            () => AutonomousLivingServer.Tell(bot, player, bye));
+                    }
+                }
+                return true;
+        }
+    }
 
     /// <summary>Whole seconds as the player is told them ("about 30 seconds"), at least one. Pure.</summary>
     public static int Seconds(long ms) => (int)Math.Max(1, (ms + 999) / 1000);
@@ -59,12 +207,22 @@ public static class BotFriendTravel
 
     /// <summary>What the player is told when the friend sets out. Pure.</summary>
     public static string OnTheWayMessage(string name, int seconds) =>
-        $"{name} is on the way to you and will join your group on arrival (about {seconds} seconds).";
+        $"{name} is on the way to you and will join your group on arrival (about {Duration(seconds)}).";
+
+    /// <summary>"30 seconds", "1 minute 30 seconds", "2 minutes". Pure.</summary>
+    public static string Duration(int seconds)
+    {
+        if (seconds < 90)
+            return seconds == 1 ? "1 second" : $"{seconds} seconds";
+        int minutes = seconds / 60, rest = seconds % 60;
+        string m = minutes == 1 ? "1 minute" : $"{minutes} minutes";
+        return rest == 0 ? m : $"{m} {rest} seconds";
+    }
 
     /// <summary>What the player is told when the friend is already on the way. Pure.</summary>
     public static string AlreadyOnTheWayMessage(string name, int secondsLeft) =>
         secondsLeft > 0
-            ? $"{name} is already on the way to you (about {secondsLeft} seconds left)."
+            ? $"{name} is already on the way to you (about {Duration(secondsLeft)} left)."
             : $"{name} is already on the way to you and should arrive any moment.";
 
     /// <summary>What the player is told when the friend arrives and joins. Pure.</summary>
@@ -183,11 +341,16 @@ public static class BotFriendTravel
             return false;
         }
 
-        int delay = TravelDelayMs(bot.CurrentRegionID == player.CurrentRegionID);
+        // A friend in a group of its own turns the first invite down and takes a later one.
+        if (!PassesRegroup(player, bot))
+            return false;
+
+        int zones = ZonesAway(player, bot);
+        int delay = TravelDelayMs(zones);
         Trips[bot.DatabaseID] = new Trip(player, now, now + delay);
         string from = AutonomousLivingServer.PlaceOf(bot);
         ChatUtil.SendSystemMessage(player, OnTheWayMessage(bot.Name, Seconds(delay)));
-        Log.Info($"BOT_FRIEND_TRAVEL bot=\"{bot.Name}\" id={bot.DatabaseID} player=\"{player.Name}\" result=started delay_ms={delay} " +
+        Log.Info($"BOT_FRIEND_TRAVEL bot=\"{bot.Name}\" id={bot.DatabaseID} player=\"{player.Name}\" result=started delay_ms={delay} zones_away={zones} " +
                  $"from={bot.CurrentRegionID}:{bot.X},{bot.Y},{bot.Z} zone=\"{from}\" to={player.CurrentRegionID} zone=\"{AutonomousLivingServer.PlaceOf(player)}\"");
 
         // The friend answers as a player would. Always, not only with bot tells on: it is the confirmation the player asked for.

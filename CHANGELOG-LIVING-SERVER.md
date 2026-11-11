@@ -11,15 +11,23 @@ Older entries below keep the names they were written with.
 ## Beta 1.1.14 (in development)
 
 **Friends come to you.** Inviting a bot friend (one on your /friend list) that is too far away no longer answers
-"too far away to join you. Meet up first." Instead you get "<name> is on the way to you
-and will join your group on arrival (about 20 seconds)" (30 seconds from another region), and the friend sends you
-an "omw" tell. When the wait is over the friend arrives beside you, you get "<name> has arrived and joins your group",
-and the friend says hello in /group. The wait stands in for the journey: the friend is moved to you, as a released
-groupmate in another region already is. Everything is checked again on arrival. A friend still in a fight waits for
-it to end (up to 30 more seconds), as it does if you are dead or between regions, and a friend that got a duty (siege,
-relic, raid, stable route), died, logged off or joined another player in the meantime doesn't come, and you are told
-why. This works from /invite, the friends window's INVITE button, the LFG window, a static party and a friend's own
-invitation. A bot that isn't your friend still has to be met first. Tests only: not yet seen in game.
+"too far away to join you. Meet up first." Instead you get "<name> is on the way to you and will join your group on
+arrival (about 30 seconds)", and the friend sends you an "omw" tell. The journey takes 30 seconds from your own zone and
+30 seconds more for each zone between you (zones are counted on the region's map, a diagonal neighbour is two). A friend
+in another region (frontier, dungeon, capital) counts as three zones away, and no journey takes longer than five minutes.
+When the wait is over the friend arrives beside you, you get "<name> has arrived and joins your group", and the friend
+says hello in /group. The wait stands in for the journey: the friend is moved to you, as a released groupmate in another
+region already is. Everything is checked again on arrival. A friend still in a fight waits for it to end (up to 30 more
+seconds), as it does if you are dead or between regions, and a friend that got a duty (siege, relic, raid, stable
+route), died, logged off or joined another player in the meantime doesn't come, and you are told why.
+
+**A grouped friend asks you to ask again.** A friend who is in a group of their own turns down your first invite
+("in a group rn, give me a min to wrap up and ask again"), and you are told to ask again in about 60 seconds. Asking
+sooner gets the seconds left. An invite a minute or more later is accepted: the friend leaves their group, tells you so,
+and joins you (or sets out for you if far away). After 15 minutes the turned-down invite is forgotten. This holds for a
+friend nearby too. It works from /invite, the friends window's INVITE button, the LFG window, a static party and a
+friend's own invitation. A bot that isn't your friend still has to be met first and still joins at once. Tests only:
+not yet seen in game.
 
 ## Beta 1.1.13 — 2026-11-11
 

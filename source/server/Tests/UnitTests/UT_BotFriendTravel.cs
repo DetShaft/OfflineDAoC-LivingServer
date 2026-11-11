@@ -26,12 +26,67 @@ public class UT_BotFriendTravel
     }
 
     [Test]
-    public void TheJourneyIsLongerFromAnotherRegionAndAboutAsLongAsAReleasedGroupmatesWait()
+    public void TheJourneyIsThirtySecondsAndThirtyMorePerZoneAway()
     {
-        Assert.That(BotFriendTravel.TravelDelayMs(sameRegion: true), Is.EqualTo(BotFriendTravel.SameRegionDelayMs));
-        Assert.That(BotFriendTravel.TravelDelayMs(sameRegion: false), Is.EqualTo(BotFriendTravel.OtherRegionDelayMs));
-        Assert.That(BotFriendTravel.OtherRegionDelayMs, Is.GreaterThan(BotFriendTravel.SameRegionDelayMs));
-        Assert.That(BotFriendTravel.SameRegionDelayMs, Is.GreaterThanOrEqualTo((int)BotGroupRelease.ReturnToLeaderDelayMilliseconds));
+        // Jay, 2026-11-11: "30 seconds if they are in my region, and then 30 seconds extra per zone they are away from me".
+        Assert.That(BotFriendTravel.TravelDelayMs(0), Is.EqualTo(30_000));
+        Assert.That(BotFriendTravel.TravelDelayMs(1), Is.EqualTo(60_000));
+        Assert.That(BotFriendTravel.TravelDelayMs(4), Is.EqualTo(150_000));
+        Assert.That(BotFriendTravel.TravelDelayMs(-1), Is.EqualTo(30_000));
+        // However far: at most five minutes.
+        Assert.That(BotFriendTravel.TravelDelayMs(50), Is.EqualTo(BotFriendTravel.MaxDelayMs));
+        Assert.That(BotFriendTravel.TravelDelayMs(BotFriendTravel.OtherRegionZones), Is.EqualTo(120_000));
+    }
+
+    [Test]
+    public void ZonesAreCountedOnTheRegionsGrid()
+    {
+        const int Z = BotFriendTravel.ZoneSize;
+        Assert.That(BotFriendTravel.ZonesBetween(0, 0, Z, Z, 0, 0, Z, Z), Is.EqualTo(0));
+        // Neighbours east and south.
+        Assert.That(BotFriendTravel.ZonesBetween(0, 0, Z, Z, Z, 0, Z, Z), Is.EqualTo(1));
+        Assert.That(BotFriendTravel.ZonesBetween(0, Z, Z, Z, 0, 0, Z, Z), Is.EqualTo(1));
+        // A diagonal neighbour crosses two borders.
+        Assert.That(BotFriendTravel.ZonesBetween(0, 0, Z, Z, Z, Z, Z, Z), Is.EqualTo(2));
+        // Three zones east, one zone between.
+        Assert.That(BotFriendTravel.ZonesBetween(0, 0, Z, Z, 3 * Z, 0, Z, Z), Is.EqualTo(3));
+        // A double-width zone beside a normal one is still one zone away.
+        Assert.That(BotFriendTravel.ZonesBetween(0, 0, 2 * Z, Z, 2 * Z, 0, Z, Z), Is.EqualTo(1));
+        // Order doesn't matter.
+        Assert.That(BotFriendTravel.ZonesBetween(3 * Z, 2 * Z, Z, Z, 0, 0, Z, Z), Is.EqualTo(BotFriendTravel.ZonesBetween(0, 0, Z, Z, 3 * Z, 2 * Z, Z, Z)));
+    }
+
+    [Test]
+    public void AFriendInAGroupTurnsDownTheFirstInviteAndTakesALaterOne()
+    {
+        long now = 1_000_000;
+        // Not in a group of its own: it joins at once.
+        Assert.That(BotFriendTravel.Regroup(false, null, now), Is.EqualTo(BotFriendTravel.RegroupAnswer.Join));
+        // In a group: the first invite is turned down.
+        Assert.That(BotFriendTravel.Regroup(true, null, now), Is.EqualTo(BotFriendTravel.RegroupAnswer.DeclineFirst));
+        // Asked again too soon: still wrapping up.
+        Assert.That(BotFriendTravel.Regroup(true, now, now + 10_000), Is.EqualTo(BotFriendTravel.RegroupAnswer.StillWrappingUp));
+        // Asked again after the wait: it joins.
+        Assert.That(BotFriendTravel.Regroup(true, now, now + BotFriendTravel.RegroupWaitMs), Is.EqualTo(BotFriendTravel.RegroupAnswer.Join));
+        // Long after, the old answer is forgotten: a first invite again.
+        Assert.That(BotFriendTravel.Regroup(true, now, now + BotFriendTravel.RegroupMemoryMs), Is.EqualTo(BotFriendTravel.RegroupAnswer.DeclineFirst));
+        Assert.That(BotFriendTravel.InAGroupMessage("Haralhelm", 60),
+            Is.EqualTo("Haralhelm is in a group right now and declines. Ask again in about 60 seconds."));
+        for (int seed = 0; seed < 20; seed++)
+        {
+            Assert.That(BotFriendTravel.InAGroupLine(new Random(seed)), Does.Contain("again").Or.Contain("min"));
+            Assert.That(BotFriendTravel.LeavingGroupLine(new Random(seed)), Is.Not.Empty);
+        }
+    }
+
+    [Test]
+    public void LongWaitsReadInMinutes()
+    {
+        Assert.That(BotFriendTravel.Duration(30), Is.EqualTo("30 seconds"));
+        Assert.That(BotFriendTravel.Duration(1), Is.EqualTo("1 second"));
+        Assert.That(BotFriendTravel.Duration(90), Is.EqualTo("1 minute 30 seconds"));
+        Assert.That(BotFriendTravel.Duration(120), Is.EqualTo("2 minutes"));
+        Assert.That(BotFriendTravel.OnTheWayMessage("Haralhelm", 150), Does.Contain("about 2 minutes 30 seconds"));
     }
 
     [Test]
@@ -46,11 +101,11 @@ public class UT_BotFriendTravel
     [Test]
     public void ATripHoldsTheBotUntilItGoesStale()
     {
-        Assert.That(BotFriendTravel.StillUnderway(1_000, 1_000 + BotFriendTravel.OtherRegionDelayMs), Is.True);
+        Assert.That(BotFriendTravel.StillUnderway(1_000, 1_000 + BotFriendTravel.MaxDelayMs), Is.True);
         Assert.That(BotFriendTravel.StillUnderway(1_000, 1_000 + BotFriendTravel.StaleTripMs), Is.False);
         // A trip outlives its longest honest end: the journey plus every wait for a fight.
         Assert.That(BotFriendTravel.StaleTripMs,
-            Is.GreaterThan(BotFriendTravel.OtherRegionDelayMs + BotFriendTravel.CombatWaits * BotFriendTravel.CombatWaitMs));
+            Is.GreaterThan(BotFriendTravel.MaxDelayMs + BotFriendTravel.CombatWaits * BotFriendTravel.CombatWaitMs));
     }
 
     [Test]

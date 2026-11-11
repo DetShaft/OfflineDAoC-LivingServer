@@ -178,6 +178,9 @@ public static class PlayerStaticParty
                 continue;
             }
 
+            if (!BotFriendTravel.PassesRegroup(player, bot))
+                continue;
+
             if (BotGroupInvite.TryInvite(player, bot))
                 invited++;
         }

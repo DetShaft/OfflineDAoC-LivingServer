@@ -55,6 +55,9 @@ namespace DOL.GS.Commands
                     AutonomousLivingServer.OnInviteTooFar(client.Player, worldBot);
                     return;
                 }
+                // 1.1.14: a friend in a group of its own turns the first invite down and takes a later one (BotFriendTravel).
+                if (!BotFriendTravel.PassesRegroup(client.Player, worldBot))
+                    return;
                 BotGroupInvite.TryInvite(client.Player, worldBot);
                 return;
             }
