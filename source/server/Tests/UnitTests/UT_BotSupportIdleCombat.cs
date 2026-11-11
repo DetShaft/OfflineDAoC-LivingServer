@@ -86,7 +86,8 @@ namespace DOL.UnitTests
             public override void WalkTo(Vector3 target, short speed) { }
             public override void StopAttack() { Stops++; }
             public override void StartAttack(GameObject target) { MeleeStarts++; TargetObject = target; }
-            public override void Follow(GameObject target, int minDistance, int maxDistance) { }
+            public readonly List<GameObject> Follows = new();
+            public override void Follow(GameObject target, int minDistance, int maxDistance) { Follows.Add(target); }
             public override int Mana { get => TestMana; set => TestMana = value; }
             public override int MaxMana => TestMaxMana;
             public override byte ManaPercent => TestMaxMana <= 0 ? (byte)0 : (byte)Math.Clamp(TestMana * 100 / TestMaxMana, 0, 100);
@@ -97,10 +98,11 @@ namespace DOL.UnitTests
         private sealed class Enemy : GameNPC
         {
             public byte TestLevel = 20;
+            public int TestX = 100;
             public override bool IsAlive => true;
             public override bool IsCasting => false;
             public override bool IsAttacking => false;
-            public override int X => 100;
+            public override int X => TestX;
             public override int Y => 0;
             public override int Z => 0;
             public override ushort CurrentRegionID { get => 1; set { } }
@@ -241,6 +243,65 @@ namespace DOL.UnitTests
             Assert.That(() => method.Invoke(B(healer), null), Throws.Nothing);
             Assert.That((bool)method.Invoke(B(healer), null), Is.False);
         }
+
+        // Play report 2026-11-11 (Jay, 1.1.12): the healer ran back and forth during fights when it was not
+        // casting. Idle offense started a melee chase on an enemy out of reach, and holding support combat
+        // (StopAttack) left that chase running against the walk back to formation.
+
+        [Test]
+        public void SupportIdleAssistDoesNotWalkToAnEnemyOutOfReach()
+        {
+            var (player, healer, enemy) = PartyWithHealer();
+            player.Attacking = true;
+            player.TargetObject = enemy;
+            enemy.TestX = 700; // past melee reach (200 + slack); the healer knows no offensive spells
+
+            bool acted = (bool)typeof(BotBrain).GetMethod("TrySupportIdleCombatAssist", Hidden).Invoke(B(healer), null);
+
+            Assert.That(acted, Is.False, "nothing to do from here: the healer keeps its formation slot");
+            Assert.That(healer.MeleeStarts, Is.Zero, "no melee chase across the room");
+            Assert.That(healer.Follows, Does.Not.Contain(enemy), "no approach walk toward the enemy");
+        }
+
+        [Test]
+        public void SupportIdleAssistStillMeleesAnEnemyInReach()
+        {
+            var (player, healer, enemy) = PartyWithHealer();
+            player.Attacking = true;
+            player.TargetObject = enemy;
+            enemy.TestX = 100;
+
+            bool acted = (bool)typeof(BotBrain).GetMethod("TrySupportIdleCombatAssist", Hidden).Invoke(B(healer), null);
+
+            Assert.That(acted, Is.True);
+            Assert.That(healer.MeleeStarts, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void HoldSupportCombatEndsAChaseOnTheEnemy()
+        {
+            var (_, healer, enemy) = PartyWithHealer();
+            SetFollowTarget(healer, enemy);
+
+            typeof(BotBrain).GetMethod("HoldSupportCombat", Hidden).Invoke(B(healer), null);
+
+            Assert.That(healer.FollowTarget, Is.Null, "StopAttack alone leaves the melee follow running");
+        }
+
+        [Test]
+        public void HoldSupportCombatKeepsFollowingTheLeader()
+        {
+            var (player, healer, _) = PartyWithHealer();
+            SetFollowTarget(healer, player);
+
+            typeof(BotBrain).GetMethod("HoldSupportCombat", Hidden).Invoke(B(healer), null);
+
+            Assert.That(healer.FollowTarget, Is.SameAs(player));
+        }
+
+        private static void SetFollowTarget(GameNPC npc, GameLiving target) =>
+            typeof(NpcMovementComponent).GetProperty(nameof(NpcMovementComponent.FollowTarget))!
+                .GetSetMethod(true)!.Invoke(npc.movementComponent, new object[] { target });
 
         private (Player, Bot, Enemy) PartyWithHealer()
         {
