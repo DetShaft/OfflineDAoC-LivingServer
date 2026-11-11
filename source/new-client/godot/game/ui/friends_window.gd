@@ -3,12 +3,14 @@ extends ClassicWindow
 ## Modern friends window (change plan #5): online/offline, level, class, zone and activity from the
 ## server's /friend window social lines (CT_SocialInterface "TF" / "F,..."), with one-click Invite
 ## and Tell. Kept separate from game_ui.gd so other agents can edit that file without merge fights.
+## Click a column header to sort by it, again to reverse it (owner 2026-11-11); until then online friends come first,
+## then A-Z.
 
 const BODY := Vector2(520, 300)
 const ROW_H := 16.0
 const TOP := 52.0
 const COLS := [["name", "NAME", 14, 110], ["level", "LVL", 128, 36], ["class", "CLASS", 168, 88],
-		["zone", "ZONE", 260, 120], ["activity", "ACTIVITY", 384, 110]]
+		["zone", "ZONE / LAST ON", 260, 120], ["activity", "ACTIVITY", 384, 110]]
 
 var friends: Array = []                          # [{name, level, class, zone, activity, online}]
 var selected := ""
@@ -21,40 +23,43 @@ var _count: Label
 var _actions := {}
 var _pending: Array = []
 var _asked_at := 0
+var sort_key := ""                               # "" = online first, then name; else a COLS key
+var sort_desc := false
 
 
 func build() -> void:
 	closable = true
+	_backing()
 	_title = UiArt.label("FRIENDS", 11, UiArt.GOLD_HI)
-	_title.position = Vector2(12, 18)
+	_title.position = Vector2(12, 21)
 	_title.size = Vector2(BODY.x - 24, 16)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.clip_text = true
 	add_child(_title)
 	_count = UiArt.label("", 8, UiArt.DIM)
-	_count.position = Vector2(14, 36)
+	_count.position = Vector2(14, 38)
 	_count.size = Vector2(BODY.x - 28, 12)
 	add_child(_count)
 	_headers = Control.new()
 	_headers.position = Vector2(0, TOP)
 	_headers.size = Vector2(BODY.x, 14)
+	_headers.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_headers)
-	for col in COLS:
-		var h := UiArt.label(String(col[1]), 10, UiArt.GOLD)
-		h.position = Vector2(col[2], 0)
-		h.size = Vector2(col[3], 14)
-		_headers.add_child(h)
 	var line := ColorRect.new()
 	line.color = Color(UiArt.GOLD, 0.45)
-	line.position = Vector2(12, 14)
+	line.position = Vector2(12, TOP + 15)
 	line.size = Vector2(BODY.x - 24, 1)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_headers.add_child(line)
+	add_child(line)
+	var scroll := ScrollContainer.new()                  # more friends than fit scroll above the buttons
+	scroll.position = Vector2(12, TOP + 19)
+	scroll.size = Vector2(BODY.x - 24, BODY.y - TOP - 19 - 36)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
 	_rows = VBoxContainer.new()
-	_rows.position = Vector2(8, TOP + 18)
-	_rows.size = Vector2(BODY.x - 16, BODY.y - TOP - 72)
-	_rows.add_theme_constant_override("separation", 1)
-	add_child(_rows)
+	_rows.custom_minimum_size = Vector2(BODY.x - 36, 0)
+	_rows.add_theme_constant_override("separation", 0)
+	scroll.add_child(_rows)
 	_empty = UiArt.label("", 9, UiArt.DIM)
 	_empty.position = Vector2(20, TOP + 40)
 	_empty.size = Vector2(BODY.x - 40, 40)
@@ -137,10 +142,22 @@ func receive_friend(fields: Array) -> void:
 func _rebuild() -> void:
 	if _rows == null:
 		return
+	for c in _headers.get_children():
+		c.queue_free()
+	for col in COLS:
+		var key: String = col[0]
+		var h := _sort_header(String(col[1]), sort_key == key, sort_desc, Vector2(col[2], 0), Vector2(col[3], 14))
+		h.pressed.connect(func():                   # the same column again: the other way round
+			sort_desc = (not sort_desc) if sort_key == key else false
+			sort_key = key
+			_rebuild())
+		_headers.add_child(h)
 	for c in _rows.get_children():
 		c.queue_free()
-	for f in friends:
-		_rows.add_child(_row(f))
+	var i := 0
+	for f in _sorted():
+		_rows.add_child(_row(f, i))
+		i += 1
 	var online_n := friends.filter(func(f): return f.online).size()
 	_count.text = ("%d FRIENDS  (%d ONLINE)" % [friends.size(), online_n]) if friends.size() > 0 else ""
 	if not Server.active:
@@ -157,18 +174,41 @@ func _rebuild() -> void:
 	(_actions["tell"] as Button).disabled = selected == ""
 
 
-func _row(f: Dictionary) -> Control:
-	var row := Button.new()
-	row.flat = true
-	row.focus_mode = Control.FOCUS_NONE
-	row.custom_minimum_size = Vector2(BODY.x - 20, ROW_H + 2)
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+## The friends in the chosen order; ties (and the default order) by name.
+func _sorted() -> Array:
+	var out := friends.duplicate()
+	var key := sort_key
+	var desc := sort_desc
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var c := 0
+		match key:
+			"":
+				c = _compare(0 if a.online else 1, 0 if b.online else 1)
+			"level":
+				c = _compare(int(a.level), int(b.level))
+			"zone":                                   # where online friends are first, then offline ones' last-on
+				c = _compare(0 if a.online else 1, 0 if b.online else 1)
+				if c == 0:
+					c = _compare(String(a.zone).to_lower(), String(b.zone).to_lower())
+			_:
+				c = _compare(String(a[key]).to_lower(), String(b[key]).to_lower())
+		if desc:
+			c = -c
+		if c == 0:
+			c = _compare(String(a.name).to_lower(), String(b.name).to_lower())
+		return c < 0)
+	return out
+
+
+func _row(f: Dictionary, index: int) -> Control:
 	var name: String = f.name
+	var sel := selected == name
+	var row := _list_row(Vector2(BODY.x - 36, ROW_H + 2), sel, index)
 	row.pressed.connect(func():
 		selected = name
 		_rebuild())
 	var color := UiArt.CREAM if f.online else UiArt.DIM
-	if selected == name:
+	if sel:
 		color = UiArt.GOLD_HI
 	var parts := [
 		[f.name, COLS[0][2], COLS[0][3]],
@@ -179,11 +219,13 @@ func _row(f: Dictionary) -> Control:
 	]
 	for p in parts:
 		var lab := UiArt.label(String(p[0]), 10, color)
-		lab.position = Vector2(float(p[1]) - 8, 1)
-		lab.size = Vector2(float(p[2]), ROW_H - 2)
+		lab.position = Vector2(float(p[1]) - 12 + 2, 2)
+		lab.size = Vector2(float(p[2]) - 4, ROW_H - 2)
 		lab.clip_text = true
 		lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(lab)
+	if String(f.zone) != "":
+		row.tooltip_text = String(f.zone)
 	return row
 
 
@@ -197,3 +239,65 @@ func _act(key: String) -> void:
 		Server.command("/invite %s" % selected)
 	elif key == "tell" and typing.is_valid():
 		typing.call("/send %s " % selected)
+
+
+# ---------------------------------------------------------------- shared look (the same helpers as lfg_window.gd)
+
+## A dark fill under the stone frame: the nine-patch's stretched top bar left a see-through seam over the body
+## (owner 2026-11-11: "a gap in the top line").
+func _backing() -> void:
+	var back := ColorRect.new()
+	back.color = Color(0.075, 0.07, 0.065)
+	back.position = Vector2(3, 3)
+	back.size = size - Vector2(6, 6)
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(back)
+	move_child(back, 0)
+
+
+## A clickable column header in the guild window's look: "  ^" sorted A-Z / low-high, "  v" the other way.
+static func _sort_header(text: String, active: bool, desc: bool, pos: Vector2, sz: Vector2) -> Button:
+	var h := Button.new()
+	h.text = text + (("  v" if desc else "  ^") if active else "")
+	h.flat = true
+	h.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	h.clip_text = true
+	h.position = pos
+	h.size = sz
+	h.focus_mode = Control.FOCUS_NONE
+	h.add_theme_font_override("font", UiArt.font(true))
+	h.add_theme_font_size_override("font_size", 9)
+	h.add_theme_color_override("font_color", UiArt.GOLD_HI if active else UiArt.GOLD)
+	h.add_theme_color_override("font_hover_color", UiArt.GOLD_HI)
+	h.add_theme_color_override("font_pressed_color", UiArt.GOLD_HI)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		var e := StyleBoxEmpty.new()
+		e.content_margin_left = 0
+		e.content_margin_top = 0
+		e.content_margin_right = 0
+		e.content_margin_bottom = 0
+		h.add_theme_stylebox_override(st, e)
+	h.tooltip_text = "SORT BY " + text
+	return h
+
+
+## A list row in the guild window's look: faint stripes, a gold band when selected or hovered.
+static func _list_row(sz: Vector2, sel: bool, index: int) -> Button:
+	var row := Button.new()
+	row.focus_mode = Control.FOCUS_NONE
+	row.custom_minimum_size = sz
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(UiArt.GOLD, 0.22) if sel else (Color(1, 1, 1, 0.035) if index % 2 == 0 else Color(0, 0, 0, 0))
+	row.add_theme_stylebox_override("normal", bg)
+	var hov := bg.duplicate() as StyleBoxFlat
+	hov.bg_color = Color(UiArt.GOLD, 0.30 if sel else 0.12)
+	row.add_theme_stylebox_override("hover", hov)
+	row.add_theme_stylebox_override("pressed", hov)
+	row.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	return row
+
+
+static func _compare(a: Variant, b: Variant) -> int:
+	if a == b:
+		return 0
+	return -1 if a < b else 1
