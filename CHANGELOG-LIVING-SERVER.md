@@ -8,6 +8,13 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.6 — 2026-11-11
+
+Republish of the 1.1.5 package so the launcher update check can offer it after 1.1.5: same new-client
+friends/LFG/commander packaging and Active Population / Spec filter fixes, plus INSTALL skipping
+`new-client` Create patches on classic (no new-client) installs
+([docs/RELEASE-NOTES-1.1.6.md](docs/RELEASE-NOTES-1.1.6.md)).
+
 ## Beta 1.1.5 — 2026-11-10
 
 Packages the new-client friends, LFG and commander Godot scripts (and `MMOEngine.dll`) so 0.37c actually gets
