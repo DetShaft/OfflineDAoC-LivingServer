@@ -342,12 +342,6 @@ func _add_npc(d: Dictionary) -> void:
 	_unknown.erase(oid)
 	# the server sends a living again when you target it (PlayerTargetHandler -> UpdateObjectForPlayer) and when it
 	# changes: the same model is updated in place - the view, your target and its name stay
-	var old: NpcState = by_oid.get(oid)
-	if old and String(old.spawn.get("model", "")) == str(int(d.model)):
-		_update_npc(old, d)
-		return
-	if old:
-		_remove(oid, false)
 	var f := int(d.flags)
 	var f2 := int(d.flags2)
 	# the packet's flags -> the database's eFlags (what Npc / NamePlates read)
@@ -359,6 +353,15 @@ func _add_npc(d: Dictionary) -> void:
 	if f & 0x10: flags |= 0x10                                  # peace
 	if f & 0x20: flags |= 0x20                                  # flying
 	if f & 0x04: flags |= 0x40                                  # torch
+	var old: NpcState = by_oid.get(oid)
+	# a living whose ghost / name / can't-target / peace flags changed is built again: its pick shape and name plate
+	# are made from them (a scripted mob revealed when its adds die - Snarls - must become targetable)
+	if old and String(old.spawn.get("model", "")) == str(int(d.model)) \
+			and (int(old.spawn.get("flags", 0)) & 0x1D) == (flags & 0x1D):
+		_update_npc(old, d)
+		return
+	if old:
+		_remove(oid, false)
 	var p := scene_pos(float(d.x), float(d.y), float(d.z))
 	var spawn := {"id": "srv%d" % oid, "oid": oid, "name": String(d.name), "guild": String(d.guild),
 			"realm": f >> 6, "flags": flags, "level": int(d.level) & 0x7F, "size": int(d.size), "model": str(int(d.model)),
