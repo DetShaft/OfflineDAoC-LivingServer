@@ -10,22 +10,21 @@ zip's SHA-256 is filled in when publishing.
 
 1.1.8 is a **DetShaft fork prerelease**. Same Offline DAoC **0.37 / 0.37b / 0.37c** base.
 
-**Why 1.1.7 still hung (confirmed on Jay's 20:41 run):** not a second folder and not a `.gdc` cache. INSTALL
-and the launcher both use the same game-root `new-client\godot` (launcher `--path` is
-`new-client\runtime\..\godot`). Content patches only replace a file when it still has the *Released* (stock
-0.37c) hash, unless the entry sets `ReplaceAny`. After 1.1.6, `game_ui.gd` was already a Living Server Fixed
-hash, so 1.1.7 left it alone (`not the released file, left alone`) while still updating the server/launcher —
-apply-update only checked those DLLs. Jay's Godot log still showed parse errors at the old typed lines
-(`LfgWindow` at :812, etc.): that is the 1.1.6 `game_ui.gd`, not the published 1.1.7 preload file (where
-:808–818 is siege/guild code). Server WorldInit completed because the hang is client-side.
+**Why 1.1.7 still hung:** not a second folder and not a `.gdc` cache. INSTALL (also what
+`LivingServer-Setup-*.exe` runs) and the launcher both use the same game-root `new-client\godot`. Content
+patches only replaced a file when it still had the *Released* (stock 0.37c) hash, unless `ReplaceAny`. After
+1.1.6, `game_ui.gd` was already a Living Server Fixed hash, so 1.1.7 left it alone while updating the
+server/launcher; a full Setup re-run then said "Already installed" once the DLLs matched. Jay's Godot log
+still showed typed `LfgWindow` at :812 — the 1.1.6 file, not the published 1.1.7 preload script.
 
 **1.1.8 client:** ships the **1.1.7 preload-based** friends / LFG / commander UI (`const FriendsWindow :=
 preload(...)` etc.), not stock 0.37c. `game_ui.gd` prints `LivingServer client patch 1.1.8
 (social_windows=...)` at startup so godot logs show which script loaded. **Off switch:** in
 `user://settings.cfg` (under `new-client/save`) set `[living_server] social_windows=false` — windows stay
-unwired without rolling scripts back (default `true`). INSTALL `ReplaceAny` / always-replace for Living
-Server `new-client/godot/game/**.gd` File payloads, clears `global_script_class_cache.cfg` /
-`uid_cache.bin` / loose `.gdc`, and apply-update verifies those Fixed hashes before success.
+unwired without rolling scripts back (default `true`). Setup / INSTALL / apply-update write Living Server
+`new-client/godot/game/**.gd` File payloads whenever the on-disk hash differs, refuse "Already installed"
+and fail the install if post-write Fixed hashes do not match, clear `global_script_class_cache.cfg` /
+`uid_cache.bin` / loose `.gdc`, and apply-update double-checks those hashes.
 
 **Server:** keeps the `TryResurrectGroupMember` null-guard from 1.1.7.
 

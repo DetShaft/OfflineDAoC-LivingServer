@@ -413,7 +413,12 @@ Set-Content -LiteralPath (Join-Path $uiGame 'new-client\godot\project.godot') -V
 $uiInstall = RunIn $patched 'install-server-build.ps1' @('-GameFolder', $uiGame)
 $uiPath = Join-Path $uiGame 'new-client\godot\game\ui\game_ui.gd'
 Check ($uiInstall.Code -eq 0 -and [IO.File]::ReadAllText($uiPath) -eq $newUi) "content: prior Living Server Fixed game_ui.gd is replaced without ReplaceAny flag`n$($uiInstall.Output)"
-Check ($uiInstall.Output -match 'Living Server \.gd File|ReplaceAny') "content: install log names the Living Server .gd replace path`n$($uiInstall.Output)"
+Check ($uiInstall.Output -match 'hash differs, will write Fixed|Living Server \.gd|ReplaceAny') "content: install log names the Living Server .gd replace path`n$($uiInstall.Output)"
+# Setup re-run: DLLs already this build, game_ui corrupted again — must rewrite, not "Already installed".
+[IO.File]::WriteAllText($uiPath, $oldUi)
+$uiAgain = RunIn $patched 'install-server-build.ps1' @('-GameFolder', $uiGame)
+Check ($uiAgain.Code -eq 0 -and [IO.File]::ReadAllText($uiPath) -eq $newUi) "content: Setup/INSTALL re-run rewrites stale game_ui when DLLs already match`n$($uiAgain.Output)"
+Check ($uiAgain.Output -notmatch 'Already installed') "content: re-run with stale game_ui must not exit Already installed`n$($uiAgain.Output)"
 
 [IO.File]::WriteAllText((Join-Path $patched 'content-patches.json'), '[]')
 $damaged = Join-Path $work 'content-damaged'

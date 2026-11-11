@@ -38,10 +38,10 @@ run themselves, whether or not you come along.
 
 ## New in Beta 1.1.8
 
-Fixes 1.1.7 leaving 1.1.6's typed `game_ui.gd` in place (INSTALL skipped a prior Living Server Fixed hash).
-Ships the preload-based friends/LFG/commander UI, a LivingServer client patch banner, and
-`[living_server] social_windows=false` to turn those windows off. INSTALL always replaces Living Server `.gd`
-File payloads, clears Godot script cache, and apply-update verifies those hashes
+Fixes 1.1.7 leaving 1.1.6's typed `game_ui.gd` in place (Setup/INSTALL skipped a prior Living Server Fixed
+hash). Ships the preload-based friends/LFG/commander UI, a LivingServer client patch banner, and
+`[living_server] social_windows=false` to turn those windows off. Setup/INSTALL rewrite Living Server `.gd`
+File payloads whenever the hash differs and fail if post-install hashes do not match
 ([what's new](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.8-beta)).
 
 ## New in Beta 1.1.7

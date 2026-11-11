@@ -171,6 +171,39 @@ function Get-ContentPath([string]$Game, [string]$Relative) {
     return (Join-Path $Game ($Relative.Replace('/', [IO.Path]::DirectorySeparatorChar)))
 }
 
+# Living Server ships full File payloads for new-client/godot/game/**.gd (UI/net). INSTALL / Setup / apply-update
+# must overwrite whenever the on-disk hash is not Fixed — silent "left alone" is why 1.1.7 Setup left Jay on
+# 1.1.6's typed game_ui while the server DLL was already current.
+function Test-IsLivingServerGdFilePatch($Patch) {
+    $p = [string]$Patch.Path
+    return [bool]$Patch.File -and $p.StartsWith('new-client/godot/game/') -and $p.EndsWith('.gd')
+}
+
+# Stops with a clear message when any required Living Server .gd File payload is missing or not Fixed.
+# Setup and zip INSTALL both call this after writes (and before "Already installed") so a partial update cannot
+# look successful. Skips when the game has no new-client tree (classic 0.37/0.37b).
+function Assert-LivingServerGdFixed([string]$Game, $Patches, [string]$When) {
+    if (!(Test-Path -LiteralPath (Join-Path $Game 'new-client'))) { return }
+    $bad = @()
+    foreach ($patch in @($Patches)) {
+        if (!(Test-IsLivingServerGdFilePatch $patch)) { continue }
+        $path = Get-ContentPath $Game $patch.Path
+        $want = ([string]$patch.Fixed).ToLowerInvariant()
+        if (!(Test-Path -LiteralPath $path)) {
+            $bad += "$($patch.Path): missing (expected Fixed $want)"
+            continue
+        }
+        $got = Get-Sha256 $path
+        if ($got -ne $want) {
+            $bad += "$($patch.Path): on disk $got, expected Fixed $want"
+        }
+    }
+    if ($bad.Count -gt 0) {
+        Stop-WithMessage ("Living Server new-client scripts are wrong $When (Setup and INSTALL share this path; the launcher " +
+            "starts this same new-client\godot folder):`n  " + ($bad -join "`n  ") + "`nRe-run INSTALL / Setup from a fresh package.")
+    }
+}
+
 # The world database and its WAL files, when present (Living Server 1.1.2: the installer backs them up first). With the
 # server closed, the database file and its -wal are a consistent set; -shm is only an index SQLite rebuilds.
 function Get-WorldDatabaseFiles([string]$Game) {
