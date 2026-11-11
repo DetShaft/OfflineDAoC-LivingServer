@@ -1,0 +1,3 @@
+# Content-patch File payloads are hashed in content-patches.json. Windows
+# autocrlf must not rewrite them or INSTALL / CI installer tests fail the Fixed hash.
+tools/fork-build/content/** -text
