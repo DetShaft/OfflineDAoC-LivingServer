@@ -253,8 +253,10 @@ public sealed class LauncherPresentationTests
         Assert.That(buttons.All(button => !button.Enabled), Is.True);
         Assert.That(form.UseWaitCursor, Is.False, "Snapshot feedback is provided by disabled buttons and READING text.");
 
-        mainFormType.GetMethod("RestoreButtonsAfterSnapshot", HiddenStatic)!
-            .Invoke(null, new[] { savedStates });
+        // RestoreButtonsAfterSnapshot is instance (it only walks the saved dictionary); calling it
+        // as static left GetMethod null and NRE'd the suite on Windows CI.
+        mainFormType.GetMethod("RestoreButtonsAfterSnapshot", HiddenInstance)!
+            .Invoke(form, new[] { savedStates });
         Assert.That(buttons.All(button => button.Enabled == originalStates[button]), Is.True);
     }
 

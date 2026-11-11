@@ -12,7 +12,12 @@ Older entries below keep the names they were written with.
 
 Packages the new-client friends, LFG and commander Godot scripts (and `MMOEngine.dll`) so 0.37c actually gets
 Shift+F / Shift+L and the panels. 1.1.4 had the server and launcher bits but omitted `new-client\godot` from the
-zip. INSTALL now Create/ReplaceAny those files; ROLLBACK restores or removes them
+zip. INSTALL now Create/ReplaceAny those files; ROLLBACK restores or removes them.
+
+Also fixes the Active Population empty-grid regression from the 1.1.4 launcher rebind path: the header could
+show dozens of online bots while the roster table stayed blank under All realms / Spec Auto / Online Only.
+The grid now rebinds with ListChanged live, and Spec is a usable population filter with an Any option (Any /
+Auto / disabled never hide rows) instead of a disabled create-only Auto (hashed) control
 ([docs/RELEASE-NOTES-1.1.5.md](docs/RELEASE-NOTES-1.1.5.md)).
 
 ## Beta 1.1.4 — 2026-11-10

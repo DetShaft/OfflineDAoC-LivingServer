@@ -192,14 +192,21 @@ if (@($launcherPlan | Where-Object { $_.State -eq 'unknown' }).Count -gt 0 -and 
         'Restore the original first, or run with -Force to replace it anyway (it is still backed up).')
 }
 # Game files this build fixes in place: the released file (or, for Create / ReplaceAny entries, a missing or any file).
+# Create/ReplaceAny under new-client/ only apply when the game already has the new client (0.37c). Otherwise a
+# classic install would grow a half-empty new-client tree from friends/LFG/commander Create entries.
+$hasNewClient = Test-Path -LiteralPath (Join-Path $game 'new-client')
 $contentPlan = @()
 foreach ($patch in $contentPatches) {
     $path = Get-ContentPath $game $patch.Path
     $create = [bool]$patch.Create
     $replaceAny = [bool]$patch.ReplaceAny
+    $newClientOnly = [string]$patch.Path -like 'new-client/*'
     $exists = Test-Path -LiteralPath $path
     if (!$exists) {
-        if ($create -or $replaceAny) {
+        if (($create -or $replaceAny) -and $newClientOnly -and !$hasNewClient) {
+            $state = 'not in this game, skipped'
+        }
+        elseif ($create -or $replaceAny) {
             $state = 'missing, will be created'
             if ($patch.File) {
                 $shipped = Get-ContentPatchFile $patch $buildDir

@@ -8,8 +8,14 @@ namespace DOL.GS
     /// </summary>
     public static class BotSpecializationChoices
     {
+        /// <summary>Sentinel for the Active Population Spec filter "Any" — never excludes a row.</summary>
+        public const int AnySpecFilter = -2;
+
         /// <summary>Sentinel written by the launcher when the player leaves Spec on Auto (hashed botId).</summary>
         public const int AutoPreferredSpec = -1;
+
+        /// <summary>True when Spec is Any / Auto / otherwise not a concrete preferred line — filter must be a no-op.</summary>
+        public static bool IsSpecFilterNoOp(int specType) => specType < 0;
 
         public static IReadOnlyList<eSpecType> For(eCharacterClass charClass) => charClass switch
         {
