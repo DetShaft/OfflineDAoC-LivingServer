@@ -4190,9 +4190,8 @@ namespace DOL.GS
             }
         }
 
-        // Level sync for the bots a player spawned (/spawn helpers and saved
-        // /bot companions): when the owner out-levels a companion in their
-        // group, the companion catches up to the owner's level, with its specs,
+        // Level sync for /spawn helpers: when the owner out-levels a helper in
+        // their group, the helper catches up to the owner's level, with its specs,
         // spells, styles, generated kit and pet brought up to date. Upward only.
         // Run on the bot's normal turn, never in a player event or during
         // combat/casting/horse travel. Preserve the existing build/group.
@@ -4200,13 +4199,16 @@ namespace DOL.GS
         // Epic Special Forces keep their own progression and never enter it.
         internal bool TryMatchOwnerLevel()
         {
-            if (Owner == null || IsAutonomousWorldBot || IsEpicSpecialForce)
+            // Only /spawn helpers. The legacy saved-companion path (BotCommand,
+            // BotDatabase) is not a registered command, and autonomous bots and
+            // the Special Forces have their own progression.
+            if (!IsTemporaryGroupHelper || Owner == null || IsAutonomousWorldBot || IsEpicSpecialForce)
                 return false;
             byte targetLevel = CompanionLevelSync.TargetLevel(Owner.Level, Level, MaxLevel);
             // Behind the owner and in the owner's group, or (as before) a /spawn
             // helper at 50 whose endgame kit has not been applied yet.
             bool levelBehind = targetLevel > Level && CompanionLevelSync.InOwnersGroup(Group, Owner.Group);
-            bool endgamePending = IsTemporaryGroupHelper && !_endgameCompanionEquipped &&
+            bool endgamePending = !_endgameCompanionEquipped &&
                                   Owner.Level == 50 && Level == 50;
             if ((!levelBehind && !endgamePending) ||
                 !IsAlive || IsCasting || InCombat || IsAttacking || IsOnStableMasterRoute ||
@@ -4226,7 +4228,7 @@ namespace DOL.GS
             SetBotSpells();
             SortStyles();
             SortSpells();
-            EquipBot((byte)CompanionLevelSync.GearLevel(IsTemporaryGroupHelper, Level, _generatedGearLevel,
+            EquipBot((byte)CompanionLevelSync.GearLevel(true, Level, _generatedGearLevel,
                 Random.Shared.NextDouble()));
             // Replace a lower-level summon through its normal release lifecycle
             // so the brain resummons it at the new level. In particular this
@@ -4242,13 +4244,10 @@ namespace DOL.GS
 
             if (previousLevel < Level)
             {
-                if (!IsTemporaryGroupHelper && !BotDatabase.SaveBotLevel(this))
-                    log.Warn($"Bot '{Name}' reached level {Level} but its saved level could not be updated.");
-
                 Owner.Out?.SendMessage($"{Name} is now level {Level}, matching you.",
                     eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 log.Info($"COMPANION_LEVEL_SYNC bot=\"{Name}\" class=\"{ClassName}\" owner=\"{Owner.Name}\" " +
-                         $"level={previousLevel}->{Level} temporary={IsTemporaryGroupHelper}");
+                         $"level={previousLevel}->{Level}");
             }
             return true;
         }

@@ -63,31 +63,6 @@ namespace DOL.GS
         }
 
         /// <summary>
-        /// Stores a saved companion's new level after it matched its owner's level.
-        /// Updates the existing profile row in place; a bot that was never saved is left alone.
-        /// </summary>
-        public static bool SaveBotLevel(GameBot bot)
-        {
-            if (bot == null || bot.DatabaseID == 0) return false;
-
-            try
-            {
-                var profile = GameServer.Database.FindObjectByKey<BotProfile>(bot.DatabaseID);
-                if (profile == null || profile.OwnerCharacterID != bot.Owner?.ObjectId)
-                    return false;
-                if (profile.Level == bot.Level)
-                    return true;
-                profile.Level = (byte)bot.Level;
-                return GameServer.Database.SaveObject(profile);
-            }
-            catch (Exception ex)
-            {
-                log.Error($"Error saving the level of bot {bot.Name}: {ex.Message}", ex);
-                return false;
-            }
-        }
-
-        /// <summary>
         /// Load bot from database
         /// </summary>
         public static GameBot LoadBot(GamePlayer owner, long botId)

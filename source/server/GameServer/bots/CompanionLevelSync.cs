@@ -3,8 +3,7 @@ using System;
 namespace DOL.GS
 {
     /// <summary>
-    /// Rules for the bots a player spawned (/spawn helpers and saved /bot
-    /// companions) following their owner's level while grouped with them.
+    /// Rules for /spawn helpers following their owner's level while grouped with them.
     /// The level change itself is applied by GameBot.TryMatchOwnerLevel on the
     /// bot's own idle turn. Autonomous gamebots never use these rules.
     /// </summary>
@@ -24,7 +23,7 @@ namespace DOL.GS
         /// <summary>
         /// The kit level to generate after a level sync. A /spawn helper rolls in the same
         /// level-10..level band it spawned with (the full endgame kit at 50) but never below
-        /// the kit it already wore; a saved companion is equipped at its level, as when it is spawned.
+        /// the kit it already wore. A non-temporary bot is equipped at its level.
         /// </summary>
         public static int GearLevel(bool temporary, int newLevel, int previousGearLevel, double roll)
         {
