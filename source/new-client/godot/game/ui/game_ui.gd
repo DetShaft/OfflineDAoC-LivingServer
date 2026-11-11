@@ -1889,6 +1889,7 @@ func handle_input(event: InputEvent) -> bool:
 	return false
 
 
+
 ## The world behind the windows as a drop target, only while something is being dragged (otherwise it lets every
 ## click through): an inventory item let go over the world goes to the zone viewer, which finds the NPC under the
 ## cursor - a smith repairs it ("[Give Smith an item to be repaired]"), a merchant buys it.
