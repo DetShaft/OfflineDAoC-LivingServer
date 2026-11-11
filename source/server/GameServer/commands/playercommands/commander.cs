@@ -8,7 +8,7 @@ namespace DOL.GS.Commands
 {
     /// <summary>
     /// Bonedancer commander controls: weapon, style preference, taunt, assist.
-    /// The new client opens the commander's clickable [keyword] dialog (interact or /commander menu).
+    /// The new client opens the commander's clickable [keyword] dialog (right-click it, or /commander menu).
     /// This command is the same orders for a typed line.
     /// </summary>
     [CmdAttribute(
@@ -277,7 +277,7 @@ namespace DOL.GS.Commands
             client.Out.SendMessage($"Commander spell preference set to {preferred}.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
         }
 
-        private static List<Style> CollectStyles(CommanderPet commander) => commander.StylesForEquippedWeapon();
+        private static List<Style> CollectStyles(CommanderPet commander) => commander.PickableStylesForEquippedWeapon();
 
         private static string WeaponToken(CommanderPet.eWeaponType type) => type switch
         {

@@ -10,6 +10,16 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.12 (in development)
 
+**Commander.** Right-click your commander to talk to it; a left click only targets it, and the ORDERS button
+beside the pet window is gone. The dialog reads as one exchange: the commander's answer to your last order
+is on top in its own colour, and the orders under it show what it does now (the weapon it holds, the style it
+favors, whether its minions assist and whether it taunts) instead of the whole block repeating under every
+click. Returned and Decayed commanders, which have no minions, no longer offer minion orders.
+Every weapon a commander can hold now has styles: it learns the Midgard sword, axe and hammer styles up to
+its own level (a higher commander knows more of them), on top of its template's styles. A hammer had none.
+Only styles that open on their own or from a position can be picked as a favorite; chain and defensive styles
+stay in its own rotation. Tests only: not yet seen in a log from Jay's PC.
+
 Snarls, the named wolf in East Svealand, can be targeted once it shows itself. It hides (no name, can't be
 targeted, can't fight) until three of its wolves die; when it came out, the classic client kept it untargetable and
 nameless while it attacked, and it killed a group's bots that the player could not help. Any change to an NPC's

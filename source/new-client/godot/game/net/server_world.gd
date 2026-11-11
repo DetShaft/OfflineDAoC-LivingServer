@@ -871,7 +871,6 @@ func con_level(player_level: int, npc_level: int) -> int:
 func select(n: Npc) -> void:
 	if n == null or not n.state.alive:
 		return
-	var previous := target
 	target = n
 	target_object = 0
 	var nm := String(n.spawn.name)
@@ -882,10 +881,10 @@ func select(n: Npc) -> void:
 			"health": n.state.health, "guild": String(n.spawn.get("guild", ""))})
 	if Server.client:
 		Server.client.call("Target", int(n.spawn.get("oid", 0)), 0x8000 | 0x6000)
-	# Targeting your commander opens its order dialog. /commander menu, not Interact:
-	# an interact outside visibility makes the server delete the object.
-	if n != previous and pet_oid > 0 and int(n.spawn.get("oid", 0)) == pet_oid and PlayerData.class_id() == 30:
-		Server.command("/commander menu")
+
+
+func _is_my_commander(n: Npc) -> bool:
+	return pet_oid > 0 and int(n.spawn.get("oid", 0)) == pet_oid and PlayerData.class_id() == 30
 
 
 func clear_target() -> void:
@@ -898,6 +897,11 @@ func clear_target() -> void:
 
 func interact(n: Npc) -> void:
 	if n == null or Server.client == null:
+		return
+	# Right-clicking your commander opens its order dialog (a left click only targets it; owner 2026-11-11).
+	# /commander menu, not Interact: an interact outside visibility makes the server delete the object.
+	if _is_my_commander(n):
+		Server.command("/commander menu")
 		return
 	var r := Server.to_region(_current_zone(), player.global_position)
 	Server.client.call("Interact", int(n.spawn.get("oid", 0)), int(r.x), int(r.y))
@@ -929,7 +933,8 @@ func _message(d: Dictionary) -> void:
 		var who := String(PlayerData.target.get("name", ""))
 		var mine := pet_oid > 0 and _target_oid() == pet_oid
 		viewer.ui.npc_dialog.say("srv%d" % _target_oid(), who, text, append, mine)
-		PlayerData.message.emit(text, "npc")
+		# the commander's dialog carries its whole order list; the chat gets only what it said to you
+		PlayerData.message.emit(text.get_slice("\n", 0) if mine else text, "npc")
 		return
 	if t >= 0xC8 and t <= 0xCB:                                 # screen centre (zone names, warnings)
 		if viewer and viewer.ui and viewer.ui.has_method("center_message"):
