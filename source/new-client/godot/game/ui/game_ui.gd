@@ -25,6 +25,14 @@ const RESTORABLE := [["panel", "CHARACTER PANEL"], ["status", "STATUS"], ["chat"
 		["journal", "QUEST JOURNAL"], ["conc", "CONCENTRATION"], ["benefits", "BENEFITS"], ["warmap", "WAR MAP"],
 		["target", "TARGET"], ["raid", "RAID"], ["guild", "GUILD"]]
 
+## Friends / LFG / commander are Living Server Create scripts. Typed global class_name refs fail on a
+## packaged 0.37c client whose .godot/global_script_class_cache.cfg was built without them (INSTALL
+## adds the .gd files but does not rewrite that cache), so GameUI never compiles and the loading
+## screen never finishes. preload() resolves by path once the files exist on disk.
+const FriendsWindow := preload("res://game/ui/friends_window.gd")
+const LfgWindow := preload("res://game/ui/lfg_window.gd")
+const CommanderPanel := preload("res://game/ui/commander_panel.gd")
+
 var root: Control
 var ui_scale := 1.0
 var windows := {}
@@ -809,11 +817,11 @@ func siege_window_close() -> void:
 ## The guild window (Shift+G): the server's guild roster (GuildWindow).
 var guild_window: GuildWindow
 ## Looking For Group browser (Shift+L): FindGroupUpdate 0x86 + /lfg list.
-var lfg_window: LfgWindow
-## Bonedancer commander controls beside the minipet (CommanderPanel).
-var commander_panel: CommanderPanel
-## Modern friends window (Shift+F / /friend window): FriendsWindow in friends_window.gd.
-var friends_window: FriendsWindow
+var lfg_window  # preload consts above (not global class_name cache)
+## Bonedancer commander controls beside the minipet.
+var commander_panel
+## Modern friends window (Shift+F / /friend window).
+var friends_window
 ## The guild emblem picker - the server opens it (EmblemDialogue).
 var emblem_window: EmblemWindow
 

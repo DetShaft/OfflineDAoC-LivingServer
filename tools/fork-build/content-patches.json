@@ -1,505 +1,505 @@
 [
- {
-  "Path": "runtime/server/navmesh/zone277.nav",
-  "Released": "6112730fa0b8a2caed1fcd96212d918d2e09ccc0810f04b877cd976fc1c06d04",
-  "Fixed": "2d8b7da141b4ee383d40e241a66ba44e5ec386abbfababce4a9988eb023abcd0",
-  "Size": 1121688,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     825528
+  {
+    "Path": "runtime/server/navmesh/zone277.nav",
+    "Released": "6112730fa0b8a2caed1fcd96212d918d2e09ccc0810f04b877cd976fc1c06d04",
+    "Fixed": "2d8b7da141b4ee383d40e241a66ba44e5ec386abbfababce4a9988eb023abcd0",
+    "Size": 1121688,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          825528
+        ]
+      },
+      {
+        "data": "yBM="
+      },
+      {
+        "copy": [
+          825530,
+          30
+        ]
+      },
+      {
+        "data": "EwAAADAAAABi"
+      },
+      {
+        "copy": [
+          825569,
+          19
+        ]
+      },
+      {
+        "data": "Aw=="
+      },
+      {
+        "copy": [
+          825589,
+          551
+        ]
+      },
+      {
+        "data": "ANhgRACY1UMAt5hEAHpgRAAY1kMAuZhEAMpgRACY1UMAdJhEAHBgRAAY1kMAdphEAAphRACY1UMADplEALBgRDMf1kMAFJlE"
+      },
+      {
+        "copy": [
+          826140,
+          512
+        ]
+      },
+      {
+        "data": "/////yo="
+      },
+      {
+        "copy": [
+          827331,
+          17
+        ]
+      },
+      {
+        "data": "AAAAAAAAAQACQP////8s"
+      },
+      {
+        "copy": [
+          827363,
+          17
+        ]
+      },
+      {
+        "data": "AAAAAAAAAQACQP////8u"
+      },
+      {
+        "copy": [
+          827395,
+          17
+        ]
+      },
+      {
+        "data": "AAAAAAAAAQAC"
+      },
+      {
+        "copy": [
+          827668,
+          16
+        ]
+      },
+      {
+        "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+      },
+      {
+        "copy": [
+          828024,
+          2104
+        ]
+      },
+      {
+        "data": "AAAAAADYYEQAmNVDALeYRAB6YEQAGNZDALmYRAAAAD8QAAH/AAAAAADKYEQAmNVDAHSYRABwYEQAGNZDAHaYRAAAAD8RAAH/AAAAAAAKYUQAmNVDAA6ZRACwYEQzH9ZDABSZRAAAAD8SAAH/"
+      },
+      {
+        "copy": [
+          830128,
+          291092
+        ]
+      }
     ]
-   },
-   {
-    "data": "yBM="
-   },
-   {
-    "copy": [
-     825530,
-     30
+  },
+  {
+    "Path": "new-client/godot/content/zones/zone011/models/borderkeep1.gltf",
+    "Released": "3ad2d3fb43e2723e9098d44bff77cbb5f7c377c20811f1bf776f42bfe81d4e55",
+    "Fixed": "6c6369de497100344fd2e7cf05cf05593c355fad3f1a2bda0b2482cae05f4b54",
+    "Size": 928189,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          925040
+        ]
+      },
+      {
+        "data": "MTAuMzc3MTM5"
+      },
+      {
+        "copy": [
+          925048,
+          1402
+        ]
+      },
+      {
+        "data": "My43NjM2OTk="
+      },
+      {
+        "copy": [
+          926458,
+          244
+        ]
+      },
+      {
+        "data": "MTAuNzAxMDQx"
+      },
+      {
+        "copy": [
+          926710,
+          1477
+        ]
+      }
     ]
-   },
-   {
-    "data": "EwAAADAAAABi"
-   },
-   {
-    "copy": [
-     825569,
-     19
+  },
+  {
+    "Path": "new-client/godot/content/zones/zone012/models/borderkeep1.gltf",
+    "Released": "3ad2d3fb43e2723e9098d44bff77cbb5f7c377c20811f1bf776f42bfe81d4e55",
+    "Fixed": "6c6369de497100344fd2e7cf05cf05593c355fad3f1a2bda0b2482cae05f4b54",
+    "Size": 928189,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          925040
+        ]
+      },
+      {
+        "data": "MTAuMzc3MTM5"
+      },
+      {
+        "copy": [
+          925048,
+          1402
+        ]
+      },
+      {
+        "data": "My43NjM2OTk="
+      },
+      {
+        "copy": [
+          926458,
+          244
+        ]
+      },
+      {
+        "data": "MTAuNzAxMDQx"
+      },
+      {
+        "copy": [
+          926710,
+          1477
+        ]
+      }
     ]
-   },
-   {
-    "data": "Aw=="
-   },
-   {
-    "copy": [
-     825589,
-     551
+  },
+  {
+    "Path": "new-client/godot/content/zones/zone056/models/caerdiogel.gltf",
+    "Released": "c1c4734fe5e285ba69b03e12f07f50e3359ec2c690382f5c88847f8c3b581c02",
+    "Fixed": "bacca0eb7abb710dc4422aa4e8770c85702d5405039e12ed3ea1be7e72852b9e",
+    "Size": 1735721,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          1735376
+        ]
+      },
+      {
+        "data": "MzUuNTkzMzY1"
+      },
+      {
+        "copy": [
+          1735385,
+          249
+        ]
+      },
+      {
+        "data": "MTMuNzIyODk0"
+      },
+      {
+        "copy": [
+          1735643,
+          78
+        ]
+      }
     ]
-   },
-   {
-    "data": "ANhgRACY1UMAt5hEAHpgRAAY1kMAuZhEAMpgRACY1UMAdJhEAHBgRAAY1kMAdphEAAphRACY1UMADplEALBgRDMf1kMAFJlE"
-   },
-   {
-    "copy": [
-     826140,
-     512
+  },
+  {
+    "Path": "new-client/godot/content/zones/zone060/models/stonehall16.gltf",
+    "Released": "d6b1b422be5eb4b90f1c312ad47f03939029f2cae8896f27acd23a28f9ee27b1",
+    "Fixed": "af9c0a8640919a7e8e09312742e049d7e8036307acd0dd977a69bc76b052421d",
+    "Size": 243445,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          242803
+        ]
+      },
+      {
+        "data": "MTEuNTA2MjIz"
+      },
+      {
+        "copy": [
+          242811,
+          633
+        ]
+      }
     ]
-   },
-   {
-    "data": "/////yo="
-   },
-   {
-    "copy": [
-     827331,
-     17
+  },
+  {
+    "Path": "new-client/godot/content/zones/zone102/models/n-borderkeep1.gltf",
+    "Released": "638813e0b77097b2a4237ddd859307c0cfaed664b81686197dbd13e3d0185188",
+    "Fixed": "2dabc7126dae963f36eec33fb6588d59e55ef66a121f5c8dc79e398e40ebca98",
+    "Size": 1060156,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          1057947
+        ]
+      },
+      {
+        "data": "My4wODM5NTg="
+      },
+      {
+        "copy": [
+          1057955,
+          2201
+        ]
+      }
     ]
-   },
-   {
-    "data": "AAAAAAAAAQACQP////8s"
-   },
-   {
-    "copy": [
-     827363,
-     17
+  },
+  {
+    "Path": "new-client/godot/content/zones/zone111/models/n-borderkeep1.gltf",
+    "Released": "638813e0b77097b2a4237ddd859307c0cfaed664b81686197dbd13e3d0185188",
+    "Fixed": "2dabc7126dae963f36eec33fb6588d59e55ef66a121f5c8dc79e398e40ebca98",
+    "Size": 1060156,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          1057947
+        ]
+      },
+      {
+        "data": "My4wODM5NTg="
+      },
+      {
+        "copy": [
+          1057955,
+          2201
+        ]
+      }
     ]
-   },
-   {
-    "data": "AAAAAAAAAQACQP////8u"
-   },
-   {
-    "copy": [
-     827395,
-     17
+  },
+  {
+    "Path": "new-client/godot/content/zones/zone190/models/altstonehall16.gltf",
+    "Released": "5502eac43b86831aea49451df8699479b332aefb127eb35001b62fc85ff476dd",
+    "Fixed": "3cc237337ef91b3010bf566a7d888328decfa52913b3e21f022feb40a2c83c96",
+    "Size": 243529,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          242887
+        ]
+      },
+      {
+        "data": "MTEuNTA2MjIz"
+      },
+      {
+        "copy": [
+          242895,
+          633
+        ]
+      }
     ]
-   },
-   {
-    "data": "AAAAAAAAAQAC"
-   },
-   {
-    "copy": [
-     827668,
-     16
+  },
+  {
+    "Path": "new-client/godot/content/zones/zone191/models/rootroom03.gltf",
+    "Released": "08dceed388424ba72aa686b3838abc22bbe2320632516f53af0662d87c540a3c",
+    "Fixed": "e497ba185c6de951a6569ace0d31c3019d1409de2a8cfb06c3cc705ffeb9ba7e",
+    "Size": 1574464,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          1572041
+        ]
+      },
+      {
+        "data": "Mi4xNDE0MjIsIDQ2LjcwMDMyMw=="
+      },
+      {
+        "copy": [
+          1572060,
+          290
+        ]
+      },
+      {
+        "data": "Ni4wMTYxMTcsIDQ2Ljk2OTg1NQ=="
+      },
+      {
+        "copy": [
+          1572370,
+          267
+        ]
+      },
+      {
+        "data": "Ni4wOTExNDgsIDQ1LjE2MjYxNg=="
+      },
+      {
+        "copy": [
+          1572656,
+          243
+        ]
+      },
+      {
+        "data": "MTAuNjgwMDEyLCA0MS4wNDA4MjY="
+      },
+      {
+        "copy": [
+          1572918,
+          283
+        ]
+      },
+      {
+        "data": "NDIuNjYxNzIzLCAyNi42MjY2NTc="
+      },
+      {
+        "copy": [
+          1573220,
+          244
+        ]
+      },
+      {
+        "data": "MjMuODgyNjE5LCA0My43OTg0OA=="
+      },
+      {
+        "copy": [
+          1573484,
+          284
+        ]
+      },
+      {
+        "data": "NjEuMDI1MzAxLCAyOC42NDU4NTk="
+      },
+      {
+        "copy": [
+          1573788,
+          333
+        ]
+      },
+      {
+        "data": "MzYuOTkzMzI3LCAyNy40MTAwNzUsIDY3LjM0NzAxMQ=="
+      },
+      {
+        "copy": [
+          1574151,
+          236
+        ]
+      },
+      {
+        "data": "MzcuMDQ4ODU5"
+      },
+      {
+        "copy": [
+          1574394,
+          67
+        ]
+      }
     ]
-   },
-   {
-    "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
-   },
-   {
-    "copy": [
-     828024,
-     2104
+  },
+  {
+    "Path": "new-client/godot/game/quests/quest_markers.gd",
+    "Released": "ca712c84bdf86791dcf59ecf5912ec4416235a3717c9f6037a572630bc906606",
+    "Fixed": "468f9d98ed13ac86c9d984056ebe1093f18f6c36da35524e24b1f96d92eed700",
+    "Size": 8400,
+    "Ops": [
+      {
+        "copy": [
+          0,
+          5803
+        ]
+      },
+      {
+        "copy": [
+          5851,
+          34
+        ]
+      },
+      {
+        "data": "LiBTaW5jZSBMaXZpbmcgU2VydmVyIDEuMSB0aGUgc2VydmVyIHNlbmRzIG9uZSBzY2hlbWUgZm9yIGV2ZXJ5IE5QQw0KIyMgKFF1ZXN0SW5kaWNhdG9ycy5XaXJlKTogOCBpcyBhIHF1ZXN0IHlvdSBjYW4gdGFrZSwgMTYgaXMgYW4gTlBDIHlvdXIgY3VycmVudCBzdGVwIG5lZWRzLCAyIGlzIHRoZSBvbmUgdGhhdCBmaW5pc2hlcw0KIyMgdGhlIHF1ZXN0LiAxNiB1c2VkIHRvIGJlIGRyYXduIG9yYW5nZSBhcyAiYSBxdWVzdCBvZiB0aGVpcnMgaW4gcHJvZ3Jlc3MgZWxzZXdoZXJlIiwgd2hpY2ggaXMgbm90IHdoYXQgdGhlIHNlcnZlciBtZWFuczoNCiMjIGJvdGggMTYgYW5kIDIgYXJlICJnbyB0byB0aGVtIG5vdyIsIHNvIGJvdGggYXJlIGdyZWVuICgyMDI2LTEwLTMwKQ=="
+      },
+      {
+        "copy": [
+          5885,
+          91
+        ]
+      },
+      {
+        "data": "dHVybmlu"
+      },
+      {
+        "copy": [
+          5984,
+          2084
+        ]
+      }
     ]
-   },
-   {
-    "data": "AAAAAADYYEQAmNVDALeYRAB6YEQAGNZDALmYRAAAAD8QAAH/AAAAAADKYEQAmNVDAHSYRABwYEQAGNZDAHaYRAAAAD8RAAH/AAAAAAAKYUQAmNVDAA6ZRACwYEQzH9ZDABSZRAAAAD8SAAH/"
-   },
-   {
-    "copy": [
-     830128,
-     291092
-    ]
-   }
-  ]
- },
- {
-  "Path": "new-client/godot/content/zones/zone011/models/borderkeep1.gltf",
-  "Released": "3ad2d3fb43e2723e9098d44bff77cbb5f7c377c20811f1bf776f42bfe81d4e55",
-  "Fixed": "6c6369de497100344fd2e7cf05cf05593c355fad3f1a2bda0b2482cae05f4b54",
-  "Size": 928189,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     925040
-    ]
-   },
-   {
-    "data": "MTAuMzc3MTM5"
-   },
-   {
-    "copy": [
-     925048,
-     1402
-    ]
-   },
-   {
-    "data": "My43NjM2OTk="
-   },
-   {
-    "copy": [
-     926458,
-     244
-    ]
-   },
-   {
-    "data": "MTAuNzAxMDQx"
-   },
-   {
-    "copy": [
-     926710,
-     1477
-    ]
-   }
-  ]
- },
- {
-  "Path": "new-client/godot/content/zones/zone012/models/borderkeep1.gltf",
-  "Released": "3ad2d3fb43e2723e9098d44bff77cbb5f7c377c20811f1bf776f42bfe81d4e55",
-  "Fixed": "6c6369de497100344fd2e7cf05cf05593c355fad3f1a2bda0b2482cae05f4b54",
-  "Size": 928189,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     925040
-    ]
-   },
-   {
-    "data": "MTAuMzc3MTM5"
-   },
-   {
-    "copy": [
-     925048,
-     1402
-    ]
-   },
-   {
-    "data": "My43NjM2OTk="
-   },
-   {
-    "copy": [
-     926458,
-     244
-    ]
-   },
-   {
-    "data": "MTAuNzAxMDQx"
-   },
-   {
-    "copy": [
-     926710,
-     1477
-    ]
-   }
-  ]
- },
- {
-  "Path": "new-client/godot/content/zones/zone056/models/caerdiogel.gltf",
-  "Released": "c1c4734fe5e285ba69b03e12f07f50e3359ec2c690382f5c88847f8c3b581c02",
-  "Fixed": "bacca0eb7abb710dc4422aa4e8770c85702d5405039e12ed3ea1be7e72852b9e",
-  "Size": 1735721,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     1735376
-    ]
-   },
-   {
-    "data": "MzUuNTkzMzY1"
-   },
-   {
-    "copy": [
-     1735385,
-     249
-    ]
-   },
-   {
-    "data": "MTMuNzIyODk0"
-   },
-   {
-    "copy": [
-     1735643,
-     78
-    ]
-   }
-  ]
- },
- {
-  "Path": "new-client/godot/content/zones/zone060/models/stonehall16.gltf",
-  "Released": "d6b1b422be5eb4b90f1c312ad47f03939029f2cae8896f27acd23a28f9ee27b1",
-  "Fixed": "af9c0a8640919a7e8e09312742e049d7e8036307acd0dd977a69bc76b052421d",
-  "Size": 243445,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     242803
-    ]
-   },
-   {
-    "data": "MTEuNTA2MjIz"
-   },
-   {
-    "copy": [
-     242811,
-     633
-    ]
-   }
-  ]
- },
- {
-  "Path": "new-client/godot/content/zones/zone102/models/n-borderkeep1.gltf",
-  "Released": "638813e0b77097b2a4237ddd859307c0cfaed664b81686197dbd13e3d0185188",
-  "Fixed": "2dabc7126dae963f36eec33fb6588d59e55ef66a121f5c8dc79e398e40ebca98",
-  "Size": 1060156,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     1057947
-    ]
-   },
-   {
-    "data": "My4wODM5NTg="
-   },
-   {
-    "copy": [
-     1057955,
-     2201
-    ]
-   }
-  ]
- },
- {
-  "Path": "new-client/godot/content/zones/zone111/models/n-borderkeep1.gltf",
-  "Released": "638813e0b77097b2a4237ddd859307c0cfaed664b81686197dbd13e3d0185188",
-  "Fixed": "2dabc7126dae963f36eec33fb6588d59e55ef66a121f5c8dc79e398e40ebca98",
-  "Size": 1060156,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     1057947
-    ]
-   },
-   {
-    "data": "My4wODM5NTg="
-   },
-   {
-    "copy": [
-     1057955,
-     2201
-    ]
-   }
-  ]
- },
- {
-  "Path": "new-client/godot/content/zones/zone190/models/altstonehall16.gltf",
-  "Released": "5502eac43b86831aea49451df8699479b332aefb127eb35001b62fc85ff476dd",
-  "Fixed": "3cc237337ef91b3010bf566a7d888328decfa52913b3e21f022feb40a2c83c96",
-  "Size": 243529,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     242887
-    ]
-   },
-   {
-    "data": "MTEuNTA2MjIz"
-   },
-   {
-    "copy": [
-     242895,
-     633
-    ]
-   }
-  ]
- },
- {
-  "Path": "new-client/godot/content/zones/zone191/models/rootroom03.gltf",
-  "Released": "08dceed388424ba72aa686b3838abc22bbe2320632516f53af0662d87c540a3c",
-  "Fixed": "e497ba185c6de951a6569ace0d31c3019d1409de2a8cfb06c3cc705ffeb9ba7e",
-  "Size": 1574464,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     1572041
-    ]
-   },
-   {
-    "data": "Mi4xNDE0MjIsIDQ2LjcwMDMyMw=="
-   },
-   {
-    "copy": [
-     1572060,
-     290
-    ]
-   },
-   {
-    "data": "Ni4wMTYxMTcsIDQ2Ljk2OTg1NQ=="
-   },
-   {
-    "copy": [
-     1572370,
-     267
-    ]
-   },
-   {
-    "data": "Ni4wOTExNDgsIDQ1LjE2MjYxNg=="
-   },
-   {
-    "copy": [
-     1572656,
-     243
-    ]
-   },
-   {
-    "data": "MTAuNjgwMDEyLCA0MS4wNDA4MjY="
-   },
-   {
-    "copy": [
-     1572918,
-     283
-    ]
-   },
-   {
-    "data": "NDIuNjYxNzIzLCAyNi42MjY2NTc="
-   },
-   {
-    "copy": [
-     1573220,
-     244
-    ]
-   },
-   {
-    "data": "MjMuODgyNjE5LCA0My43OTg0OA=="
-   },
-   {
-    "copy": [
-     1573484,
-     284
-    ]
-   },
-   {
-    "data": "NjEuMDI1MzAxLCAyOC42NDU4NTk="
-   },
-   {
-    "copy": [
-     1573788,
-     333
-    ]
-   },
-   {
-    "data": "MzYuOTkzMzI3LCAyNy40MTAwNzUsIDY3LjM0NzAxMQ=="
-   },
-   {
-    "copy": [
-     1574151,
-     236
-    ]
-   },
-   {
-    "data": "MzcuMDQ4ODU5"
-   },
-   {
-    "copy": [
-     1574394,
-     67
-    ]
-   }
-  ]
- },
- {
-  "Path": "new-client/godot/game/quests/quest_markers.gd",
-  "Released": "ca712c84bdf86791dcf59ecf5912ec4416235a3717c9f6037a572630bc906606",
-  "Fixed": "468f9d98ed13ac86c9d984056ebe1093f18f6c36da35524e24b1f96d92eed700",
-  "Size": 8400,
-  "Ops": [
-   {
-    "copy": [
-     0,
-     5803
-    ]
-   },
-   {
-    "copy": [
-     5851,
-     34
-    ]
-   },
-   {
-    "data": "LiBTaW5jZSBMaXZpbmcgU2VydmVyIDEuMSB0aGUgc2VydmVyIHNlbmRzIG9uZSBzY2hlbWUgZm9yIGV2ZXJ5IE5QQw0KIyMgKFF1ZXN0SW5kaWNhdG9ycy5XaXJlKTogOCBpcyBhIHF1ZXN0IHlvdSBjYW4gdGFrZSwgMTYgaXMgYW4gTlBDIHlvdXIgY3VycmVudCBzdGVwIG5lZWRzLCAyIGlzIHRoZSBvbmUgdGhhdCBmaW5pc2hlcw0KIyMgdGhlIHF1ZXN0LiAxNiB1c2VkIHRvIGJlIGRyYXduIG9yYW5nZSBhcyAiYSBxdWVzdCBvZiB0aGVpcnMgaW4gcHJvZ3Jlc3MgZWxzZXdoZXJlIiwgd2hpY2ggaXMgbm90IHdoYXQgdGhlIHNlcnZlciBtZWFuczoNCiMjIGJvdGggMTYgYW5kIDIgYXJlICJnbyB0byB0aGVtIG5vdyIsIHNvIGJvdGggYXJlIGdyZWVuICgyMDI2LTEwLTMwKQ=="
-   },
-   {
-    "copy": [
-     5885,
-     91
-    ]
-   },
-   {
-    "data": "dHVybmlu"
-   },
-   {
-    "copy": [
-     5984,
-     2084
-    ]
-   }
-  ]
- },
- {
-  "Path": "runtime/client-opendaoc/app/pregame/splash.mpk",
-  "Released": "f24460d2b064b86527b1800940d6d80c26b67ca3531d91b87c3b7a4d38455a9e",
-  "Fixed": "20c43b9d96c88bbd45ba88b32b8241370d46734341f3d18aa23956fb035554cf",
-  "Size": 18108908,
-  "File": "content/pregame-splash.mpk"
- },
- {
-  "Path": "new-client/godot/game/ui/game_ui.gd",
-  "Released": "219cd58ad3e9d227e0436358379b8697fe147ad62df8c61d4d07234a8817d1b2",
-  "Fixed": "e791ba08ef518f774df8a8dcf58e035d51902bdfe58142e5071ecf25a6cd94c2",
-  "Size": 78959,
-  "File": "content/godot/game/ui/game_ui.gd"
- },
- {
-  "Path": "new-client/godot/game/ui/keybinds.gd",
-  "Released": "6a1be69702a57e79f08d71b785aa488e5e2d34d4198b1ed6588d365a24f31c78",
-  "Fixed": "716af2e51ceaf061e333afaea0826f42f5705a03c78e69ef5f193d3bc7fae84e",
-  "Size": 12291,
-  "File": "content/godot/game/ui/keybinds.gd"
- },
- {
-  "Path": "new-client/godot/game/net/server_world.gd",
-  "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
-  "Fixed": "18c270e3fc2c3d59d62ea0095a149ab67fac34b43f538247704fd5967cfc382a",
-  "Size": 86718,
-  "File": "content/godot/game/net/server_world.gd"
- },
- {
-  "Path": "new-client/godot/game/ui/friends_window.gd",
-  "Released": "",
-  "Fixed": "8c42ee4322a84013ebc99dd5e76f1bcce1b3dab10e47b91402440ee8f953f8a6",
-  "Size": 6096,
-  "File": "content/godot/game/ui/friends_window.gd",
-  "Create": true
- },
- {
-  "Path": "new-client/godot/game/ui/lfg_window.gd",
-  "Released": "",
-  "Fixed": "12faf8f702f1a28a8ac86547fe246fb559e283fca96251582469e8dbc05652f2",
-  "Size": 6049,
-  "File": "content/godot/game/ui/lfg_window.gd",
-  "Create": true
- },
- {
-  "Path": "new-client/godot/game/ui/commander_panel.gd",
-  "Released": "",
-  "Fixed": "fa33be761dcde570bad494cd6794100468233eabad9a4da5bbc50c41e41e04e6",
-  "Size": 3152,
-  "File": "content/godot/game/ui/commander_panel.gd",
-  "Create": true
- },
- {
-  "Path": "new-client/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll",
-  "Released": "569c22253243dfb1adabeab7e5d47b5722007568a35b8b68659548fc98b7b06c",
-  "Fixed": "f187d91c49130361cdec7e5759c418f2f7102c3ff462c17be466cbe6519b952a",
-  "Size": 167424,
-  "File": "content/new-client-network/MMOEngine.dll",
-  "ReplaceAny": true
- }
+  },
+  {
+    "Path": "runtime/client-opendaoc/app/pregame/splash.mpk",
+    "Released": "f24460d2b064b86527b1800940d6d80c26b67ca3531d91b87c3b7a4d38455a9e",
+    "Fixed": "20c43b9d96c88bbd45ba88b32b8241370d46734341f3d18aa23956fb035554cf",
+    "Size": 18108908,
+    "File": "content/pregame-splash.mpk"
+  },
+  {
+    "Path": "new-client/godot/game/ui/game_ui.gd",
+    "Released": "219cd58ad3e9d227e0436358379b8697fe147ad62df8c61d4d07234a8817d1b2",
+    "Fixed": "a0ac9f61ecf790e1c4bb7dcfc28859e360a852bf259695509b33a63749f2bb6b",
+    "Size": 78959,
+    "File": "content/godot/game/ui/game_ui.gd"
+  },
+  {
+    "Path": "new-client/godot/game/ui/keybinds.gd",
+    "Released": "6a1be69702a57e79f08d71b785aa488e5e2d34d4198b1ed6588d365a24f31c78",
+    "Fixed": "716af2e51ceaf061e333afaea0826f42f5705a03c78e69ef5f193d3bc7fae84e",
+    "Size": 12291,
+    "File": "content/godot/game/ui/keybinds.gd"
+  },
+  {
+    "Path": "new-client/godot/game/net/server_world.gd",
+    "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
+    "Fixed": "18c270e3fc2c3d59d62ea0095a149ab67fac34b43f538247704fd5967cfc382a",
+    "Size": 86718,
+    "File": "content/godot/game/net/server_world.gd"
+  },
+  {
+    "Path": "new-client/godot/game/ui/friends_window.gd",
+    "Released": "",
+    "Fixed": "8c42ee4322a84013ebc99dd5e76f1bcce1b3dab10e47b91402440ee8f953f8a6",
+    "Size": 6096,
+    "File": "content/godot/game/ui/friends_window.gd",
+    "Create": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/lfg_window.gd",
+    "Released": "",
+    "Fixed": "12faf8f702f1a28a8ac86547fe246fb559e283fca96251582469e8dbc05652f2",
+    "Size": 6049,
+    "File": "content/godot/game/ui/lfg_window.gd",
+    "Create": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/commander_panel.gd",
+    "Released": "",
+    "Fixed": "fa33be761dcde570bad494cd6794100468233eabad9a4da5bbc50c41e41e04e6",
+    "Size": 3152,
+    "File": "content/godot/game/ui/commander_panel.gd",
+    "Create": true
+  },
+  {
+    "Path": "new-client/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll",
+    "Released": "569c22253243dfb1adabeab7e5d47b5722007568a35b8b68659548fc98b7b06c",
+    "Fixed": "f187d91c49130361cdec7e5759c418f2f7102c3ff462c17be466cbe6519b952a",
+    "Size": 167424,
+    "File": "content/new-client-network/MMOEngine.dll",
+    "ReplaceAny": true
+  }
 ]

@@ -5820,19 +5820,25 @@ namespace DOL.AI.Brain
             // Lingering InCombat flags on distant members used to block the walk-to-corpse
             // fallback, so healers timed out with an empty cast. Prefer approaching the
             // corpse whenever the party is in that wait (or this bot is not personally fighting).
+            // Snapshot Group: ungrouped healers and mid-check disbands used to NRE on
+            // Body.Group.GetMembersInTheGroup() before the null check below (Jay's 1.1.6 log).
+            Group group = Body.Group;
             bool waitingForGroupRez = AutonomousBotGroupCoordinator.IsWaitingForResurrection(BotBody);
             bool selfBusyFighting = Body.InCombat || Body.IsAttacking ||
                 (HasAggro && !waitingForGroupRez);
-            bool alliesFighting = !waitingForGroupRez && Body.Group.GetMembersInTheGroup()
-                .Any(m => m.IsAlive && m.InCombat && Body.IsWithinRadius(m, GROUP_DEFENSE_ASSIST_RADIUS));
-            if (resurrection == null || Body.Group == null || selfBusyFighting || alliesFighting ||
+            if (resurrection == null || group == null || selfBusyFighting ||
                 Body.IsCasting || !CheckHealSpell(resurrection))
+                return false;
+            bool alliesFighting = !waitingForGroupRez && group.GetMembersInTheGroup()
+                .Any(m => m != null && m.IsAlive && m.InCombat && Body.IsWithinRadius(m, GROUP_DEFENSE_ASSIST_RADIUS));
+            if (alliesFighting)
                 return false;
 
             int range = BotBody.castingComponent.CalculateSpellRange(resurrection);
             bool regrouping = AutonomousBotGroupCoordinator.IsRecovering(BotBody);
-            GameLiving deadMember = Body.Group.GetMembersInTheGroup()
-                .Where(member => member != Body && !member.IsAlive && member.ObjectState is GameObject.eObjectState.Active &&
+            GameLiving deadMember = group.GetMembersInTheGroup()
+                .Where(member => member != null && member != Body && !member.IsAlive &&
+                                 member.ObjectState is GameObject.eObjectState.Active &&
                                  member.CurrentRegionID == Body.CurrentRegionID)
                 // Raise nearby casualties, but do not abandon recovery to chase
                 // a distant corpse back into the failed pull/dungeon room.
