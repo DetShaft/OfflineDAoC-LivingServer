@@ -520,5 +520,21 @@
     "Size": 167424,
     "File": "content/new-client-network/MMOEngine.dll",
     "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/combat/spell_fx.gd",
+    "Released": "23e22000e8cba4407a78d1a97913b0f77c93caae1f77615c39e3d3de19583c5e",
+    "Fixed": "ee4df2242604c1fe9d651ac0dd1e3d044975d4c4280b9481847eae9b5a5e09af",
+    "Size": 21595,
+    "File": "content/godot/game/combat/spell_fx.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/perf_governor.gd",
+    "Released": "4433f0c26de6260f6e3a8c4ecd9df7a7026a5aea47377b2af1e08d5bc65d1350",
+    "Fixed": "7180d400637c2f7a0ebb03cd9e19eea346774312e0b7a7c0c1650867f91f20c4",
+    "Size": 12472,
+    "File": "content/godot/game/perf_governor.gd",
+    "ReplaceAny": true
   }
 ]

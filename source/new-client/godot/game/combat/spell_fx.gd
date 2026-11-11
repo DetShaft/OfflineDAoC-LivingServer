@@ -225,6 +225,39 @@ static func _skeleton(root: Node) -> Skeleton3D:
 	return sk
 
 
+## Your own fight is never culled (Living Server 1.1.13, owner 2026-11-11: "most spell effects missing, even my own"):
+## an effect on you, aimed at you, or on anyone within NEAR_YOU_M of you (your target, your group, the bots casting
+## beside you) always plays. The distance is from your figure, not the camera: zoomed out, the camera is far enough
+## back that the performance governor's effect range (10 m at its busiest) dropped the spells landing on your own
+## target. Off-screen and far effects are still culled as before.
+const NEAR_YOU_M := 25.0
+static var _you: Node3D = null
+
+
+## The figure you play: the Player that holds the camera (Player builds its camera on a spring arm under itself).
+## Null in the zone viewer and in tests with no player.
+static func you(from: Node) -> Node3D:
+	if _you != null and is_instance_valid(_you) and _you.is_inside_tree():
+		return _you
+	_you = null
+	var cam: Node = from.get_viewport().get_camera_3d() if from != null and from.is_inside_tree() else null
+	while cam != null:
+		if cam is Player:
+			_you = cam as Node3D
+			break
+		cam = cam.get_parent()
+	return _you
+
+
+static func near_you(on: Node3D, target: Node3D = null) -> bool:
+	var me := you(on)
+	if me == null:
+		return false
+	if on == me or target == me:
+		return true
+	return me.global_position.distance_to(on.global_position) <= NEAR_YOU_M
+
+
 ## One speffects entry on a character: on its bone, at its chest, or at its feet. Returns the node (freed after the
 ## effect's duration, or by the caller).
 static var prof_play_us := 0                 # debug timing (tests/crowd_probe.gd)
@@ -256,7 +289,7 @@ static func _play(fx_id: int, on: Node3D, height := 1.8, keep := false, target: 
 	burst[1] = int(burst[1]) + 1
 	_fx_burst[fx_id] = burst
 	var cam := on.get_viewport().get_camera_3d()
-	if cam and not Perf.brute:               # culled: off screen, too far, or too many alive (the nearest win)
+	if cam and not Perf.brute and not near_you(on, target):   # culled: off screen, too far, or too many alive
 		var d := cam.global_position.distance_to(on.global_position)
 		if d > 6.0 and (d > Perf.fx_range or not cam.is_position_in_frustum(on.global_position + Vector3(0, 1, 0))
 				or _live_count() >= Perf.max_effects):
@@ -372,7 +405,8 @@ static func begin(client_effect: int, caster: Node3D, snd: CharacterSounds) -> A
 	var e := effect(client_effect)
 	var out := []
 	var cam := caster.get_viewport().get_camera_3d() if caster.is_inside_tree() else null
-	if cam and not Perf.brute and cam.global_position.distance_to(caster.global_position) > Perf.gather_range:
+	if cam and not Perf.brute and not near_you(caster) \
+			and cam.global_position.distance_to(caster.global_position) > Perf.gather_range:
 		sound(snd, int(e.get("sound_set", 0)), "gather")
 		return out                           # a far caster's hand glows: off under load (Perf)
 	for id in e.get("gather", []):
