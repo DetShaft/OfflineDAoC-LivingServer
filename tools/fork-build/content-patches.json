@@ -520,5 +520,21 @@
     "Size": 167424,
     "File": "content/new-client-network/MMOEngine.dll",
     "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/net/server.gd",
+    "Released": "13a8a3bf7bcc42fce06888b3b4cfd2425b8ea1c5c16f46b1c9dbf50f524d1348",
+    "Fixed": "4ed83edbf369ed669e5fc5d9a934173aa03866890ac2641ab860f65aaea1e616",
+    "Size": 70996,
+    "File": "content/godot/game/net/server.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/exchange_window.gd",
+    "Released": "fc53eb93dc40812b3a78bcc0ed67a7c22c6bde0251c22e6b0c5ec37df865f240",
+    "Fixed": "9fde14931225ce5fe4461838ff71d06c88fb8314b8104ab5e85b13bb45438e35",
+    "Size": 32190,
+    "File": "content/godot/game/ui/exchange_window.gd",
+    "ReplaceAny": true
   }
 ]
