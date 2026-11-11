@@ -8,6 +8,17 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.11 — 2026-11-11
+
+The commander's orders are a small dialog with clickable [keywords], the way Eden's commander
+talks: the commander's name on the title, replies appended underneath, and a footer that says
+Click on HIGHLIGHTED text. One click swaps a weapon and the client is told even when the slot does not change
+(a one-handed sword and a one-handed axe share a slot, so the old model used to stay up).
+Styles in the dialog and the styles the commander actually uses follow the weapon that is out.
+The Looking For Group and Friends windows use aligned columns and grey out Invite and Tell
+until a row is selected.
+([docs/RELEASE-NOTES-1.1.11.md](docs/RELEASE-NOTES-1.1.11.md))
+
 ## Beta 1.1.10 — 2026-11-11
 
 The new client can print a world-entry smoke line. Start it with `--smoke` and, after the zone is built
