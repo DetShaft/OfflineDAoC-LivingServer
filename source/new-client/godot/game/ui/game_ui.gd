@@ -29,9 +29,11 @@ const RESTORABLE := [["panel", "CHARACTER PANEL"], ["status", "STATUS"], ["chat"
 ## packaged 0.37c client whose .godot/global_script_class_cache.cfg was built without them (INSTALL
 ## adds the .gd files but does not rewrite that cache), so GameUI never compiles and the loading
 ## screen never finishes. preload() resolves by path once the files exist on disk.
+## Off switch (trouble): user://settings.cfg → [living_server] social_windows=false (default true).
 const FriendsWindow := preload("res://game/ui/friends_window.gd")
 const LfgWindow := preload("res://game/ui/lfg_window.gd")
 const CommanderPanel := preload("res://game/ui/commander_panel.gd")
+const LIVING_SERVER_CLIENT_PATCH := "1.1.8"
 
 var root: Control
 var ui_scale := 1.0
@@ -82,6 +84,14 @@ var sky: Node                            # SkySystem: the game clock on the time
 var hidden_all := false
 
 
+## Living Server friends / LFG / commander. Default on; set social_windows=false under [living_server]
+## in user://settings.cfg (new-client/save) to leave the windows unwired without rolling back scripts.
+func living_server_social_windows() -> bool:
+	var cfg := ConfigFile.new()
+	cfg.load(UiArt.settings_path)
+	return bool(cfg.get_value("living_server", "social_windows", true))
+
+
 func _ready() -> void:
 	layer = 5
 	root = Control.new()
@@ -91,6 +101,8 @@ func _ready() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(UiArt.settings_path)
 	ui_scale = float(cfg.get_value("interface", "ui_scale", 1.0))
+	var social := living_server_social_windows()
+	print("LivingServer client patch %s (social_windows=%s)" % [LIVING_SERVER_CLIENT_PATCH, social])
 	get_viewport().size_changed.connect(_rescale)
 	_rescale()
 	var drop := WorldDrop.new()                            # behind every window: items dragged onto the world / an NPC
@@ -361,12 +373,14 @@ func _build() -> void:
 	_build_target()
 	_build_raid()
 	_build_minipet()
-	_build_lfg()
+	if living_server_social_windows():
+		_build_lfg()
 	_build_conc()
 	_build_benefits()
 	_build_warmap()
 	_build_guild()
-	_build_friends()
+	if living_server_social_windows():
+		_build_friends()
 	PlayerData.window_toggle.connect(func(id: String):
 		if windows.has(id):
 			if windows[id].visible:
@@ -1080,13 +1094,14 @@ func _build_minipet() -> void:
 	w.add_child(_pet_buffs)
 	_pet_buffs.visible = bool(_saved("windows", "pet_buffs", true))
 	# Bonedancer commander panel (weapon / style / taunt) — separate script to avoid colliding with friends UI work.
-	commander_panel = CommanderPanel.new()
-	commander_panel.position = Vector2(-136, 0)
-	commander_panel.build()
-	commander_panel.command.connect(func(text: String):
-		if Server.active:
-			Server.command(text))
-	w.add_child(commander_panel)
+	if living_server_social_windows():
+		commander_panel = CommanderPanel.new()
+		commander_panel.position = Vector2(-136, 0)
+		commander_panel.build()
+		commander_panel.command.connect(func(text: String):
+			if Server.active:
+				Server.command(text))
+		w.add_child(commander_panel)
 	PlayerData.hook(self, PlayerData.pet_changed, func():
 		if PlayerData.pet.is_empty():
 			w.hide_window()

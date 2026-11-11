@@ -452,23 +452,26 @@
   {
     "Path": "new-client/godot/game/ui/game_ui.gd",
     "Released": "219cd58ad3e9d227e0436358379b8697fe147ad62df8c61d4d07234a8817d1b2",
-    "Fixed": "a0ac9f61ecf790e1c4bb7dcfc28859e360a852bf259695509b33a63749f2bb6b",
-    "Size": 78959,
-    "File": "content/godot/game/ui/game_ui.gd"
+    "Fixed": "73c1aa3e27ab864da7ceeee50c881143215da8e26de67cf0562789657815e98e",
+    "Size": 80282,
+    "File": "content/godot/game/ui/game_ui.gd",
+    "ReplaceAny": true
   },
   {
     "Path": "new-client/godot/game/ui/keybinds.gd",
     "Released": "6a1be69702a57e79f08d71b785aa488e5e2d34d4198b1ed6588d365a24f31c78",
     "Fixed": "716af2e51ceaf061e333afaea0826f42f5705a03c78e69ef5f193d3bc7fae84e",
     "Size": 12291,
-    "File": "content/godot/game/ui/keybinds.gd"
+    "File": "content/godot/game/ui/keybinds.gd",
+    "ReplaceAny": true
   },
   {
     "Path": "new-client/godot/game/net/server_world.gd",
     "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
     "Fixed": "18c270e3fc2c3d59d62ea0095a149ab67fac34b43f538247704fd5967cfc382a",
     "Size": 86718,
-    "File": "content/godot/game/net/server_world.gd"
+    "File": "content/godot/game/net/server_world.gd",
+    "ReplaceAny": true
   },
   {
     "Path": "new-client/godot/game/ui/friends_window.gd",

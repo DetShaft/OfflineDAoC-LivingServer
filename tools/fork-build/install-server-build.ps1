@@ -20,7 +20,9 @@
 #   that folder's data\ folder, verified the same way (Living Server 1.1.2). The game is closed, so the files are a
 #   consistent set. ROLLBACK.cmd never puts it back (that would undo your play since); README.txt says how to restore it;
 # - fixes game files listed in content-patches.json in place, only where the file is the released one (anything else is
-#   left alone and reported), backed up the same way.
+#   left alone and reported), backed up the same way — except Living Server's own new-client/godot/game/*.gd File
+#   payloads, which always ReplaceAny so a prior Living Server Fixed hash (e.g. 1.1.6 typed game_ui) is overwritten
+#   on the next update instead of being silently left alone while the server/launcher still update.
 param(
     [string]$GameFolder = '',
     [switch]$DryRun,
@@ -194,13 +196,24 @@ if (@($launcherPlan | Where-Object { $_.State -eq 'unknown' }).Count -gt 0 -and 
 # Game files this build fixes in place: the released file (or, for Create / ReplaceAny entries, a missing or any file).
 # Create/ReplaceAny under new-client/ only apply when the game already has the new client (0.37c). Otherwise a
 # classic install would grow a half-empty new-client tree from friends/LFG/commander Create entries.
+# Living Server new-client/godot/game/**.gd File payloads: write whenever on-disk hash ≠ Fixed (Setup, zip INSTALL,
+# and apply-update all run this script). Jay's full LivingServer-Setup-1.1.7-beta.exe left 1.1.6's typed game_ui
+# because Fixed ≠ Released and ReplaceAny was unset; a second Setup then said "Already installed" once the DLLs
+# matched. The launcher --path folder is this same new-client\godot.
 $hasNewClient = Test-Path -LiteralPath (Join-Path $game 'new-client')
+$godotProject = Join-Path $game 'new-client\godot'
+if ($hasNewClient) {
+    Write-Host "  new-client godot project (launcher --path): $godotProject"
+}
 $contentPlan = @()
 foreach ($patch in $contentPatches) {
     $path = Get-ContentPath $game $patch.Path
     $create = [bool]$patch.Create
-    $replaceAny = [bool]$patch.ReplaceAny
-    $newClientOnly = [string]$patch.Path -like 'new-client/*'
+    $patchPath = [string]$patch.Path
+    $livingServerGd = Test-IsLivingServerGdFilePatch $patch
+    # Always overwrite Living Server .gd File payloads when the hash differs; ReplaceAny entries behave the same.
+    $replaceAny = [bool]$patch.ReplaceAny -or $livingServerGd
+    $newClientOnly = $patchPath -like 'new-client/*'
     $exists = Test-Path -LiteralPath $path
     if (!$exists) {
         if (($create -or $replaceAny) -and $newClientOnly -and !$hasNewClient) {
@@ -210,7 +223,7 @@ foreach ($patch in $contentPatches) {
             $state = 'missing, will be created'
             if ($patch.File) {
                 $shipped = Get-ContentPatchFile $patch $buildDir
-                if (!(Test-Path -LiteralPath $shipped) -or (Get-Sha256 $shipped) -ne $patch.Fixed) {
+                if (!(Test-Path -LiteralPath $shipped) -or (Get-Sha256 $shipped) -ne ([string]$patch.Fixed).ToLowerInvariant()) {
                     Stop-WithMessage "$($patch.File) is missing or doesn't match content-patches.json (damaged download?). Download the build again."
                 }
             } else {
@@ -223,28 +236,37 @@ foreach ($patch in $contentPatches) {
     }
     else {
         $hash = Get-Sha256 $path
-        if ($hash -eq $patch.Fixed) { $state = 'fixed already' }
-        elseif (($patch.Released -and $hash -eq $patch.Released) -or $replaceAny) {
-            $state = if ($replaceAny -and !($patch.Released -and $hash -eq $patch.Released)) {
-                'will be replaced (ReplaceAny)'
+        $want = ([string]$patch.Fixed).ToLowerInvariant()
+        if ($hash -eq $want) { $state = 'fixed already' }
+        elseif ($livingServerGd -or (($patch.Released -and $hash -eq ([string]$patch.Released).ToLowerInvariant()) -or $replaceAny)) {
+            # Living Server .gd: hash differs → unconditional rewrite (covers prior Fixed, stock, or unknown).
+            if ($livingServerGd) {
+                $state = 'hash differs, will write Fixed (Living Server .gd)'
+            }
+            elseif ($replaceAny -and !($patch.Released -and $hash -eq ([string]$patch.Released).ToLowerInvariant())) {
+                $state = 'will be replaced (ReplaceAny)'
             } else {
-                'released file, will be fixed'
+                $state = 'released file, will be fixed'
             }
             if ($patch.File) {
                 $shipped = Get-ContentPatchFile $patch $buildDir
-                if (!(Test-Path -LiteralPath $shipped) -or (Get-Sha256 $shipped) -ne $patch.Fixed) {
+                if (!(Test-Path -LiteralPath $shipped) -or (Get-Sha256 $shipped) -ne $want) {
                     Stop-WithMessage "$($patch.File) is missing or doesn't match content-patches.json (damaged download?). Download the build again."
                 }
             }
             $contentPlan += [pscustomobject]@{ Patch = $patch; Path = $path; Hash = $hash; Created = $false }
         }
-        else { $state = 'not the released file, left alone' }
+        else {
+            $state = 'not the released file, left alone'
+        }
     }
     Write-Host "  $($patch.Path): $state"
 }
 if (@($plan | Where-Object { $_.State -ne 'this build' }).Count -eq 0 -and
     @($corePlan | Where-Object { $_.State -ne 'this build' }).Count -eq 0 -and
     @($launcherPlan | Where-Object { $_.State -ne 'this build' }).Count -eq 0 -and $contentPlan.Count -eq 0) {
+    # DLLs match this build: still refuse "Already installed" when required .gd scripts are stale (Setup re-run).
+    Assert-LivingServerGdFixed $game $contentPatches 'before treating the install as already done'
     Write-Host ''
     Write-Host "Already installed: $($info['BuildName']). Nothing to do." -ForegroundColor Green
     exit 0
@@ -411,10 +433,34 @@ try {
     foreach ($item in $contentPlan) {
         $releasedBytes = if ($item.Created -or !(Test-Path -LiteralPath $item.Path)) { [byte[]]@() } else { [IO.File]::ReadAllBytes($item.Path) }
         $fixed = Expand-ContentPatch $item.Patch $releasedBytes $buildDir
-        if ((Get-BytesSha256 $fixed) -ne $item.Patch.Fixed) { throw "The fix for $($item.Patch.Path) didn't come out right." }
+        $want = ([string]$item.Patch.Fixed).ToLowerInvariant()
+        if ((Get-BytesSha256 $fixed) -ne $want) { throw "The fix for $($item.Patch.Path) didn't come out right." }
         New-Item -ItemType Directory -Path (Split-Path -Parent $item.Path) -Force | Out-Null
         [IO.File]::WriteAllBytes($item.Path, $fixed)
-        if ((Get-Sha256 $item.Path) -ne $item.Patch.Fixed) { throw "Writing $($item.Patch.Path) failed verification." }
+        $got = Get-Sha256 $item.Path
+        if ($got -ne $want) {
+            throw "Writing $($item.Patch.Path) failed verification (on disk $got, expected Fixed $want)."
+        }
+        if (Test-IsLivingServerGdFilePatch $item.Patch) {
+            Write-Host "  wrote $($item.Patch.Path) Fixed=$want"
+        }
+    }
+    # Fail loudly if any required Living Server .gd is still wrong after the write pass (Setup uses this same script).
+    Assert-LivingServerGdFixed $game $contentPatches 'after writing content patches'
+    # 1.1.8: after any new-client script change, drop Godot's global class cache so the next launch
+    # rescans loose .gd files. A stale cache from 0.37c / 1.1.6 was why typed Create classes failed
+    # to resolve even after game_ui.gd was on disk. Do not delete the whole .godot tree (imports).
+    if (@($contentPlan | Where-Object { [string]$_.Patch.Path -like 'new-client/godot/*' }).Count -gt 0) {
+        $godot = Join-Path $game 'new-client\godot'
+        foreach ($rel in @('.godot\global_script_class_cache.cfg', '.godot\uid_cache.bin')) {
+            $cacheFile = Join-Path $godot $rel
+            if (Test-Path -LiteralPath $cacheFile) {
+                Remove-Item -LiteralPath $cacheFile -Force
+                Write-Host "  cleared $rel (Godot will rebuild it on next start)"
+            }
+        }
+        Get-ChildItem -LiteralPath (Join-Path $godot 'game') -Recurse -Filter '*.gdc' -ErrorAction SilentlyContinue |
+            ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force }
     }
     if ($helpers.Count -gt 0) {
         New-Item -ItemType Directory -Path (Join-Path $game 'tools\claude-version') -Force | Out-Null
@@ -460,6 +506,8 @@ try {
     exit 1
 }
 
+# Final gate (covers the success path even when contentPlan was empty for .gd because they were already Fixed).
+Assert-LivingServerGdFixed $game $contentPatches 'at end of install'
 Write-Host ''
 Write-Host ("Installed $($info['BuildName']): the server into $($entries.Count) folder(s) ($($coreEntries.Count) server librar$(if ($coreEntries.Count -eq 1) { 'y' } else { 'ies' })), the launcher into $($launcherEntries.Count), " +
     "$($contentEntries.Count) game file(s) fixed.") -ForegroundColor Green
