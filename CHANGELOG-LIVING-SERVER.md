@@ -8,7 +8,7 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
-## Beta 1.1.13 (in development)
+## Beta 1.1.13 — 2026-11-11
 
 **Commander hammer styles.** 1.1.12 gave a commander its weapon lines' styles only up to its own level, and the
 hammer line starts at level 2, so a level-1 Returned Commander still had no hammer style while the sword and axe kept
@@ -29,6 +29,20 @@ samples), 1,122 of them at 115 to 144 fps. Three changes:
 - At its heaviest it now keeps 60 effects within 30 m (was 30 within 10 m) and hand glows within 15 m (was 6 m).
 New-client scripts `game/combat/spell_fx.gd` and `game/perf_governor.gd`, installed by INSTALL like the other
 client fixes. Tests only: not yet seen in game.
+
+**Healer bots hold their place in fights.** A healer in your group with nothing to cast walked to the mob to nuke or
+swing at it, then walked back to its formation slot to heal, over and over. Since 1.1.4's idle combat, the swing
+started a follow on the enemy that stopping the attack did not end. Idle offense now never moves a healer: it casts
+only at a target already in spell range and swings only at one already in melee reach, and holding for a heal ends a
+follow on an enemy (follows on the leader, the group and its own pet are kept). Heals, cures and rezzes still come
+first. Tests only: not yet seen in game.
+
+**Realm Exchange prices.** My Listings in the new client showed SET PRICE for items that had a price on the server.
+The server sends a listing's price at the end of its name (`Name[10 silver]`), and the client looked prices up in its
+own file keyed by the name without it. The client now reads the price from the name, so every priced listing shows
+it, including ones priced from another PC or the classic client, and the local price file is gone. A priced name
+over the 55-character limit now shortens the item's name and keeps the price whole. Tests only: not yet seen in game.
+([docs/RELEASE-NOTES-1.1.13.md](docs/RELEASE-NOTES-1.1.13.md))
 
 ## Beta 1.1.12 — 2026-11-11
 

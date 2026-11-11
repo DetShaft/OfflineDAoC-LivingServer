@@ -15,7 +15,7 @@
 
 # Offline DAoC: Living Server
 
-### Your single-player Camelot, alive like a 2003 server. **Beta 1.1.12 is out.**
+### Your single-player Camelot, alive like a 2003 server. **Beta 1.1.13 is out.**
 
 ![Offline DAoC: Living Server](tools/installer/src/Assets/hero.jpg)
 
@@ -29,12 +29,20 @@ the single-player Classic + Shrouded Isles server. Its bots already level, group
 Server gives them a life: personalities, guilds, memories, opinions and a voice, and an endgame they
 run themselves, whether or not you come along.
 
-> **[Download Beta 1.1.12](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.12-beta)**:
+> **[Download Beta 1.1.13](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.13-beta)**:
 > one Setup installs Offline DAoC and Living Server from nothing, or adds Living Server to the 0.36 or 0.37
 > game you have (0.37 or 0.37b, with or without the 0.37c new client). Free, every part has its own
 > switch, and one click rolls it back. Formerly the **Social Expansion**: if you had it, install over it
-> and keep everything. [What's new](docs/RELEASE-NOTES-1.1.12.md) ·
+> and keep everything. [What's new](docs/RELEASE-NOTES-1.1.13.md) ·
 > [Known issues](docs/KNOWN-ISSUES.md)
+
+## New in Beta 1.1.13
+
+Spell effects show again in the new client: everything in your own fight is always drawn, and the performance
+governor no longer stays at its heaviest savings on a vsync display. Healer bots stop running back and forth during
+fights. Realm Exchange listings show the price the server has on them. A commander's hammer always has at least
+one style.
+([what's new](docs/RELEASE-NOTES-1.1.13.md))
 
 ## New in Beta 1.1.12
 
@@ -184,8 +192,8 @@ in a crash-safe mode and is backed up every day
 
 **The easy way: Setup.**
 
-1. Download `LivingServer-Setup-1.1.12-beta.exe` from the
-   [Beta 1.1.12 release](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.12-beta) and run it.
+1. Download `LivingServer-Setup-1.1.13-beta.exe` from the
+   [Beta 1.1.13 release](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.13-beta) and run it.
    - No game yet? It downloads Offline DAoC with shadowofze's own downloader.
    - On 0.36? It updates the game to 0.37 with his official updater, keeping your saves.
    - Then it adds Living Server.
@@ -197,8 +205,8 @@ in a crash-safe mode and is backed up every day
 
 1. Install Offline DAoC 0.37 or 0.37b (or 0.37c) from [shadowofze's releases](https://github.com/shadowofze/OfflineDAoC/releases),
    or update your 0.36 game to it (below).
-2. Download `OfflineDAoC-LivingServer-1.1.12-beta.zip` from the
-   [Beta 1.1.12 release](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.12-beta),
+2. Download `OfflineDAoC-LivingServer-1.1.13-beta.zip` from the
+   [Beta 1.1.13 release](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.13-beta),
    unzip it and put its folder in your game folder.
 3. Close the game and server, then double-click `INSTALL.cmd` in that folder.
 4. Open the launcher as usual. It now has a **Living Server** tab.
@@ -207,7 +215,7 @@ in a crash-safe mode and is backed up every day
 bot memory and settings stay as they were.
 
 **Still on 0.36 with the Social Expansion?** The 0.37 update only applies to the game's own files, so put
-them back first: put the Beta 1.1.12 folder in your game folder and double-click `PREPARE-FOR-UPDATE.cmd` (it
+them back first: put the Beta 1.1.13 folder in your game folder and double-click `PREPARE-FOR-UPDATE.cmd` (it
 restores the released 0.36 server and launcher from the installer's backups and checks each one). Then
 update the game to 0.37 with its downloader (choice 1, Update), and run `INSTALL.cmd`. If you install 0.37
 fresh instead and bring your progress over, see the package's README.txt for the one extra step.
@@ -226,7 +234,7 @@ From Beta 1.1.2 the launcher looks for a new Living Server when it opens (at mos
   **Check automatically** to turn it off. The steps are logged in `runtime\logs\launcher-updates.log`.
 - **Setup** also installs the newest release's package when it is newer than the one inside it.
 
-Beta 1.1.1 and earlier have no update check: install Beta 1.1.12 once by hand or with Setup.
+Beta 1.1.1 and earlier have no update check: install Beta 1.1.13 once by hand or with Setup.
 
 ## Getting started
 
@@ -241,7 +249,7 @@ A fresh world has no bots yet, and most of these features need some.
    in, or come back after half an hour away, and the first /faction scenes come within about its first
    half hour.
 4. **Check it's running.** The server log (`runtime\server\logs\server.log`) has a line starting
-   `FORK_BUILD name=1.1.12-beta` that lists which features are on.
+   `FORK_BUILD name=1.1.13-beta` that lists which features are on.
 
 ## Undo and uninstall
 
