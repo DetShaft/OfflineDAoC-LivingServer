@@ -14,8 +14,8 @@ const CHAT_KINDS := {0: "system", 1: "say", 2: "send", 3: "group", 4: "guild", 5
 		8: "chatgroup", 9: "advice", 10: "officer", 11: "alliance", 12: "group", 13: "group", 15: "broadcast",
 		16: "spells", 17: "combat", 18: "damage_taken", 19: "combat", 20: "merchant", 21: "system", 22: "combat_others",
 		23: "combat_others", 24: "combat", 25: "spells", 26: "loot", 27: "resists", 28: "system", 29: "damage_taken",
-		30: "combat", 31: "spells", 32: "combat_others", 33: "combat_others", 34: "combat_others", 35: "broadcast",
-		36: "broadcast", 100: "system"}                # 35 /lfg, 36 /trade (realm channels, shown with faction chat)
+		30: "combat", 31: "spells", 32: "combat_others", 33: "combat_others", 34: "combat_others", 35: "system",
+		36: "merchant", 100: "system"}
 # the player races' models whose monsters.json entry has no figure race (named "Norse Male" ...)
 const RACE_WORDS := {"briton": "bri", "avalonian": "ava", "highlander": "hig", "saracen": "sar", "inconnu": "inc",
 		"norse": "nor", "troll": "tro", "dwarf": "dwa", "kobold": "kob", "valkyn": "val", "celt": "cel",
@@ -117,7 +117,6 @@ func _on_world(kind: String, d: Dictionary) -> void:
 		"los": _los(int(d.source), int(d.target))
 		"merchant": _merchant(d)
 		"pet_window": _pet_window(d)
-		"find_group": _find_group(d)
 		"visual_effect": _visual_effect(d)
 		"model_change": _model_change(d)
 		"riding": _riding(d)
@@ -141,7 +140,6 @@ func _on_world(kind: String, d: Dictionary) -> void:
 		"dialog": _dialog(d)
 		"sound_effect": _sound_effect(d)
 		"door_state": _door_state(d)
-		"change_target": _change_target(int(d.oid))
 		"siege_window", "siege_close": _siege_window(kind, d)
 		"siege_anim": _siege_anim(d)
 		"warmap_keeps", "warmap_fights":
@@ -872,8 +870,7 @@ func select(n: Npc) -> void:
 	target_object = 0
 	var nm := String(n.spawn.name)
 	var lower := nm.length() > 0 and nm[0] == nm[0].to_lower()
-	if not _server_chose_target:                           # the server already said "You target ..."
-		PlayerData.message.emit(("You target the [%s]." % nm) if lower else ("You target [%s]." % nm), "system")
+	PlayerData.message.emit(("You target the [%s]." % nm) if lower else ("You target [%s]." % nm), "system")
 	PlayerData.set_target({"name": nm, "level": n.state.level, "con_color": n.con_color(PlayerData.level),
 			"health": n.state.health, "guild": String(n.spawn.get("guild", ""))})
 	if Server.client:
@@ -948,16 +945,11 @@ func _social(text: String) -> void:
 		"TF":
 			_social_title = "FRIENDS"
 			_social_lines = []
-			# Modern friends window (FriendsWindow) when the UI has one; else the information list.
-			if viewer and viewer.ui and viewer.ui.get("friends_window"):
-				viewer.ui.friends_window.begin_list()
 		"F":
 			if f.size() >= 6:
 				_social_title = "FRIENDS"
 				var cls := Server.class_name_of(int(f[4]))
 				_social_lines.append("%s  (level %s %s)  %s" % [f[2], f[3], cls, f[5]])
-				if viewer and viewer.ui and viewer.ui.get("friends_window"):
-					viewer.ui.friends_window.receive_friend(f)
 		"N":
 			if f.size() >= 5:
 				if _social_title != "NEWS":
@@ -971,12 +963,7 @@ func _social(text: String) -> void:
 		get_tree().create_timer(0.4).timeout.connect(func():
 			_social_due = false
 			if viewer and viewer.ui:
-				# Friends go to FriendsWindow when present; news (and fallback) stay on show_lines.
-				if _social_title == "FRIENDS" and viewer.ui.get("friends_window"):
-					if not viewer.ui.friends_window.visible:
-						viewer.ui.friends_window.show_window()
-				else:
-					viewer.ui.show_lines(_social_title, _social_lines if not _social_lines.is_empty() else ["(none)"])
+				viewer.ui.show_lines(_social_title, _social_lines if not _social_lines.is_empty() else ["(none)"])
 			if _social_title == "NEWS":
 				_social_title = "")
 
@@ -1675,24 +1662,6 @@ func _pet_window(d: Dictionary) -> void:
 	PlayerData.set_pet({"name": String(st.spawn.name) if st else "Pet", "health": st.health if st else 1.0, "mode": mode})
 
 
-## FindGroupUpdate (0x86): fill the Looking For Group window (players + advertising bots).
-func _find_group(d: Dictionary) -> void:
-	if viewer == null or viewer.ui == null or not viewer.ui.has_method("lfg_entries"):
-		return
-	var rows: Array = []
-	for e in d.get("entries", []):
-		if e is Dictionary:
-			rows.append({
-				"name": String(e.get("name", "")),
-				"level": int(e.get("level", 0)),
-				"class": String(e.get("class", "")),
-				"zone": str(int(e.get("zone", 0))),
-				"grouped": bool(e.get("grouped", false)),
-				"bot": bool(e.get("bot", false)),
-			})
-	viewer.ui.lfg_entries(rows)
-
-
 # ---------------------------------------------------------------- keeps: doors, siege weapons, relics (owner 2026-10-14)
 
 const RELIC_MODELS := [630, 631, 632, 633, 634, 635]     # objects.csv: the six realm relics
@@ -1883,22 +1852,6 @@ func _ridden(st: NpcState) -> bool:
 
 
 ## A raid window slot clicked: target that member (its view if drawn, else straight on the server).
-## The server's ChangeTarget (/target <name>, /assist): select that object as a click would - the client then sends
-## its Target packet, which is what sets the server's target. Missing until 2026-10-17: "/target Haralhelm" answered
-## "[GM] You target Haralhelm." but the target window stayed empty and /invite found no target.
-var _server_chose_target := false
-
-
-func _change_target(oid: int) -> void:
-	if oid <= 0:
-		if target or target_door:
-			clear_target()
-		return
-	_server_chose_target = true
-	target_oid(oid)
-	_server_chose_target = false
-
-
 func target_oid(oid: int) -> void:
 	if oid <= 0:
 		return

@@ -416,6 +416,21 @@ try {
         [IO.File]::WriteAllBytes($item.Path, $fixed)
         if ((Get-Sha256 $item.Path) -ne $item.Patch.Fixed) { throw "Writing $($item.Patch.Path) failed verification." }
     }
+    # 1.1.8: after any new-client script change, drop Godot's global class cache so the next launch
+    # rescans loose .gd files. A stale cache from 0.37c / 1.1.6 was why typed Create classes failed
+    # to resolve even after game_ui.gd was on disk. Do not delete the whole .godot tree (imports).
+    if (@($contentPlan | Where-Object { [string]$_.Patch.Path -like 'new-client/godot/*' }).Count -gt 0) {
+        $godot = Join-Path $game 'new-client\godot'
+        foreach ($rel in @('.godot\global_script_class_cache.cfg', '.godot\uid_cache.bin')) {
+            $cacheFile = Join-Path $godot $rel
+            if (Test-Path -LiteralPath $cacheFile) {
+                Remove-Item -LiteralPath $cacheFile -Force
+                Write-Host "  cleared $rel (Godot will rebuild it on next start)"
+            }
+        }
+        Get-ChildItem -LiteralPath (Join-Path $godot 'game') -Recurse -Filter '*.gdc' -ErrorAction SilentlyContinue |
+            ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force }
+    }
     if ($helpers.Count -gt 0) {
         New-Item -ItemType Directory -Path (Join-Path $game 'tools\claude-version') -Force | Out-Null
         foreach ($helper in $helpers) {

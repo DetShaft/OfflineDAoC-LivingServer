@@ -55,12 +55,6 @@ func _ready() -> void:
 	# the guild window (owner 2026-10-17, a roster window beyond 1.65 - GuildWindow): Shift+G, free in every preset
 	actions.append({"id": "show_guild", "label": "Guild Window", "category": "Show",
 			"presets": {"rpg": ["Shift+G"], "fps": ["Shift+G"], "mmo": ["Shift+G"]}})
-	# Looking For Group browser (Shift+L): FindGroupUpdate + /lfg list
-	actions.append({"id": "show_lfg", "label": "Looking For Group", "category": "Show",
-			"presets": {"rpg": ["Shift+L"], "fps": ["Shift+L"], "mmo": ["Shift+L"]}})
-	# modern friends window (activity + invite/tell): Shift+F
-	actions.append({"id": "show_friends", "label": "Friends Window", "category": "Show",
-			"presets": {"rpg": ["Shift+F"], "fps": ["Shift+F"], "mmo": ["Shift+F"]}})
 	categories.append("Quickbars")
 	for bar in range(1, QUICKBARS + 1):
 		for slot in range(1, QUICKBAR_SLOTS + 1):
@@ -112,11 +106,7 @@ func load_bindings() -> void:
 	preset = String(cfg.get_value("keybinds", "preset", "rpg")) if ok else "rpg"
 	# version 2 (2026-10-09): quickbars 2 / 3 gained their Alt / Ctrl keys and the Shift bank keys; older saves kept
 	# those empty, so they take the new defaults once
-	# version 3 (2026-11-10): friends (Shift+F) and LFG (Shift+L) — new actions take their defaults and clear any
-	# older binding that used the same key so a saved Shift+F / Shift+L elsewhere cannot block the windows
-	var ver := int(cfg.get_value("keybinds", "version", 1)) if ok else 1
-	var old := ver < 2
-	var need_v3 := ver < 3
+	var old := int(cfg.get_value("keybinds", "version", 1)) < 2 if ok else false
 	for a in actions:
 		var saved = cfg.get_value("bindings", a.id, null) if ok else null
 		var quick := String(a.id).begins_with("qb2_") or String(a.id).begins_with("qb3_") or String(a.id).begins_with("qbank_")
@@ -124,28 +114,13 @@ func load_bindings() -> void:
 			bindings[a.id] = (saved as Array).duplicate()
 		else:
 			bindings[a.id] = (a.presets.get(preset, []) as Array).duplicate()
-	if need_v3:
-		for id in ["show_friends", "show_lfg"]:
-			if not bindings.has(id):
-				continue
-			for key in bindings[id]:
-				if String(key) == "":
-					continue
-				for other in bindings:
-					if other == id:
-						continue
-					var list: Array = bindings[other]
-					while list.has(key):
-						list.erase(key)
-					bindings[other] = list
-		save_bindings()
 	_apply()
 
 
 func save_bindings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("keybinds", "preset", preset)
-	cfg.set_value("keybinds", "version", 3)
+	cfg.set_value("keybinds", "version", 2)
 	for id in bindings:
 		cfg.set_value("bindings", id, bindings[id])
 	cfg.save(path)

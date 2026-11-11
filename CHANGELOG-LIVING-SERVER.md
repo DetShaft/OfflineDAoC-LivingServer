@@ -8,6 +8,15 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.8 — 2026-11-11
+
+Safe client rollback after 1.1.6/1.1.7 left players stuck on "Entering Offline DAoC". 1.1.7's preload
+`game_ui.gd` never replaced a 1.1.6-patched file (content patches only overwrite the Released hash unless
+`ReplaceAny`), so Jay kept loading typed `LfgWindow`/`FriendsWindow`/`CommanderPanel` annotations. 1.1.8
+restores stock 0.37c `game_ui.gd` (plus a LivingServer patch banner), uses `ReplaceAny`, clears Godot's
+script class cache on install, and keeps the server resurrection NRE fix
+([docs/RELEASE-NOTES-1.1.8.md](docs/RELEASE-NOTES-1.1.8.md)).
+
 ## Beta 1.1.7 — 2026-11-11
 
 Fixes the new-client hang on "Entering Offline DAoC" after 1.1.6: `game_ui.gd` no longer type-annotates
