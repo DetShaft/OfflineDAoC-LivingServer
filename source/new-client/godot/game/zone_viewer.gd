@@ -1443,6 +1443,9 @@ func _server_pet(command: String) -> void:
 	var aggro: int = {"aggressive": 1, "defensive": 2, "passive": 3}.get(c, 0)
 	var walk: int = {"follow": 1, "stay": 2, "goto": 3, "go to": 3, "here": 4}.get(c, 0)
 	var order: int = {"attack": 1, "release": 2}.get(c, 0)
+	if c == "assist":                                    # not a pet window state the server's packet knows: PetAssistMode
+		Server.command("/petassist on")
+		return
 	if aggro or walk or order:
 		Server.client.call("PetCommand", aggro, walk, order)
 

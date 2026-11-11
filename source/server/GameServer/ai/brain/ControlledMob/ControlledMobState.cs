@@ -66,6 +66,10 @@ namespace DOL.AI.Brain
             else if (brain.AggressionState is eAggressionState.Passive)
                 brain.FSM.SetCurrentState(eFSMStateType.PASSIVE);
 
+            // Assist mode: join the owner's fight as soon as they engage (PetAssistMode).
+            if (PetAssistMode.CheckOwnerTarget(brain))
+                return;
+
             // Handle pet movement.
             if (brain.WalkState is eWalkState.Follow && brain.Owner != null)
                 brain.Follow(brain.Owner);
@@ -114,6 +118,10 @@ namespace DOL.AI.Brain
 
             if (brain.AggressionState is eAggressionState.Aggressive)
                 brain.CheckProximityAggro();
+
+            // Assist mode: follow the owner onto a new target (PetAssistMode).
+            if (PetAssistMode.CheckOwnerTarget(brain))
+                return;
 
             /* this was added in 1.88 : https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.88
              * removing to conform to 1.65

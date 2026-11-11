@@ -602,6 +602,11 @@ NORMAL PLAYER COMMANDS
   /password <current_password> <new_password>
   Handler: DOL.GS.Commands.PasswordCommand
 
+/petassist
+  Your pet attacks your target as soon as you engage it
+  /petassist [on|off]
+  Handler: DOL.GS.Commands.PetAssistCommandHandler
+
 /played
   Returns the age of the character
   /played

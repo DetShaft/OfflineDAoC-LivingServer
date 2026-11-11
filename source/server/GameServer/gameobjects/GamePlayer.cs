@@ -12172,6 +12172,8 @@ namespace DOL.GS
         /// </summary>
         public virtual void CommandNpcPassive()
         {
+            // Picking a stance on the pet window ends Assist (PetAssistMode).
+            PetAssistMode.Set(this, false);
             IControlledBrain npc = ControlledBrain;
 
             if (npc == null)
@@ -12186,6 +12188,8 @@ namespace DOL.GS
         /// </summary>
         public virtual void CommandNpcAgressive()
         {
+            // Picking a stance on the pet window ends Assist (PetAssistMode).
+            PetAssistMode.Set(this, false);
             IControlledBrain npc = ControlledBrain;
 
             if (npc == null)
@@ -12200,6 +12204,8 @@ namespace DOL.GS
         /// </summary>
         public virtual void CommandNpcDefensive()
         {
+            // Picking a stance on the pet window ends Assist (PetAssistMode).
+            PetAssistMode.Set(this, false);
             IControlledBrain npc = ControlledBrain;
 
             if (npc == null)

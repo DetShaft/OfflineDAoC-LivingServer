@@ -20,6 +20,15 @@ its own level (a higher commander knows more of them), on top of its template's 
 Only styles that open on their own or from a position can be picked as a favorite; chain and defensive styles
 stay in its own rotation. Tests only: not yet seen in a log from Jay's PC.
 
+**Pet assist mode.** Every pet with a pet window can now assist you, the way your party bots do: it attacks
+your target the moment you swing at it, shoot it or start a harmful spell on it, and follows you onto your
+next target. Pick ASSIST on the new client's pet window (it sits beside RELEASE, and can be dragged onto a
+quickbar like the other pet commands), or type /petassist on the classic client (/petassist off ends it).
+Assist fights like Defensive otherwise; picking Aggressive, Defensive or Passive turns it off, and it stays on
+for the next pet you summon until you do. It applies to your main pet; a Bonedancer commander's minions follow
+the commander's target through its own minion assist order, and bot pets are unchanged. Tests only: not yet
+seen in a log from Jay's PC.
+
 ## Beta 1.1.11 — 2026-11-11
 
 The commander's orders are a small dialog with clickable [keywords], the way Eden's commander

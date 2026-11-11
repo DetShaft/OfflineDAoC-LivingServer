@@ -59,6 +59,12 @@ On the launcher, click + Lv.1 or + Lv.50 under a faction:
   Companions engage nearby threats while staying near you, letting you pull mobs
   back to the group. Useful for harder content.
 
+/petassist
+  Your own pet attacks your target as soon as you attack it or start a harmful spell,
+  and follows you onto your next target. /petassist off, or picking Aggressive,
+  Defensive or Passive on the pet window, turns it off. The new client's pet window
+  has an ASSIST button for it.
+
 These controls apply to your companions, not autonomous gamebots.
 /spawn 40 and /spawn 80 are not raid-size commands; use /raid 40 or /raid 80.
 See docs/PLAY.md for setup and docs/LLM-QUICKSTART.md for modifying your own version.

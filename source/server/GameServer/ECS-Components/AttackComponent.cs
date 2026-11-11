@@ -696,6 +696,7 @@ namespace DOL.GS
                 if (LivingStartAttack())
                 {
                     PlayerLedPullCoordinator.LeaderEngaged(player, _startAttackTarget as GameLiving);
+                    PetAssistMode.OwnerEngaged(player, _startAttackTarget as GameLiving);
                     if (player.castingComponent.SpellHandler?.Spell.Uninterruptible == false)
                     {
                         player.StopCurrentSpellcast();
