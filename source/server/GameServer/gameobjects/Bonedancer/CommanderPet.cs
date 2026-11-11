@@ -434,6 +434,9 @@ namespace DOL.GS
 		/// Styles a commander of this level knows in each weapon line: every style of the line
 		/// up to the commander's level, so a higher commander knows more of them. The npc template's
 		/// own styles covered only some weapons (a hammer had none).
+		/// A line always gives at least its first style a favorite can be set to, even below that
+		/// style's level (owner 2026-11-11, 1.1.12: a low Returned Commander still had no hammer style,
+		/// because the hammer line starts at level 2 while the sword and axe kept the template's).
 		/// </summary>
 		public static List<Style> LevelStyles(int level, IEnumerable<string> specs, Func<string, int, List<Style>> stylesOf = null)
 		{
@@ -444,24 +447,56 @@ namespace DOL.GS
 				return result;
 			foreach (string spec in specs.Where(s => !string.IsNullOrEmpty(s)).Distinct(StringComparer.OrdinalIgnoreCase))
 			{
-				List<Style> line = null;
-				foreach (int classId in StyleTeachers)
+				List<Style> line = StyleLine(spec, stylesOf);
+				if (line.Count == 0)
 				{
-					line = stylesOf(spec, classId);
-					if (line != null && line.Count > 0)
-						break;
-				}
-				if (line == null || line.Count == 0)
-					line = stylesOf(spec, 0);
-				if (line == null)
+					if (log.IsWarnEnabled && ReportEmptyLineOnce(spec))
+						log.Warn($"CommanderPet.LevelStyles(): the style table has no {spec} styles for any class; a commander holding that weapon has none.");
 					continue;
-				foreach (Style style in line.OrderBy(s => s.SpecLevelRequirement).ThenBy(s => s.ID))
+				}
+
+				var known = line.Where(style => style.SpecLevelRequirement <= level).ToList();
+				if (PickableStyles(known).Count == 0)
 				{
-					if (style != null && style.SpecLevelRequirement <= level && seen.Add(style.ID))
+					Style first = PickableStyles(line).FirstOrDefault();
+					if (first != null)
+						known.Add(first);
+				}
+				foreach (Style style in known)
+				{
+					if (seen.Add(style.ID))
 						result.Add(style);
 				}
 			}
 			return result;
+		}
+
+		private static readonly HashSet<string> s_reportedEmptyLines = new(StringComparer.OrdinalIgnoreCase);
+
+		private static bool ReportEmptyLineOnce(string spec)
+		{
+			lock (s_reportedEmptyLines)
+				return s_reportedEmptyLines.Add(spec);
+		}
+
+		/// <summary>
+		/// One weapon line's styles, lowest level first: the first Midgard teacher that has the line,
+		/// else the classless rows, else any class that has it (a database that files the line under
+		/// other classes still gives the commander its styles).
+		/// </summary>
+		private static List<Style> StyleLine(string spec, Func<string, int, List<Style>> stylesOf)
+		{
+			IEnumerable<int> classes = StyleTeachers.Append(0).Concat(Enumerable.Range(1, 80).Except(StyleTeachers));
+			foreach (int classId in classes)
+			{
+				List<Style> line = stylesOf(spec, classId);
+				if (line != null && line.Any(style => style != null))
+				{
+					return line.Where(style => style != null)
+						.OrderBy(style => style.SpecLevelRequirement).ThenBy(style => style.ID).ToList();
+				}
+			}
+			return new List<Style>();
 		}
 
 		/// <summary>The weapon lines this commander can hold.</summary>

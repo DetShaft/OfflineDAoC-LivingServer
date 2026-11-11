@@ -1021,23 +1021,32 @@ namespace DOL.GS.PacketHandler
 				pak.WritePascalString(spell_name2);
 			}
 			pak.WriteShort((ushort)item.Effect); // item effect changed to short
-			string name = item.Name;
-			if (item.Count > 1)
-				name = item.Count + " " + name;
-			if (item.SellPrice > 0)
+			pak.WritePascalString(BuildItemDisplayName(item.Name, item.Count, item.SellPrice, ServerProperties.Properties.CONSIGNMENT_USE_BP));
+		}
+
+		/// <summary>
+		/// An item's name as the client shows it: "N " for a stack, then "[price]" for a priced consignment or
+		/// Realm Exchange listing. Over the length limit, the item's own name is shortened and the price is kept
+		/// whole, so a long name never cuts the price off (the new client reads the listing's price from it).
+		/// </summary>
+		public static string BuildItemDisplayName(string itemName, int count, int sellPrice, bool useBountyPoints)
+		{
+			string name = itemName ?? string.Empty;
+			if (count > 1)
+				name = count + " " + name;
+
+			string price = string.Empty;
+			if (sellPrice > 0)
+				price = useBountyPoints ? "[" + sellPrice + " BP]" : "[" + Money.GetString(sellPrice) + "]";
+
+			if (name.Length + price.Length > MAX_NAME_LENGTH)
 			{
-				if (ServerProperties.Properties.CONSIGNMENT_USE_BP)
-					name += "[" + item.SellPrice.ToString() + " BP]";
-				else
-					name += "[" + Money.GetString(item.SellPrice) + "]";
+				if (price.Length >= MAX_NAME_LENGTH)
+					return (name + price)[..MAX_NAME_LENGTH];
+				name = name[..(MAX_NAME_LENGTH - price.Length)];
 			}
 
-			ReadOnlySpan<char> nameSpan = name == null ? [] : name;
-
-			if (nameSpan.Length > MAX_NAME_LENGTH)
-				nameSpan = nameSpan[..MAX_NAME_LENGTH];
-
-			pak.WritePascalString(nameSpan);
+			return name + price;
 		}
 
 		protected override void WriteTemplateData(GSTCPPacketOut pak, DbItemTemplate template, int count)

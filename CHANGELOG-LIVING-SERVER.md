@@ -10,6 +10,12 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.13 (in development)
 
+**Commander hammer styles.** 1.1.12 gave a commander its weapon lines' styles only up to its own level, and the
+hammer line starts at level 2, so a level-1 Returned Commander still had no hammer style while the sword and axe kept
+the template's Polar Rift and Havoc. Each weapon line now always gives at least its first style that can be picked as
+a favorite (Thor's Anvil for the hammer). A line filed under other classes in the style table is still found, and the
+server log warns once if the table has no styles for a line. Tests only: not yet seen in a log from Jay's PC.
+
 **Spell effects in the new client.** Most spell effects did not show, yours included (Jay, 2026-11-11). The cause
 was the new client's performance governor, not the spells or the server. With a target frame rate of 120 on a
 144 Hz vsync display it could only give detail back above 144 fps, which vsync never allows. So after the first

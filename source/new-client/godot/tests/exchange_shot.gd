@@ -30,7 +30,7 @@ func _ready() -> void:
 		var id := "srvc:%d" % s
 		ItemDb.add_runtime(id, {"id": id, "name": names[(i + 3) % names.size()], "level": 20 + i, "quality": 94,
 				"model": models[(i + 3) % models.size()], "icon": Server.item_icon(models[(i + 3) % models.size()]),
-				"detail_key": s, "object_type": 34})
+				"listed_price": (i % 3) * 1000, "detail_key": s, "object_type": 34})
 		Server.listings[s] = id
 	ui.exchange.show_tab("listings")
 	await get_tree().create_timer(1.0).timeout
