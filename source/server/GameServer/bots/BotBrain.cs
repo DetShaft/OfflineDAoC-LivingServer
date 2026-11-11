@@ -3773,6 +3773,7 @@ namespace DOL.AI.Brain
         private void HoldSupportCombat()
         {
             Body.StopAttack();
+            StopSupportEnemyChase();
             if (!UsesDefensiveOnlyPet) Body.ControlledBrain?.Disengage();
             if (Body.IsCasting && Body.castingComponent?.SpellHandler?.Spell?.IsHarmful == true)
                 Body.StopCurrentSpellcast();
@@ -3807,8 +3808,27 @@ namespace DOL.AI.Brain
         }
 
         /// <summary>
+        /// How far past its melee range a support bot will still swing at the group's target. Past this it
+        /// does not walk in: it stays in formation (see TrySupportIdleCombatAssist).
+        /// </summary>
+        public const int SupportIdleMeleeSlack = 50;
+
+        /// <summary>Extra reach while the support bot is already swinging at that target, so a target that sways at the edge does not toggle it.</summary>
+        public const int SupportIdleMeleeHoldSlack = 150;
+
+        /// <summary>
         /// Low-priority offense for exclusive support while nobody needs healing.
         /// Returns true when an offensive action was taken.
+        ///
+        /// Idle offense never moves the healer. Play report 2026-11-11 (Jay, 1.1.12): a healer in the
+        /// player's group ran back and forth during fights whenever it was not casting. With nothing to
+        /// cast it started a melee attack, which for an NPC body is a follow on the enemy; the next think
+        /// that needed a heal, or fell below the mana floor, held support combat and walked back to its
+        /// formation slot, but StopAttack does not end that follow, so the formation walk and the enemy
+        /// chase pulled against each other until idle offense started the chase again. A cast attempt out
+        /// of range (SpellHandler) or without line of sight (GameNPC.OnCastSpellLosCheckFail) starts the
+        /// same follow. So: spells only when the target is already in spell range, melee only when it is
+        /// already in reach, and otherwise the healer keeps its formation slot.
         /// </summary>
         private bool TrySupportIdleCombatAssist()
         {
@@ -3828,28 +3848,65 @@ namespace DOL.AI.Brain
             if (target == null || !MaySupportIdleCombatAssist(target))
                 return false;
 
+            bool inMeleeReach = SupportIdleMeleeInReach(target);
+            int spellRange = OffensiveApproachRange(target);
+            bool inSpellRange = spellRange > 0 && Body.IsWithinRadius(target, spellRange);
+            if (!inMeleeReach && !inSpellRange)
+                return false;
+
             AddToAggroList(target, Math.Max(1, target.EffectiveLevel));
             Body.TargetObject = target;
             if (!UsesDefensiveOnlyPet)
                 TryCommandCompanionDruidPet(target);
 
+            // A support bot that is not swinging has no business following the enemy: drop a chase left
+            // by an earlier melee start or a failed cast before deciding this think's action.
+            if (!inMeleeReach)
+                StopSupportEnemyChase();
+
             // Prefer nukes/debuffs; fall back to melee when the class has nothing to cast.
-            if (CheckSpells(eCheckSpellType.Offensive))
+            if (inSpellRange && CheckSpells(eCheckSpellType.Offensive))
                 return true;
             if (Body.IsCasting || Body.castingComponent?.HasPendingSkillRequests == true)
                 return true;
 
-            if (!Body.IsWithinRadius(target, Math.Max(Body.MeleeAttackRange, 200)) &&
-                PrefersCurrentSpellRange())
+            if (!inMeleeReach)
             {
-                // Casters walk into spell range without starting a useless melee chase.
-                ApproachPlayerLedPullTarget(target);
-                return true;
+                // Nothing castable from here and the target is not in reach: hold formation instead.
+                StopSupportEnemyChase();
+                return false;
             }
 
             Body.StartAttack(target);
             return true;
         }
+
+        /// <summary>True when the support bot can swing at target from where it stands (no walking in).</summary>
+        private bool SupportIdleMeleeInReach(GameLiving target)
+        {
+            if (target == null)
+                return false;
+            int reach = Body.MeleeAttackRange + SupportIdleMeleeSlack;
+            if (Body.IsAttacking && Body.TargetObject == target)
+                reach += SupportIdleMeleeHoldSlack;
+            return Body.IsWithinRadius(target, reach);
+        }
+
+        /// <summary>
+        /// Ends a follow on an enemy (a melee stick or a cast-range approach). StopAttack leaves it running,
+        /// and it fights the formation walk. Follows on the leader, a group member or the bot's own pet are kept.
+        /// </summary>
+        private void StopSupportEnemyChase()
+        {
+            if (Body.FollowTarget is GameLiving followed && IsSupportEnemyChase(followed))
+                Body.StopFollowing();
+        }
+
+        private bool IsSupportEnemyChase(GameLiving followed) =>
+            followed != null && followed != Body && followed != AssistedPlayer &&
+            followed != Body.ControlledBrain?.Body &&
+            Body.Group?.IsInTheGroup(followed) != true &&
+            GameServer.ServerRules?.IsAllowedToAttack(Body, followed, true) == true;
 
         private void FollowDuringMobileSong()
         {
