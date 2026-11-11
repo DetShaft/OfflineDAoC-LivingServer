@@ -476,8 +476,8 @@
   {
     "Path": "new-client/godot/game/net/server_world.gd",
     "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
-    "Fixed": "5bde0e60cd5259c286b3e428d0b52dac18ebc6cc3042800d2000b54d96ac7a3d",
-    "Size": 87277,
+    "Fixed": "1098a9cafab46d0f7c4cc5d073074cb6c91246a9d771cf79e11a52f24a584906",
+    "Size": 87500,
     "File": "content/godot/game/net/server_world.gd",
     "ReplaceAny": true
   },
@@ -500,16 +500,16 @@
   {
     "Path": "new-client/godot/game/ui/commander_panel.gd",
     "Released": "",
-    "Fixed": "a9a1eba84454ae5343f4385ebf706a49ba4722113824dbf8d3617d8a3cc9e4c5",
-    "Size": 842,
+    "Fixed": "83c907b1ebbd0a0ad1d01c7f59767d695d1726b271073b762c31302dc8f7c522",
+    "Size": 565,
     "File": "content/godot/game/ui/commander_panel.gd",
     "Create": true
   },
   {
     "Path": "new-client/godot/game/ui/npc_dialog.gd",
     "Released": "4adfa94ce1bd43aae581bc869d7274a70f5a6a38b8ee7dd7b2ec3b6e2443a74e",
-    "Fixed": "cd4822b7c3ade29c467b35c8cd6a234b5d68153acd2e31104902526739ce118f",
-    "Size": 3035,
+    "Fixed": "dfa19ec572a355de8c1e5b986388579b563c36878015d6a20f5995ce4bcba9ad",
+    "Size": 3777,
     "File": "content/godot/game/ui/npc_dialog.gd",
     "ReplaceAny": true
   },

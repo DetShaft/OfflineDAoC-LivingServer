@@ -65,48 +65,53 @@ namespace DOL.GS
                 // in case the defender is facing another direction
                 if (_npcOwner.StylesBack != null && _npcOwner.StylesBack.Count > 0)
                 {
-                    Style style = _npcOwner.StylesBack[Util.Random(0, _npcOwner.StylesBack.Count - 1)];
+                    Style style = PickRandom(_npcOwner.StylesBack);
 
-                    if (StyleProcessor.CanUseStyle(lastAttackData, _npcOwner, style, _npcOwner.ActiveWeapon))
+                    if (style != null && StyleProcessor.CanUseStyle(lastAttackData, _npcOwner, style, _npcOwner.ActiveWeapon))
                         return style;
                 }
 
                 if (_npcOwner.StylesSide != null && _npcOwner.StylesSide.Count > 0)
                 {
-                    Style style = _npcOwner.StylesSide[Util.Random(0, _npcOwner.StylesSide.Count - 1)];
+                    Style style = PickRandom(_npcOwner.StylesSide);
 
-                    if (StyleProcessor.CanUseStyle(lastAttackData, _npcOwner, style, _npcOwner.ActiveWeapon))
+                    if (style != null && StyleProcessor.CanUseStyle(lastAttackData, _npcOwner, style, _npcOwner.ActiveWeapon))
                         return style;
                 }
 
                 if (_npcOwner.StylesFront != null && _npcOwner.StylesFront.Count > 0)
                 {
-                    Style style = _npcOwner.StylesFront[Util.Random(0, _npcOwner.StylesFront.Count - 1)];
+                    Style style = PickRandom(_npcOwner.StylesFront);
 
-                    if (StyleProcessor.CanUseStyle(lastAttackData, _npcOwner, style, _npcOwner.ActiveWeapon))
+                    if (style != null && StyleProcessor.CanUseStyle(lastAttackData, _npcOwner, style, _npcOwner.ActiveWeapon))
                         return style;
                 }
 
                 // Pick a random anytime style. A commander only picks one its weapon can use.
                 if (_npcOwner.StylesAnytime != null && _npcOwner.StylesAnytime.Count > 0)
-                {
-                    if (_npcOwner is CommanderPet commanderPet)
-                    {
-                        var fitting = new System.Collections.Generic.List<Style>();
-                        foreach (Style style in _npcOwner.StylesAnytime)
-                        {
-                            if (commanderPet.StyleMatchesWeapon(style))
-                                fitting.Add(style);
-                        }
-                        if (fitting.Count == 0)
-                            return null;
-                        return fitting[Util.Random(0, fitting.Count - 1)];
-                    }
-                    return _npcOwner.StylesAnytime[Util.Random(0, _npcOwner.StylesAnytime.Count - 1)];
-                }
+                    return PickRandom(_npcOwner.StylesAnytime);
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// A random style from the list. A commander knows the styles of every weapon it can hold
+        /// (CommanderPet.RefreshLevelStyles), so it picks only among the equipped weapon's: a random
+        /// pick from all of them would mostly land on another weapon's style and not fire.
+        /// </summary>
+        private Style PickRandom(System.Collections.Generic.List<Style> styles)
+        {
+            if (_npcOwner is not CommanderPet commander)
+                return styles[Util.Random(0, styles.Count - 1)];
+
+            var fitting = new System.Collections.Generic.List<Style>();
+            foreach (Style style in styles)
+            {
+                if (commander.StyleMatchesWeapon(style))
+                    fitting.Add(style);
+            }
+            return fitting.Count == 0 ? null : fitting[Util.Random(0, fitting.Count - 1)];
         }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -111,11 +112,14 @@ public sealed class UT_BonedancerPetEquipment
         string menu = commander.DialogMenu();
         Assert.That(menu, Does.Contain("[Twohanded Sword]"));
         Assert.That(menu, Does.Contain("[Twohanded Axe]"));
+        Assert.That(menu, Does.Contain("[Twohanded Hammer]"));
         Assert.That(menu, Does.Contain("[Hammer]"));
         Assert.That(menu, Does.Contain("[Sword]"));
-        Assert.That(menu, Does.Contain("[Axe]"));
-        Assert.That(menu, Does.Contain("[assist]"));
+        Assert.That(menu, Does.Contain("an [Axe]"));
+        Assert.That(menu, Does.StartWith("What are your orders, master?"));
+        // Minions assist by default, so the commander offers the other choice.
         Assert.That(menu, Does.Contain("[split]"));
+        Assert.That(menu, Does.Not.Contain("[assist]"));
         Assert.That(menu, Does.Contain("[taunt]"));
 
         Assert.That(commander.ReplyToKeyword("assist"), Is.EqualTo("My minions will assist me."));
@@ -129,7 +133,96 @@ public sealed class UT_BonedancerPetEquipment
         Assert.That(commander.ReplyToKeyword("Twohanded Sword"), Is.EqualTo("I will wield the Twohanded Sword."));
         Assert.That(commander.ActiveWeaponSlot, Is.EqualTo(eActiveWeaponSlot.TwoHanded));
         Assert.That(commander.ActiveWeapon.Object_Type, Is.EqualTo((int)eObjectType.Sword));
+
+        // The answer leads the next dialog, which shows the new state instead of the old block again.
+        string after = commander.DialogMenu("I will wield the Twohanded Sword.");
+        Assert.That(after, Does.StartWith("I will wield the Twohanded Sword.\nI hold a Twohanded Sword."));
+        Assert.That(after, Does.Contain("[assist]"), "minions split, so the commander offers assist");
+        Assert.That(after.Split('\n').Count(line => line.Contains("I can take up")), Is.EqualTo(1));
+        Assert.That(commander.ReplyToKeyword("stop taunting"), Is.EqualTo("I will no longer taunt."));
+        Assert.That(commander.ReplyToKeyword("choose"), Is.EqualTo("I will choose my own styles."));
     }
+
+    [Test]
+    public void ReturnedCommanderHasNoMinionLine()
+    {
+        CommanderPet commander = new CommanderPet(Template(49, "returned commander"));
+        Assert.That(commander.SubPetCapacity, Is.EqualTo(0));
+        Assert.That(commander.DialogMenu(), Does.Not.Contain("minions"));
+    }
+
+    [Test]
+    public void EveryWeaponLineGetsStylesUpToTheCommandersLevel()
+    {
+        // Warrior teaches all three lines; a hammer had no styles from the npc template.
+        var table = new Dictionary<(string, int), List<Style>>
+        {
+            [("Sword", (int)eCharacterClass.Warrior)] = new() { Leveled("Sword A", eObjectType.Sword, 201, 2), Leveled("Sword B", eObjectType.Sword, 202, 25) },
+            [("Axe", (int)eCharacterClass.Warrior)] = new() { Leveled("Axe A", eObjectType.Axe, 301, 4) },
+            [("Hammer", (int)eCharacterClass.Warrior)] = new() { Leveled("Hammer A", eObjectType.Hammer, 401, 1), Leveled("Hammer B", eObjectType.Hammer, 402, 18), Leveled("Hammer C", eObjectType.Hammer, 403, 39) },
+        };
+        List<Style> Lookup(string spec, int classId) =>
+            table.TryGetValue((spec, classId), out List<Style> list) ? new List<Style>(list) : new List<Style>();
+
+        var low = CommanderPet.LevelStyles(20, new[] { "Sword", "Axe", "Hammer" }, Lookup).Select(s => s.Name).ToList();
+        Assert.That(low, Is.EquivalentTo(new[] { "Sword A", "Axe A", "Hammer A", "Hammer B" }));
+        var high = CommanderPet.LevelStyles(40, new[] { "Sword", "Axe", "Hammer" }, Lookup).Select(s => s.Name).ToList();
+        Assert.That(high, Is.EquivalentTo(new[] { "Sword A", "Sword B", "Axe A", "Hammer A", "Hammer B", "Hammer C" }));
+
+        // A line the Warrior lacks is filled from the next Midgard class that trains it.
+        table[("Hammer", (int)eCharacterClass.Warrior)] = new();
+        table[("Hammer", (int)eCharacterClass.Thane)] = new() { Leveled("Thane Hammer", eObjectType.Hammer, 501, 1) };
+        Assert.That(CommanderPet.LevelStyles(10, new[] { "Hammer" }, Lookup).Select(s => s.Name), Is.EqualTo(new[] { "Thane Hammer" }));
+    }
+
+    [Test]
+    public void HammerCommanderLearnsHammerStylesAndOffersThem()
+    {
+        Func<string, int, List<Style>> old = CommanderPet.StyleSource;
+        try
+        {
+            CommanderPet.StyleSource = (spec, classId) => classId != (int)eCharacterClass.Warrior ? new List<Style>() : spec switch
+            {
+                "Hammer" => new List<Style> { Leveled("Hammer Opener", eObjectType.Hammer, 601, 1) },
+                "Sword" => new List<Style> { Leveled("Sword Opener", eObjectType.Sword, 602, 1) },
+                _ => new List<Style>(),
+            };
+            CommanderPet commander = new CommanderPet(Template(50, "skeletal commander"));
+            Assert.That(commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.OneHandHammer, false, 322), Is.True);
+            Assert.That(commander.PickableStylesForEquippedWeapon().Select(s => s.Name), Is.EqualTo(new[] { "Hammer Opener" }));
+            Assert.That(commander.DialogMenu(), Does.Contain("[Hammer Opener]"));
+            Assert.That(commander.ReplyToKeyword("Hammer Opener"), Is.EqualTo("I will use Hammer Opener."));
+            Assert.That(commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.TwoHandHammer, false), Is.True);
+            Assert.That(commander.PreferredCombatStyle?.Name, Is.EqualTo("Hammer Opener"), "a two-handed hammer keeps the hammer line");
+            Assert.That(commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.OneHandSword, false), Is.True);
+            Assert.That(commander.PreferredCombatStyle, Is.Null);
+            Assert.That(commander.DialogMenu(), Does.Contain("[Sword Opener]").And.Not.Contain("[Hammer Opener]"));
+        }
+        finally
+        {
+            CommanderPet.StyleSource = old;
+        }
+    }
+
+    [Test]
+    public void ChainAndDefensiveStylesAreNotOfferedAsFavorites()
+    {
+        Style opener = Leveled("Opener", eObjectType.Sword, 701, 1);
+        Style chain = new(new DbStyle { Name = "Chain", ID = 702, StyleID = 702, SpecKeyName = "Sword", WeaponTypeRequirement = (int)eObjectType.Sword, OpeningRequirementType = (int)Style.eOpening.Offensive, OpeningRequirementValue = 701 }, null);
+        Style parry = new(new DbStyle { Name = "Parry", ID = 703, StyleID = 703, SpecKeyName = "Sword", WeaponTypeRequirement = (int)eObjectType.Sword, OpeningRequirementType = (int)Style.eOpening.Defensive }, null);
+        Style back = new(new DbStyle { Name = "Back", ID = 704, StyleID = 704, SpecKeyName = "Sword", WeaponTypeRequirement = (int)eObjectType.Sword, OpeningRequirementType = (int)Style.eOpening.Positional }, null);
+        Assert.That(CommanderPet.PickableStyles(new[] { chain, parry, back, opener }).Select(s => s.Name), Is.EqualTo(new[] { "Back", "Opener" }).Or.EqualTo(new[] { "Opener", "Back" }));
+    }
+
+    private static Style Leveled(string name, eObjectType weapon, int id, int level) => new(new DbStyle
+    {
+        Name = name,
+        ID = id,
+        StyleID = id,
+        SpecKeyName = weapon.ToString(),
+        WeaponTypeRequirement = (int)weapon,
+        SpecLevelRequirement = level,
+    }, null);
 
     private static Style StyleOf(string name, eObjectType weapon, int id) => new(new DbStyle
     {

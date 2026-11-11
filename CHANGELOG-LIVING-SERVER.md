@@ -8,6 +8,18 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.12 (in development)
+
+**Commander.** Right-click your commander to talk to it; a left click only targets it, and the ORDERS button
+beside the pet window is gone. The dialog reads as one exchange: the commander's answer to your last order
+is on top in its own colour, and the orders under it show what it does now (the weapon it holds, the style it
+favors, whether its minions assist and whether it taunts) instead of the whole block repeating under every
+click. Returned and Decayed commanders, which have no minions, no longer offer minion orders.
+Every weapon a commander can hold now has styles: it learns the Midgard sword, axe and hammer styles up to
+its own level (a higher commander knows more of them), on top of its template's styles. A hammer had none.
+Only styles that open on their own or from a position can be picked as a favorite; chain and defensive styles
+stay in its own rotation. Tests only: not yet seen in a log from Jay's PC.
+
 ## Beta 1.1.11 — 2026-11-11
 
 The commander's orders are a small dialog with clickable [keywords], the way Eden's commander
