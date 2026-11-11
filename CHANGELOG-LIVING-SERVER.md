@@ -20,6 +20,12 @@ its own level (a higher commander knows more of them), on top of its template's 
 Only styles that open on their own or from a position can be picked as a favorite; chain and defensive styles
 stay in its own rotation. Tests only: not yet seen in a log from Jay's PC.
 
+**Friends and Looking For Group.** The Friends and Looking For Group windows fill their frame (a dark backing under the stone frame closes the gap
+that showed the world through the top edge), and their column headers sort: click one to sort by it, again to
+reverse it. Looking For Group shows full class names and real zone names in place of the four-letter class codes
+and zone numbers the packet carries, drops the LFG/LFM column, and its CLASS / LEVEL / ZONE filters are boxed
+fields above the headers instead of loose hint text over them. Friends that do not fit scroll. Tests only: not yet seen in game.
+
 Snarls, the named wolf in East Svealand, can be targeted once it shows itself. It hides (no name, can't be
 targeted, can't fight) until three of its wolves die; when it came out, the classic client kept it untargetable and
 nameless while it attacked, and it killed a group's bots that the player could not help. Any change to an NPC's

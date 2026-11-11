@@ -484,16 +484,16 @@
   {
     "Path": "new-client/godot/game/ui/friends_window.gd",
     "Released": "",
-    "Fixed": "af74c863ffdbc7f12989ac17d1bfe9cc4debfccf75c0f41ee6ab39c9769f9b77",
-    "Size": 6314,
+    "Fixed": "032171f7101fc1f2b0e81d227b540e77af701f3806213b351a065732018740fc",
+    "Size": 10385,
     "File": "content/godot/game/ui/friends_window.gd",
     "Create": true
   },
   {
     "Path": "new-client/godot/game/ui/lfg_window.gd",
     "Released": "",
-    "Fixed": "b1580a81f7a4cabb59e1f90242678fec2c993727361a113eee6954858dcfbba1",
-    "Size": 6747,
+    "Fixed": "0f3788155bfc335d5fd16875d1d2076e7750b7a91f9d8910a986f8a7f865bb71",
+    "Size": 13661,
     "File": "content/godot/game/ui/lfg_window.gd",
     "Create": true
   },
