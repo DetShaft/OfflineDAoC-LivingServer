@@ -267,6 +267,10 @@ if (@($plan | Where-Object { $_.State -ne 'this build' }).Count -eq 0 -and
     @($launcherPlan | Where-Object { $_.State -ne 'this build' }).Count -eq 0 -and $contentPlan.Count -eq 0) {
     # DLLs match this build: still refuse "Already installed" when required .gd scripts are stale (Setup re-run).
     Assert-LivingServerGdFixed $game $contentPatches 'before treating the install as already done'
+    # 1.1.8 deleted the class cache and then a re-run could exit here. Put the cache back even when
+    # nothing else needs copying. Godot --path never rebuilds it.
+    if (!$DryRun) { Repair-GodotClassCache $game $buildDir }
+    else { Write-Host '  class cache: would be checked and restored if it is missing or incomplete' }
     Write-Host ''
     Write-Host "Already installed: $($info['BuildName']). Nothing to do." -ForegroundColor Green
     exit 0
@@ -447,21 +451,10 @@ try {
     }
     # Fail loudly if any required Living Server .gd is still wrong after the write pass (Setup uses this same script).
     Assert-LivingServerGdFixed $game $contentPatches 'after writing content patches'
-    # 1.1.8: after any new-client script change, drop Godot's global class cache so the next launch
-    # rescans loose .gd files. A stale cache from 0.37c / 1.1.6 was why typed Create classes failed
-    # to resolve even after game_ui.gd was on disk. Do not delete the whole .godot tree (imports).
-    if (@($contentPlan | Where-Object { [string]$_.Patch.Path -like 'new-client/godot/*' }).Count -gt 0) {
-        $godot = Join-Path $game 'new-client\godot'
-        foreach ($rel in @('.godot\global_script_class_cache.cfg', '.godot\uid_cache.bin')) {
-            $cacheFile = Join-Path $godot $rel
-            if (Test-Path -LiteralPath $cacheFile) {
-                Remove-Item -LiteralPath $cacheFile -Force
-                Write-Host "  cleared $rel (Godot will rebuild it on next start)"
-            }
-        }
-        Get-ChildItem -LiteralPath (Join-Path $godot 'game') -Recurse -Filter '*.gdc' -ErrorAction SilentlyContinue |
-            ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force }
-    }
+    # 1.1.9: never delete global_script_class_cache.cfg. 1.1.8 did, and Godot --path does not rebuild it,
+    # so every autoload failed (ZoneAudio, Accounts, login_screen) and the window stayed grey.
+    # Restore or append from the shipped cache, then require every class_name in the project to be listed.
+    Repair-GodotClassCache $game $buildDir
     if ($helpers.Count -gt 0) {
         New-Item -ItemType Directory -Path (Join-Path $game 'tools\claude-version') -Force | Out-Null
         foreach ($helper in $helpers) {

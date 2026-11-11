@@ -8,6 +8,14 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.9 — 2026-11-11
+
+Fixes the grey screen after 1.1.8. INSTALL deleted `global_script_class_cache.cfg`, and the launcher's
+`godot --path` start does not rebuild it, so autoloads (`ZoneAudio`, `Accounts`, the login screen) failed
+to parse. 1.1.9 restores that cache, never deletes it, and fails the install if any `class_name` is missing.
+`zone_viewer` reports a compile failure instead of calling `.new()` on a broken GameUI script. If you are
+on 1.1.8, install 1.1.9 ([docs/RELEASE-NOTES-1.1.9.md](docs/RELEASE-NOTES-1.1.9.md)).
+
 ## Beta 1.1.8 — 2026-11-11
 
 Fixes the 1.1.7 updater/Setup miss that left players stuck on "Entering Offline DAoC". Confirmed: both zip

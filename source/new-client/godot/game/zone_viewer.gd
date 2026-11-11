@@ -151,7 +151,14 @@ func _ready() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load("user://settings.cfg")
 	player.movement_mode = String(args.get("movement", cfg.get_value("player", "movement", "modern")))
-	ui = GameUI.new()
+	# A game_ui.gd that failed to compile still occupies the GameUI name as a bare GDScript.
+	# Calling .new() on that then throws "Nonexistent function 'new'" after the zone is built
+	# (Jay's second 1.1.8 log, zone_viewer.gd:154) instead of saying the UI script did not load.
+	var game_ui_script := GameUI as GDScript
+	if game_ui_script == null or not game_ui_script.can_instantiate():
+		push_error("LivingServer: game_ui.gd did not compile, so the interface cannot open. Install 1.1.9 to restore game_ui.gd and the Godot class cache.")
+		return
+	ui = game_ui_script.new()
 	ui.player = player
 	add_child(ui)
 	PlayerData.attack_toggle_requested.connect(_toggle_attack)
