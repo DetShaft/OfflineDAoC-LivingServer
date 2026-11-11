@@ -868,6 +868,7 @@ func con_level(player_level: int, npc_level: int) -> int:
 func select(n: Npc) -> void:
 	if n == null or not n.state.alive:
 		return
+	var previous := target
 	target = n
 	target_object = 0
 	var nm := String(n.spawn.name)
@@ -878,6 +879,10 @@ func select(n: Npc) -> void:
 			"health": n.state.health, "guild": String(n.spawn.get("guild", ""))})
 	if Server.client:
 		Server.client.call("Target", int(n.spawn.get("oid", 0)), 0x8000 | 0x6000)
+	# Targeting your commander opens its order dialog. /commander menu, not Interact:
+	# an interact outside visibility makes the server delete the object.
+	if n != previous and pet_oid > 0 and int(n.spawn.get("oid", 0)) == pet_oid and PlayerData.class_id() == 30:
+		Server.command("/commander menu")
 
 
 func clear_target() -> void:
@@ -913,9 +918,14 @@ func _message(d: Dictionary) -> void:
 	var kind := String(CHAT_KINDS.get(t, "system"))
 	var text := String(d.text)
 	if bool(d.get("popup", false)) and viewer and viewer.ui and viewer.ui.npc_dialog:
-		# an NPC talking to you (SayTo -> the popup window): its words in the NPC window, [keywords] clickable
+		# an NPC talking to you (SayTo -> the popup window): its words in the NPC window, [keywords] clickable.
+		# A leading \u0001 (the commander's reply) appends instead of replacing the dialog.
+		var append := text.begins_with("\u0001")
+		if append:
+			text = text.substr(1)
 		var who := String(PlayerData.target.get("name", ""))
-		viewer.ui.npc_dialog.say("srv%d" % _target_oid(), who, text)
+		var mine := pet_oid > 0 and _target_oid() == pet_oid
+		viewer.ui.npc_dialog.say("srv%d" % _target_oid(), who, text, append, mine)
 		PlayerData.message.emit(text, "npc")
 		return
 	if t >= 0xC8 and t <= 0xCB:                                 # screen centre (zone names, warnings)

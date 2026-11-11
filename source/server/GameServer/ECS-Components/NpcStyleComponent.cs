@@ -1,4 +1,4 @@
-﻿using DOL.GS.ServerProperties;
+using DOL.GS.ServerProperties;
 using DOL.GS.Styles;
 
 namespace DOL.GS
@@ -17,7 +17,14 @@ namespace DOL.GS
             // We return `NextCombatStyle` if it was overwritten.
             // It should be set back to null once used.
             if (NextCombatStyle != null)
-                return NextCombatStyle;
+            {
+                // A preferred style from the previous weapon stays in NextCombatStyle until
+                // something clears it. Do not fire it on the new weapon.
+                if (_npcOwner is CommanderPet commander && !commander.StyleMatchesWeapon(NextCombatStyle))
+                    commander.SetPreferredCombatStyle(null);
+                else
+                    return NextCombatStyle;
+            }
 
             if (_npcOwner.Styles == null || _npcOwner.Styles.Count < 1 || _npcOwner.TargetObject == null)
                 return null;
@@ -80,9 +87,23 @@ namespace DOL.GS
                         return style;
                 }
 
-                // Pick a random anytime style
+                // Pick a random anytime style. A commander only picks one its weapon can use.
                 if (_npcOwner.StylesAnytime != null && _npcOwner.StylesAnytime.Count > 0)
+                {
+                    if (_npcOwner is CommanderPet commanderPet)
+                    {
+                        var fitting = new System.Collections.Generic.List<Style>();
+                        foreach (Style style in _npcOwner.StylesAnytime)
+                        {
+                            if (commanderPet.StyleMatchesWeapon(style))
+                                fitting.Add(style);
+                        }
+                        if (fitting.Count == 0)
+                            return null;
+                        return fitting[Util.Random(0, fitting.Count - 1)];
+                    }
                     return _npcOwner.StylesAnytime[Util.Random(0, _npcOwner.StylesAnytime.Count - 1)];
+                }
             }
 
             return null;

@@ -452,7 +452,7 @@
   {
     "Path": "new-client/godot/game/zone_viewer.gd",
     "Released": "39e4c91d75a99240a5de057b6c289477a66a446d6a3e146fdee3e135a664a068",
-    "Fixed": "0c3d487804727fef3852d6be72ff78c49e763b23edf1368124d13361537694d2",
+    "Fixed": "bf4a8d289d1ce89b5610b2fcf98204ce993e63a20fee40325786451b31276f47",
     "Size": 89660,
     "File": "content/godot/game/zone_viewer.gd",
     "ReplaceAny": true
@@ -460,8 +460,8 @@
   {
     "Path": "new-client/godot/game/ui/game_ui.gd",
     "Released": "219cd58ad3e9d227e0436358379b8697fe147ad62df8c61d4d07234a8817d1b2",
-    "Fixed": "bd1a2a949643198bf9dc90d32243ab7e17e91f32c7d76d87ea4c6c771a254b24",
-    "Size": 80283,
+    "Fixed": "e83444b9e3a912a141b2e1fd03fffd13b519bb645546f19ad592484db47c10ed",
+    "Size": 80282,
     "File": "content/godot/game/ui/game_ui.gd",
     "ReplaceAny": true
   },
@@ -476,34 +476,42 @@
   {
     "Path": "new-client/godot/game/net/server_world.gd",
     "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
-    "Fixed": "18c270e3fc2c3d59d62ea0095a149ab67fac34b43f538247704fd5967cfc382a",
-    "Size": 86718,
+    "Fixed": "5bde0e60cd5259c286b3e428d0b52dac18ebc6cc3042800d2000b54d96ac7a3d",
+    "Size": 87277,
     "File": "content/godot/game/net/server_world.gd",
     "ReplaceAny": true
   },
   {
     "Path": "new-client/godot/game/ui/friends_window.gd",
     "Released": "",
-    "Fixed": "8c42ee4322a84013ebc99dd5e76f1bcce1b3dab10e47b91402440ee8f953f8a6",
-    "Size": 6096,
+    "Fixed": "af74c863ffdbc7f12989ac17d1bfe9cc4debfccf75c0f41ee6ab39c9769f9b77",
+    "Size": 6314,
     "File": "content/godot/game/ui/friends_window.gd",
     "Create": true
   },
   {
     "Path": "new-client/godot/game/ui/lfg_window.gd",
     "Released": "",
-    "Fixed": "12faf8f702f1a28a8ac86547fe246fb559e283fca96251582469e8dbc05652f2",
-    "Size": 6049,
+    "Fixed": "b1580a81f7a4cabb59e1f90242678fec2c993727361a113eee6954858dcfbba1",
+    "Size": 6747,
     "File": "content/godot/game/ui/lfg_window.gd",
     "Create": true
   },
   {
     "Path": "new-client/godot/game/ui/commander_panel.gd",
     "Released": "",
-    "Fixed": "fa33be761dcde570bad494cd6794100468233eabad9a4da5bbc50c41e41e04e6",
-    "Size": 3152,
+    "Fixed": "a9a1eba84454ae5343f4385ebf706a49ba4722113824dbf8d3617d8a3cc9e4c5",
+    "Size": 842,
     "File": "content/godot/game/ui/commander_panel.gd",
     "Create": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/npc_dialog.gd",
+    "Released": "4adfa94ce1bd43aae581bc869d7274a70f5a6a38b8ee7dd7b2ec3b6e2443a74e",
+    "Fixed": "cd4822b7c3ade29c467b35c8cd6a234b5d68153acd2e31104902526739ce118f",
+    "Size": 3035,
+    "File": "content/godot/game/ui/npc_dialog.gd",
+    "ReplaceAny": true
   },
   {
     "Path": "new-client/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll",

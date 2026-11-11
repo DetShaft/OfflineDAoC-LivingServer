@@ -522,6 +522,10 @@ namespace DOL.GS.Styles
 		/// <returns>true if correct weapon active</returns>
 		protected static bool CheckWeaponType(Style style, GameLiving living, DbInventoryItem weapon)
 		{
+			// Other NPCs ignore the weapon requirement. A commander must stay on the
+			// equipped weapon's style line (an axe style does not fire with a sword out).
+			if (living is CommanderPet commander)
+				return commander.StyleMatchesWeapon(style);
 			if (living is GameNPC)
 				return true;
 

@@ -122,9 +122,9 @@ namespace DOL.GS
 				"1h-axe" or "1haxe" or "onehandaxe" or "axe1h" => eWeaponType.OneHandAxe,
 				"1h-hammer" or "1hhammer" or "onehandhammer" or "hammer1h" => eWeaponType.OneHandHammer,
 				"1h-sword" or "1hsword" or "onehandsword" or "sword1h" => eWeaponType.OneHandSword,
-				"2h-axe" or "2haxe" or "twohandaxe" or "axe2h" => eWeaponType.TwoHandAxe,
-				"2h-hammer" or "2hhammer" or "twohandhammer" or "hammer2h" => eWeaponType.TwoHandHammer,
-				"2h-sword" or "2hsword" or "twohandsword" or "sword2h" => eWeaponType.TwoHandSword,
+				"2h-axe" or "2haxe" or "twohandaxe" or "axe2h" or "twohanded-axe" or "two-handed-axe" => eWeaponType.TwoHandAxe,
+				"2h-hammer" or "2hhammer" or "twohandhammer" or "hammer2h" or "twohanded-hammer" or "two-handed-hammer" => eWeaponType.TwoHandHammer,
+				"2h-sword" or "2hsword" or "twohandsword" or "sword2h" or "twohanded-sword" or "two-handed-sword" => eWeaponType.TwoHandSword,
 				"bow" or "archer" or "distance" => eWeaponType.Bow,
 				"axe" => eWeaponType.OneHandAxe,
 				"hammer" => eWeaponType.OneHandHammer,
@@ -132,6 +132,184 @@ namespace DOL.GS
 				_ => eWeaponType.None,
 			};
 			return weaponType != eWeaponType.None;
+		}
+
+		/// <summary>
+		/// Words the commander offers in the clickable dialog. The bracketed words are what the
+		/// player whispers back.
+		/// </summary>
+		public static string WeaponPhrase(eWeaponType type) => type switch
+		{
+			eWeaponType.TwoHandSword => "Twohanded Sword",
+			eWeaponType.TwoHandAxe => "Twohanded Axe",
+			eWeaponType.TwoHandHammer => "Twohanded Hammer",
+			eWeaponType.OneHandHammer => "Hammer",
+			eWeaponType.OneHandSword => "Sword",
+			eWeaponType.OneHandAxe => "Axe",
+			eWeaponType.Bow => "Bow",
+			_ => type.ToString(),
+		};
+
+		/// <summary>
+		/// A one-handed sword and a one-handed axe share a slot, so GameNPC.SwitchWeapon does not
+		/// broadcast. The client keeps the old model until a later slot change. This is the extra
+		/// update that same-slot swap still has to send.
+		/// </summary>
+		public static bool NeedsExtraEquipmentBroadcast(eActiveWeaponSlot before, eActiveWeaponSlot after)
+			=> before == after && after != eActiveWeaponSlot.Distance;
+
+		/// <summary>How many same-slot weapon changes asked for an equipment update. Tests read this.</summary>
+		public int SameSlotEquipmentUpdates { get; private set; }
+
+		public const string DialogAppendPrefix = "\u0001";
+
+		public static bool IsDialogMenu(string text)
+		{
+			if (string.IsNullOrWhiteSpace(text))
+				return true;
+			string key = text.Trim().ToLowerInvariant();
+			return key is "commander" or "menu" or "orders";
+		}
+
+		/// <summary>True when this style's weapon requirement or spec line matches the item.</summary>
+		public bool StyleMatchesWeapon(Style style) => StyleFits(style, ActiveWeapon);
+
+		public static bool StyleFits(Style style, DbInventoryItem weapon)
+		{
+			if (style == null)
+				return false;
+			int requirement = style.WeaponTypeRequirement;
+			if (requirement == Style.SpecialWeaponType.AnyWeapon)
+				return weapon != null;
+			if (requirement == Style.SpecialWeaponType.DualWield || weapon == null)
+				return false;
+			int have = weapon.Object_Type;
+			if (have == (int)eObjectType.LeftAxe)
+				have = (int)eObjectType.Axe;
+			if (requirement == have)
+				return true;
+			string spec = style.Spec;
+			if (string.IsNullOrEmpty(spec) || spec.Equals("None", StringComparison.OrdinalIgnoreCase))
+				return false;
+			string weaponSpec = SkillBase.ObjectTypeToSpec((eObjectType)have);
+			return !string.IsNullOrEmpty(weaponSpec) && spec.Equals(weaponSpec, StringComparison.OrdinalIgnoreCase);
+		}
+
+		public List<Style> StylesForEquippedWeapon() => StylesMatching(AllCommanderStyles(), ActiveWeapon);
+
+		public static List<Style> StylesMatching(IEnumerable<Style> styles, DbInventoryItem weapon)
+		{
+			var list = new List<Style>();
+			if (styles == null)
+				return list;
+			var seen = new HashSet<int>();
+			foreach (Style style in styles)
+			{
+				if (style == null || !seen.Add(style.ID))
+					continue;
+				if (StyleFits(style, weapon))
+					list.Add(style);
+			}
+			list.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+			return list;
+		}
+
+		private IEnumerable<Style> AllCommanderStyles()
+		{
+			foreach (IEnumerable<Style> range in new IEnumerable<Style>[]
+			{
+				Styles, StylesAnytime, StylesFront, StylesSide, StylesBack, StylesDefensive, StylesChain,
+			})
+			{
+				if (range == null)
+					continue;
+				foreach (Style style in range)
+					yield return style;
+			}
+		}
+
+		/// <summary>
+		/// The commander's opening lines: weapon keywords, minion keywords, and styles for the
+		/// weapon that is out.
+		/// </summary>
+		public string DialogMenu()
+		{
+			eWeaponType[] order =
+			{
+				eWeaponType.TwoHandSword, eWeaponType.TwoHandAxe, eWeaponType.TwoHandHammer,
+				eWeaponType.OneHandHammer, eWeaponType.OneHandSword, eWeaponType.OneHandAxe, eWeaponType.Bow,
+			};
+			var have = new HashSet<eWeaponType>(AvailableWeaponTypes());
+			var words = order.Where(have.Contains).Select(type => "[" + WeaponPhrase(type) + "]").ToArray();
+			string weapons = words.Length == 0
+				? "I cannot change weapons."
+				: "I can use a " + string.Join(" ", words) + ".";
+			string minions = "My minions can [assist] me or [split]. I can [taunt].";
+			List<Style> styles = StylesForEquippedWeapon();
+			string styleLine = styles.Count == 0
+				? "I have no styles for this weapon."
+				: "With this weapon I use " + string.Join(" ", styles.Take(8).Select(style => "[" + style.Name + "]")) + ". Or [auto].";
+			return weapons + "\n" + minions + "\n" + styleLine;
+		}
+
+		/// <summary>
+		/// A clicked keyword. Null when the text is not one of the commander's orders (the caller
+		/// leaves it for the normal whisper path).
+		/// </summary>
+		public string ReplyToKeyword(string text)
+		{
+			if (string.IsNullOrWhiteSpace(text) || IsDialogMenu(text))
+				return null;
+			string key = text.Trim().ToLowerInvariant();
+			if (key == "assist")
+			{
+				SetMinionsAssisting(true);
+				return "My minions will assist me.";
+			}
+			if (key == "split")
+			{
+				SetMinionsAssisting(false);
+				return "My minions will split.";
+			}
+			if (key == "taunt")
+			{
+				SetTaunting(!Taunting);
+				return Taunting ? "I will taunt." : "I will no longer taunt.";
+			}
+			if (key is "auto" or "clear")
+			{
+				SetPreferredCombatStyle(null);
+				return "I will choose my own styles.";
+			}
+			if (TryParseWeaponType(text, out eWeaponType weapon))
+			{
+				if (!AvailableWeaponTypes().Contains(weapon))
+					return "I cannot use a " + WeaponPhrase(weapon) + ".";
+				if (!CommanderSwitchWeapon(weapon))
+					return "I cannot take up a " + WeaponPhrase(weapon) + " right now.";
+				return "I will wield the " + WeaponPhrase(weapon) + ".";
+			}
+			Style match = StylesForEquippedWeapon().FirstOrDefault(style =>
+				style.Name != null && style.Name.Equals(text.Trim(), StringComparison.OrdinalIgnoreCase));
+			if (match == null)
+				return null;
+			SetPreferredCombatStyle(match);
+			return "I will use " + match.Name + ".";
+		}
+
+		public void ShowDialog(GamePlayer player, bool append)
+		{
+			if (player == null)
+				return;
+			Tell(player, DialogMenu(), append);
+		}
+
+		private void Tell(GamePlayer player, string text, bool append)
+		{
+			if (player?.Out == null || string.IsNullOrEmpty(text))
+				return;
+			player.Out.SendMessage((append ? DialogAppendPrefix : string.Empty) + text,
+				eChatType.CT_Say, eChatLoc.CL_PopupWindow);
 		}
 
 		/// <summary>
@@ -293,286 +471,26 @@ namespace DOL.GS
 		/// <returns>True, if string needs further processing.</returns>
 		public override bool WhisperReceive(GameLiving source, string str)
 		{
-			// Everything below this comment is added in 1.83, and should not exist in a strict 1.65 level. Feel free to add it back in if desired.
-			return false;
-
 			if (source is not GamePlayer player || player != Owner)
 				return false;
 
-			string[] strargs = str.ToUpper().Split(new char[] { ' ', '-' });
+			bool menu = IsDialogMenu(str);
+			string reply = menu ? null : ReplyToKeyword(str);
+			if (!menu && reply == null)
+				return false;
 
-			for (int i = 0; i < strargs.Length; i++)
-			{
-				string curStr = strargs[i];
-
-				if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Commander").ToUpper())
-				{
-					switch (CommanderType)
-					{
-						case eCommanderType.DreadGuardian:
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadGuardian",
-								Name,
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Harm"),
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Empower"),
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Combat")),
-								eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-							break;
-						case eCommanderType.DreadLich:
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadLich",
-								Name,
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Spells"),
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Empower"),
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Combat")),
-								eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-							break;
-						case eCommanderType.DreadArcher:
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadArcher",
-								Name,
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Empower"),
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Combat")),
-								eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-							break;
-						default:
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.XCommander",
-								Name,
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Weapons"),
-								LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Combat")),
-								eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-							break;
-					}
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Combat").ToUpper())
-				{
-					if (ControlledNpcList == null || ControlledNpcList.Length < 1)
-						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.CombatNoMinions",
-							Name,
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Taunt")),
-							eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-					else
-						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Combat",
-							Name,
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Assist"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Taunt")),
-							eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-				} 
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Assist").ToUpper())
-				{
-					if (ControlledNpcList != null && ControlledNpcList.Length > 0)
-					{
-						MinionsAssisting = !MinionsAssisting;
-
-						if (MinionsAssisting)
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Assist.On"), eChatType.CT_Say, eChatLoc.CL_SystemWindow);
-						else
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Assist.Off"), eChatType.CT_Say, eChatLoc.CL_SystemWindow);
-
-						// Refresh minion aggression state
-						if (Brain is IControlledBrain commBrain)
-							foreach (IControlledBrain minBrain in ControlledNpcList)
-								if (minBrain != null)
-									minBrain.SetAggressionState(commBrain.AggressionState);
-					}
-				}
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Taunt").ToUpper())
-				{
-					Taunting = !Taunting;
-
-					if (Taunting)
-						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.CommStartTaunt"), eChatType.CT_Say, eChatLoc.CL_SystemWindow);
-					else
-						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.CommNoTaunt"), eChatType.CT_Say, eChatLoc.CL_SystemWindow);
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Weapons").ToUpper())
-				{
-					bool oneHand = CanUseWeaponSlot(eActiveWeaponSlot.Standard);
-					bool twoHand = CanUseWeaponSlot(eActiveWeaponSlot.TwoHanded);
-					if (oneHand && twoHand)
-						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Weapons.All",
-							Name,
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.1HandedAxe"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.1HandedHammer"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.1HandedSword"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.2HandedAxe"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.2HandedHammer"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.2HandedSword")),
-							eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-					else if (oneHand)
-						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Weapons.Limited",
-							Name,
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.1HandedAxe"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.1HandedHammer"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.1HandedSword")),
-							eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-					else if (twoHand)
-						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Weapons.Limited",
-							Name,
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.2HandedAxe"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.2HandedHammer"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.2HandedSword")),
-							eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Spells").ToUpper())
-				{
-					if (CommanderType == eCommanderType.DreadLich)
-						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadLich2",
-							Name,
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Snares"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Debilitating"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Damage")),
-							eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Empower").ToUpper())
-				{
-					bool found = false;
-					switch (CommanderType)
-					{
-						case eCommanderType.DreadGuardian:
-						case eCommanderType.DreadLich:
-						case eCommanderType.DreadArcher:
-							// Cast the first spell we find named "empower" in the server's default language;
-							// Likely pointless, as the mob should already be casting self-buffs automatically
-							foreach (Spell spell in Spells)
-							{
-								if (spell.Name.ToUpper() == LanguageMgr.GetTranslation(LanguageMgr.DefaultLanguage, "GameObjects.CommanderPet.WR.Const.Empower").ToUpper())
-								{
-									GameObject oldTarget = TargetObject;
-									TargetObject = this;
-									CastSpell(spell, SkillBase.GetSpellLine(GlobalSpellsLines.Mob_Spells), false);
-									TargetObject = oldTarget;
-									found = true;
-									break;
-								}
-							}
-							if (!found)
-								log.Warn("WhisperReceive() could not locate spell to empower pet");
-							break;
-					}
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Snares").ToUpper())
-				{
-					if (CommanderType == eCommanderType.DreadLich)
-					{
-						if (CommSpellOther == null)
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Spell.NotAvailable", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-						else
-						{
-							PreferredSpell = eCommanderPreferredSpell.Other;
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadLich.Snare", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-						}
-					}
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Debilitating").ToUpper())
-				{
-					if (CommanderType == eCommanderType.DreadLich)
-					{
-						if (CommSpellDebuff == null)
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Spell.NotAvailable", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-						else
-						{
-							PreferredSpell = eCommanderPreferredSpell.Debuff;
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadLich.Debilitating", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-						}
-					}
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Damage").ToUpper())
-				{
-					if (CommanderType == eCommanderType.DreadLich)
-					{
-						if (CommSpellDamageDebuff != null || CommSpellDamage != null)
-						{
-							PreferredSpell = eCommanderPreferredSpell.Damage;
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadLich.Damage", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-						}
-						else
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Spell.NotAvailable", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-					}
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.One").ToUpper())
-				{
-					i++;
-					if (i + 1 >= strargs.Length)
-						return false;
-
-					CommanderSwitchWeapon(eActiveWeaponSlot.Standard, strargs[++i]);
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Two").ToUpper())
-				{
-					i++;
-					if (i + 1 >= strargs.Length)
-						return false;
-
-					CommanderSwitchWeapon(eActiveWeaponSlot.TwoHanded, strargs[++i]);
-				}
-
-				// German and possibly other languages use a single word for weapons, so we have to check for that
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.1HandedAxe").ToUpper())
-					CommanderSwitchWeapon(eWeaponType.OneHandAxe);
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.1HandedHammer").ToUpper())
-					CommanderSwitchWeapon(eWeaponType.OneHandHammer);
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.1HandedSword").ToUpper())
-					CommanderSwitchWeapon(eWeaponType.OneHandSword);
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.2HandedAxe").ToUpper())
-					CommanderSwitchWeapon(eWeaponType.TwoHandAxe);
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.2HandedHammer").ToUpper())
-					CommanderSwitchWeapon(eWeaponType.TwoHandHammer);
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.2HandedSword").ToUpper())
-					CommanderSwitchWeapon(eWeaponType.TwoHandSword);
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Harm").ToUpper())
-				{
-					if (CommanderType == eCommanderType.DreadGuardian)
-						player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadGuardian2",
-							Name,
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Drain"),
-							LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Suppress")),
-							eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Drain").ToUpper())
-				{
-					if (CommanderType == eCommanderType.DreadGuardian)
-					{
-						if (CommSpellOther == null)
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Spell.NotAvailable", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-						else
-						{
-							PreferredSpell = eCommanderPreferredSpell.Other;
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadGuardian.Drain", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-						}
-					}
-				}
-
-				else if (curStr == LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Suppress").ToUpper())
-				{
-					if (CommanderType == eCommanderType.DreadGuardian)
-					{
-						if (CommSpellDamageDebuff != null || CommSpellDamage != null)
-						{
-							PreferredSpell = eCommanderPreferredSpell.Damage;
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.DreadGuardian.Suppress", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-						}
-						else
-							player.Out.SendMessage(LanguageMgr.GetTranslation(player.Client.Account.Language, "GameObjects.CommanderPet.WR.Const.Spell.NotAvailable", Name), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
-					}
-				}
-			}
-			return base.WhisperReceive(source, str);
+			if (reply != null)
+				Tell(player, reply, append: true);
+			Tell(player, DialogMenu(), append: reply != null);
+			return true;
 		}
 
 		public override bool Interact(GamePlayer player)
-        {
+		{
+			if (player == null || Owner == null || player != Owner)
+				return false;
 			return WhisperReceive(player, "commander");
-        }
+		}
 
 		#region Inventory
 		public enum eWeaponType
@@ -881,12 +799,12 @@ namespace DOL.GS
 		/// Switch the commander to the specified weapon type
 		/// </summary>
 		/// <param name="checkCanUse">Make sure the commander can use this weapon type?</param>
-		public void CommanderSwitchWeapon(eWeaponType weaponType, bool checkCanUse = true, ushort model = 0)
+		public bool CommanderSwitchWeapon(eWeaponType weaponType, bool checkCanUse = true, ushort model = 0)
 		{
 			DbItemTemplate itemTemp = GetWeaponTemplate(weaponType);
 
 			if (itemTemp == null || (checkCanUse && !CanUseWeaponSlot((eActiveWeaponSlot)itemTemp.Hand)))
-				return;
+				return false;
 
 			DbInventoryItem weapon;
 
@@ -924,12 +842,31 @@ namespace DOL.GS
 				else if (weaponType is eWeaponType.TwoHandAxe or eWeaponType.TwoHandHammer or eWeaponType.TwoHandSword or eWeaponType.Staff)
 					ClearCommanderOffhand();
 
-				// If we've got a ranged weapon, keep using it
+				// A 1h sword and a 1h axe stay in the standard slot. SwitchWeapon only broadcasts
+				// when the slot changes, so the client kept the old model until a later click
+				// landed on the other slot.
+				eActiveWeaponSlot previousSlot = ActiveWeaponSlot;
 				if (ActiveWeaponSlot == eActiveWeaponSlot.Distance)
-					BroadcastLivingEquipmentUpdate();
+				{
+					if (ObjectState == eObjectState.Active)
+						BroadcastLivingEquipmentUpdate();
+				}
 				else
 					SwitchWeapon((eActiveWeaponSlot)weapon.Hand);
+
+				if (NeedsExtraEquipmentBroadcast(previousSlot, ActiveWeaponSlot))
+				{
+					SameSlotEquipmentUpdates++;
+					if (ObjectState == eObjectState.Active)
+						BroadcastLivingEquipmentUpdate();
+				}
+
+				if (PreferredCombatStyle != null && !StyleMatchesWeapon(PreferredCombatStyle))
+					SetPreferredCombatStyle(null);
+				return true;
 			}
+
+			return false;
 		}
 
 		private void CommanderEquipOffhand(eWeaponType shieldType)
