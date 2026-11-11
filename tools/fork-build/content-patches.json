@@ -450,9 +450,17 @@
     "File": "content/pregame-splash.mpk"
   },
   {
+    "Path": "new-client/godot/game/zone_viewer.gd",
+    "Released": "39e4c91d75a99240a5de057b6c289477a66a446d6a3e146fdee3e135a664a068",
+    "Fixed": "25fb35c22d69b9365f0f7def48cacce8c9ba4afab6903f115a116d6bb2c169e2",
+    "Size": 88884,
+    "File": "content/godot/game/zone_viewer.gd",
+    "ReplaceAny": true
+  },
+  {
     "Path": "new-client/godot/game/ui/game_ui.gd",
     "Released": "219cd58ad3e9d227e0436358379b8697fe147ad62df8c61d4d07234a8817d1b2",
-    "Fixed": "73c1aa3e27ab864da7ceeee50c881143215da8e26de67cf0562789657815e98e",
+    "Fixed": "833076804f156871aca80fa90e43be009cae03929e4d09bd53159120ef339b81",
     "Size": 80282,
     "File": "content/godot/game/ui/game_ui.gd",
     "ReplaceAny": true

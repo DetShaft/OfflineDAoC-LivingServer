@@ -15,7 +15,7 @@
 
 # Offline DAoC: Living Server
 
-### Your single-player Camelot, alive like a 2003 server. **Beta 1.1.8 is out.**
+### Your single-player Camelot, alive like a 2003 server. **Beta 1.1.9 is out.**
 
 ![Offline DAoC: Living Server](tools/installer/src/Assets/hero.jpg)
 
@@ -29,12 +29,21 @@ the single-player Classic + Shrouded Isles server. Its bots already level, group
 Server gives them a life: personalities, guilds, memories, opinions and a voice, and an endgame they
 run themselves, whether or not you come along.
 
-> **[Download Beta 1.1.8](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.8-beta)**:
+> **[Download Beta 1.1.9](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.9-beta)**:
 > one Setup installs Offline DAoC and Living Server from nothing, or adds Living Server to the 0.36 or 0.37
 > game you have (0.37 or 0.37b, with or without the 0.37c new client). Free, every part has its own
 > switch, and one click rolls it back. Formerly the **Social Expansion**: if you had it, install over it
-> and keep everything. [What's new](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.8-beta) ·
+> and keep everything. [What's new](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.9-beta) ·
 > [Known issues](docs/KNOWN-ISSUES.md)
+
+## New in Beta 1.1.9
+
+Fixes the grey screen after 1.1.8. That build deleted `new-client\godot\.godot\global_script_class_cache.cfg`.
+The launcher starts Godot with `--path` and does not rebuild that cache, so every autoload failed
+(`ZoneAudio`, `Accounts`, the login screen) and the window stayed grey. 1.1.9 restores the cache, never
+deletes it, and checks that every `class_name` is listed. If you are on 1.1.8, install 1.1.9 (Setup or the
+zip). `zone_viewer` no longer calls `.new()` on a game UI script that failed to compile
+([what's new](docs/RELEASE-NOTES-1.1.9.md)).
 
 ## New in Beta 1.1.8
 
@@ -42,7 +51,7 @@ Fixes 1.1.7 leaving 1.1.6's typed `game_ui.gd` in place (Setup/INSTALL skipped a
 hash). Ships the preload-based friends/LFG/commander UI, a LivingServer client patch banner, and
 `[living_server] social_windows=false` to turn those windows off. Setup/INSTALL rewrite Living Server `.gd`
 File payloads whenever the hash differs and fail if post-install hashes do not match
-([what's new](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.8-beta)).
+([what's new](docs/RELEASE-NOTES-1.1.8.md)).
 
 ## New in Beta 1.1.7
 
@@ -151,8 +160,8 @@ in a crash-safe mode and is backed up every day
 
 **The easy way: Setup.**
 
-1. Download `LivingServer-Setup-1.1.8-beta.exe` from the
-   [Beta 1.1.8 release](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.8-beta) and run it.
+1. Download `LivingServer-Setup-1.1.9-beta.exe` from the
+   [Beta 1.1.9 release](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.9-beta) and run it.
    - No game yet? It downloads Offline DAoC with shadowofze's own downloader.
    - On 0.36? It updates the game to 0.37 with his official updater, keeping your saves.
    - Then it adds Living Server.
@@ -164,8 +173,8 @@ in a crash-safe mode and is backed up every day
 
 1. Install Offline DAoC 0.37 or 0.37b (or 0.37c) from [shadowofze's releases](https://github.com/shadowofze/OfflineDAoC/releases),
    or update your 0.36 game to it (below).
-2. Download `OfflineDAoC-LivingServer-1.1.8-beta.zip` from the
-   [Beta 1.1.8 release](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.8-beta),
+2. Download `OfflineDAoC-LivingServer-1.1.9-beta.zip` from the
+   [Beta 1.1.9 release](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.9-beta),
    unzip it and put its folder in your game folder.
 3. Close the game and server, then double-click `INSTALL.cmd` in that folder.
 4. Open the launcher as usual. It now has a **Living Server** tab.
@@ -174,7 +183,7 @@ in a crash-safe mode and is backed up every day
 bot memory and settings stay as they were.
 
 **Still on 0.36 with the Social Expansion?** The 0.37 update only applies to the game's own files, so put
-them back first: put the Beta 1.1.8 folder in your game folder and double-click `PREPARE-FOR-UPDATE.cmd` (it
+them back first: put the Beta 1.1.9 folder in your game folder and double-click `PREPARE-FOR-UPDATE.cmd` (it
 restores the released 0.36 server and launcher from the installer's backups and checks each one). Then
 update the game to 0.37 with its downloader (choice 1, Update), and run `INSTALL.cmd`. If you install 0.37
 fresh instead and bring your progress over, see the package's README.txt for the one extra step.
@@ -193,7 +202,7 @@ From Beta 1.1.2 the launcher looks for a new Living Server when it opens (at mos
   **Check automatically** to turn it off. The steps are logged in `runtime\logs\launcher-updates.log`.
 - **Setup** also installs the newest release's package when it is newer than the one inside it.
 
-Beta 1.1.1 and earlier have no update check: install Beta 1.1.8 once by hand or with Setup.
+Beta 1.1.1 and earlier have no update check: install Beta 1.1.9 once by hand or with Setup.
 
 ## Getting started
 
@@ -208,7 +217,7 @@ A fresh world has no bots yet, and most of these features need some.
    in, or come back after half an hour away, and the first /faction scenes come within about its first
    half hour.
 4. **Check it's running.** The server log (`runtime\server\logs\server.log`) has a line starting
-   `FORK_BUILD name=1.1.8-beta` that lists which features are on.
+   `FORK_BUILD name=1.1.9-beta` that lists which features are on.
 
 ## Undo and uninstall
 

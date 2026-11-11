@@ -171,6 +171,100 @@ function Get-ContentPath([string]$Game, [string]$Relative) {
     return (Join-Path $Game ($Relative.Replace('/', [IO.Path]::DirectorySeparatorChar)))
 }
 
+# class_name declarations in the Godot project (first 40 lines of each .gd). The packaged client runs
+# `godot --path new-client\godot` and does not rebuild global_script_class_cache.cfg, so every name here
+# must already be in that file or autoloads fail and the window stays grey (1.1.8 deleted the cache).
+function Get-GodotClassNames([string]$GodotRoot) {
+    $names = New-Object System.Collections.Generic.List[string]
+    if (!(Test-Path -LiteralPath $GodotRoot)) { return @() }
+    Get-ChildItem -LiteralPath $GodotRoot -Recurse -Filter '*.gd' -File -ErrorAction SilentlyContinue | ForEach-Object {
+        if ($_.FullName -match '[\\/]\.godot[\\/]') { return }
+        $head = @(Get-Content -LiteralPath $_.FullName -TotalCount 40 -ErrorAction SilentlyContinue)
+        foreach ($line in $head) {
+            if ($line -match '^\s*class_name\s+([A-Za-z_][A-Za-z0-9_]*)\b') {
+                if (-not $names.Contains($Matches[1])) { $names.Add($Matches[1]) }
+                break
+            }
+        }
+    }
+    return @($names)
+}
+
+function Get-GodotCacheClasses([string]$CacheText) {
+    $found = New-Object System.Collections.Generic.List[string]
+    foreach ($m in [regex]::Matches($CacheText, '"class":\s*&"([^"]+)"')) {
+        $found.Add($m.Groups[1].Value)
+    }
+    return @($found)
+}
+
+function Get-GodotCacheEntry([string]$CacheText, [string]$Name) {
+    # One cache object only. A greedy match from the first "base" would copy every earlier class
+    # when appending FriendsWindow / LfgWindow / CommanderPanel onto a stock cache.
+    $pattern = '(?s)\{\s*"base":(?:(?!\{).)*?"class":\s*&"' + [regex]::Escape($Name) + '"(?:(?!\{).)*?\}'
+    $m = [regex]::Match($CacheText, $pattern)
+    if ($m.Success) { return $m.Value }
+    return $null
+}
+
+# Restores or completes new-client\godot\.godot\global_script_class_cache.cfg from the copy shipped in
+# the build. Never deletes the cache. Fails the install when a class_name in the project is still absent.
+function Repair-GodotClassCache([string]$Game, [string]$BuildDir) {
+    $godot = Join-Path $Game 'new-client\godot'
+    if (!(Test-Path -LiteralPath (Join-Path $godot 'project.godot'))) { return }
+    $shipped = Join-Path $BuildDir 'content\godot-class-cache\global_script_class_cache.cfg'
+    if (!(Test-Path -LiteralPath $shipped)) {
+        Stop-WithMessage "This build is missing content\godot-class-cache\global_script_class_cache.cfg (damaged download?)."
+    }
+    $cacheDir = Join-Path $godot '.godot'
+    $cache = Join-Path $cacheDir 'global_script_class_cache.cfg'
+    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+    $shippedText = [IO.File]::ReadAllText($shipped)
+    $need = @(Get-GodotClassNames $godot)
+    if (!(Test-Path -LiteralPath $cache)) {
+        [IO.File]::WriteAllText($cache, $shippedText)
+        Write-Host "  restored .godot\global_script_class_cache.cfg (Godot --path does not rebuild a deleted cache; 1.1.8 removed it and the client stayed a grey screen)"
+    } else {
+        $text = [IO.File]::ReadAllText($cache)
+        $have = @(Get-GodotCacheClasses $text)
+        $missing = @($need | Where-Object { $have -notcontains $_ })
+        if ($missing.Count -gt 0) {
+            $blocks = @()
+            foreach ($name in $missing) {
+                $block = Get-GodotCacheEntry $shippedText $name
+                if ($block) { $blocks += $block }
+            }
+            if ($blocks.Count -gt 0) {
+                $trimmed = $text.TrimEnd()
+                if ($trimmed.EndsWith(']')) {
+                    $trimmed = $trimmed.Substring(0, $trimmed.Length - 1).TrimEnd()
+                    $text = $trimmed + ",`n" + ($blocks -join ",`n") + "`n]"
+                    [IO.File]::WriteAllText($cache, $text)
+                    Write-Host "  appended $($blocks.Count) class(es) to global_script_class_cache.cfg (cache kept; not deleted)"
+                }
+            }
+        }
+    }
+    $text = [IO.File]::ReadAllText($cache)
+    $have = @(Get-GodotCacheClasses $text)
+    $still = @($need | Where-Object { $have -notcontains $_ })
+    if ($still.Count -gt 0) {
+        $shippedHave = @(Get-GodotCacheClasses $shippedText)
+        $shippedMissing = @($need | Where-Object { $shippedHave -notcontains $_ })
+        if ($shippedMissing.Count -eq 0) {
+            [IO.File]::WriteAllText($cache, $shippedText)
+            Write-Host "  wrote the shipped class cache over an incomplete one ($($still.Count) class(es) were missing)"
+            $have = $shippedHave
+            $still = @($need | Where-Object { $have -notcontains $_ })
+        }
+    }
+    if ($still.Count -gt 0) {
+        Stop-WithMessage ("Godot class cache is missing class_name entries (the client stays a grey screen without them):`n  " + ($still -join ', ') +
+            "`nRe-download 1.1.9. Do not delete new-client\godot\.godot\global_script_class_cache.cfg.")
+    }
+    Write-Host "  class cache lists all $($need.Count) project class_name script(s)"
+}
+
 # Living Server ships full File payloads for new-client/godot/game/**.gd (UI/net). INSTALL / Setup / apply-update
 # must overwrite whenever the on-disk hash is not Fixed — silent "left alone" is why 1.1.7 Setup left Jay on
 # 1.1.6's typed game_ui while the server DLL was already current.

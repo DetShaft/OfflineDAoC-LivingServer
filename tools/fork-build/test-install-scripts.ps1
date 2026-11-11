@@ -419,6 +419,17 @@ Check ($uiInstall.Output -match 'hash differs, will write Fixed|Living Server \.
 $uiAgain = RunIn $patched 'install-server-build.ps1' @('-GameFolder', $uiGame)
 Check ($uiAgain.Code -eq 0 -and [IO.File]::ReadAllText($uiPath) -eq $newUi) "content: Setup/INSTALL re-run rewrites stale game_ui when DLLs already match`n$($uiAgain.Output)"
 Check ($uiAgain.Output -notmatch 'Already installed') "content: re-run with stale game_ui must not exit Already installed`n$($uiAgain.Output)"
+# 1.1.9: never delete the Godot class cache. A missing cache (what 1.1.8 did) is restored even when the
+# server DLLs already match, and an existing cache is left in place.
+$cachePath = Join-Path $uiGame 'new-client\godot\.godot\global_script_class_cache.cfg'
+Check (Test-Path -LiteralPath $cachePath) "class cache exists after install (1.1.8 used to delete it)`n$($uiAgain.Output)"
+Add-Content -LiteralPath $cachePath -Value 'KEEP-THIS-CACHE'
+$uiKeep = RunIn $patched 'install-server-build.ps1' @('-GameFolder', $uiGame)
+$kept = (Test-Path -LiteralPath $cachePath) -and ((Get-Content -LiteralPath $cachePath -Raw) -match 'KEEP-THIS-CACHE')
+Check ($uiKeep.Code -eq 0 -and $kept) "install leaves an existing class cache in place`n$($uiKeep.Output)"
+Remove-Item -LiteralPath $cachePath -Force
+$uiRestore = RunIn $patched 'install-server-build.ps1' @('-GameFolder', $uiGame)
+Check ($uiRestore.Code -eq 0 -and (Test-Path -LiteralPath $cachePath) -and ($uiRestore.Output -match 'restored')) "already-installed re-run restores a deleted class cache`n$($uiRestore.Output)"
 
 [IO.File]::WriteAllText((Join-Path $patched 'content-patches.json'), '[]')
 $damaged = Join-Path $work 'content-damaged'
