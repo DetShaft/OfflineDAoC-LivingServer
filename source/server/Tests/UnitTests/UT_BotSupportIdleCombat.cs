@@ -86,8 +86,8 @@ namespace DOL.UnitTests
             public override void WalkTo(Vector3 target, short speed) { }
             public override void StopAttack() { Stops++; }
             public override void StartAttack(GameObject target) { MeleeStarts++; TargetObject = target; }
-            public readonly List<GameObject> Follows = new();
-            public override void Follow(GameObject target, int minDistance, int maxDistance) { Follows.Add(target); }
+            public GameObject LastFollow; // built with GetUninitializedObject: no field initializers run
+            public override void Follow(GameObject target, int minDistance, int maxDistance) { LastFollow = target; }
             public override int Mana { get => TestMana; set => TestMana = value; }
             public override int MaxMana => TestMaxMana;
             public override byte ManaPercent => TestMaxMana <= 0 ? (byte)0 : (byte)Math.Clamp(TestMana * 100 / TestMaxMana, 0, 100);
@@ -262,7 +262,7 @@ namespace DOL.UnitTests
 
             Assert.That(acted, Is.False, "nothing to do from here: the healer keeps its formation slot");
             Assert.That(healer.MeleeStarts, Is.Zero, "no melee chase across the room");
-            Assert.That(healer.Follows, Does.Not.Contain(enemy), "no approach walk toward the enemy");
+            Assert.That(healer.LastFollow, Is.Not.SameAs(enemy), "no approach walk toward the enemy");
         }
 
         [Test]
