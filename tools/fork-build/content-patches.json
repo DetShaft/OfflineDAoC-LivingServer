@@ -452,7 +452,7 @@
   {
     "Path": "new-client/godot/game/ui/game_ui.gd",
     "Released": "219cd58ad3e9d227e0436358379b8697fe147ad62df8c61d4d07234a8817d1b2",
-    "Fixed": "1bb8a7a1e88e53ae47f6f27a7807762719314f874ce571479874d6efdc5d8452",
+    "Fixed": "a0ac9f61ecf790e1c4bb7dcfc28859e360a852bf259695509b33a63749f2bb6b",
     "Size": 78959,
     "File": "content/godot/game/ui/game_ui.gd"
   },

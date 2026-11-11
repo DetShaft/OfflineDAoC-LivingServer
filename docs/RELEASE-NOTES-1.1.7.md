@@ -17,6 +17,8 @@ zip's SHA-256 is filled in when publishing.
 windows through `preload("res://…")` by path instead of global class types. CI runs a headless Godot 4.7 check
 that strips those classes from the cache and still requires every shipped content `.gd` to load.
 
+Older Godot logs also show many `Trying to cast a freed object` lines from stock `server_world.gd` NPC view casts (`as Npc` on recycled/freed views). Those are not introduced by the Create friends/LFG/commander scripts (`server_world.gd` / `keybinds.gd` have no class_name type annotations for them).
+
 **Server:** `BotBrain.TryResurrectGroupMember` null-guards `Body.Group` before `GetMembersInTheGroup` (ungrouped
 healers and mid-check disbands were NRE'ing from CheckHeals / BotState_Aggro).
 

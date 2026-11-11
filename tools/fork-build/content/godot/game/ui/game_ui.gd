@@ -29,9 +29,9 @@ const RESTORABLE := [["panel", "CHARACTER PANEL"], ["status", "STATUS"], ["chat"
 ## packaged 0.37c client whose .godot/global_script_class_cache.cfg was built without them (INSTALL
 ## adds the .gd files but does not rewrite that cache), so GameUI never compiles and the loading
 ## screen never finishes. preload() resolves by path once the files exist on disk.
-const FriendsWindowScript := preload("res://game/ui/friends_window.gd")
-const LfgWindowScript := preload("res://game/ui/lfg_window.gd")
-const CommanderPanelScript := preload("res://game/ui/commander_panel.gd")
+const FriendsWindow := preload("res://game/ui/friends_window.gd")
+const LfgWindow := preload("res://game/ui/lfg_window.gd")
+const CommanderPanel := preload("res://game/ui/commander_panel.gd")
 
 var root: Control
 var ui_scale := 1.0
@@ -817,7 +817,7 @@ func siege_window_close() -> void:
 ## The guild window (Shift+G): the server's guild roster (GuildWindow).
 var guild_window: GuildWindow
 ## Looking For Group browser (Shift+L): FindGroupUpdate 0x86 + /lfg list.
-var lfg_window  # FriendsWindowScript / LfgWindowScript / CommanderPanelScript (preload; see above)
+var lfg_window  # preload consts above (not global class_name cache)
 ## Bonedancer commander controls beside the minipet.
 var commander_panel
 ## Modern friends window (Shift+F / /friend window).
@@ -853,13 +853,13 @@ func _build_guild() -> void:
 
 
 func _build_lfg() -> void:
-	lfg_window = LfgWindowScript.new()
+	lfg_window = LfgWindow.new()
 	lfg_window.resizable = true
 	lfg_window.patch = [6, 19, 13, 33]
-	lfg_window.min_size = LfgWindowScript.BODY
-	lfg_window.max_size = LfgWindowScript.BODY
-	lfg_window.size = LfgWindowScript.BODY
-	var at := Vector2(area().x * 0.5 - LfgWindowScript.BODY.x * 0.5, 80)
+	lfg_window.min_size = LfgWindow.BODY
+	lfg_window.max_size = LfgWindow.BODY
+	lfg_window.size = LfgWindow.BODY
+	var at := Vector2(area().x * 0.5 - LfgWindow.BODY.x * 0.5, 80)
 	lfg_window.setup("lfg", "interact", Rect2(), at)
 	_add(lfg_window, at, false)
 	lfg_window.command.connect(func(text: String):
@@ -879,13 +879,13 @@ func lfg_entries(rows: Array) -> void:
 
 
 func _build_friends() -> void:
-	friends_window = FriendsWindowScript.new()
+	friends_window = FriendsWindow.new()
 	friends_window.resizable = true
 	friends_window.patch = [6, 19, 13, 33]
-	friends_window.min_size = FriendsWindowScript.BODY
-	friends_window.max_size = FriendsWindowScript.BODY
-	friends_window.size = FriendsWindowScript.BODY
-	var at := Vector2(area().x * 0.5 - FriendsWindowScript.BODY.x * 0.5, 80)
+	friends_window.min_size = FriendsWindow.BODY
+	friends_window.max_size = FriendsWindow.BODY
+	friends_window.size = FriendsWindow.BODY
+	var at := Vector2(area().x * 0.5 - FriendsWindow.BODY.x * 0.5, 80)
 	friends_window.setup("friends", "interact", Rect2(), at)
 	_add(friends_window, at, false)
 	friends_window.typing = func(text: String):
@@ -1080,7 +1080,7 @@ func _build_minipet() -> void:
 	w.add_child(_pet_buffs)
 	_pet_buffs.visible = bool(_saved("windows", "pet_buffs", true))
 	# Bonedancer commander panel (weapon / style / taunt) — separate script to avoid colliding with friends UI work.
-	commander_panel = CommanderPanelScript.new()
+	commander_panel = CommanderPanel.new()
 	commander_panel.position = Vector2(-136, 0)
 	commander_panel.build()
 	commander_panel.command.connect(func(text: String):
