@@ -2,6 +2,7 @@
 # Offline DAoC from shadowofze's releases and every path Setup takes (tools/installer/test-installer.ps1).
 # Beta 1.1.2: also which package Setup installs (a newer one from GitHub, checked by its digest), and the launcher's
 # update path end to end on a fake game folder (tools/installer/test-launcher-update.ps1).
+# Beta 1.1.11: the releases come from this fork's published releases (tools/release/pick_releases.py), never fixed tags.
 name: installer
 
 on:
@@ -10,12 +11,13 @@ on:
       - 'tools/installer/**'
       - 'source/tools/OfflineDaoc.Launcher/Updates/**'
       - 'source/tools/OfflineDaoc.Launcher/MainForm.Updates.cs'
+      - 'tools/release/pick_releases.py'
       - '.github/workflows/installer.yml'
   workflow_dispatch:
     inputs:
       package_release:
-        description: "Living Server release tag whose package Setup embeds"
-        default: "v1.0-beta"
+        description: "Living Server release tag whose package Setup embeds (empty: the newest published release)"
+        default: ""
       e2e:
         description: "Run the real-download end-to-end tests (about 30-60 minutes)"
         type: boolean
@@ -36,7 +38,26 @@ permissions:
   contents: read
 
 jobs:
+  # Which published releases to use: the package Setup embeds (the input, or the newest release) and the launcher-update
+  # pair (the release before it, then it). Only this fork's published releases count; they start at v1.1.4-beta.
+  releases:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      package: ${{ steps.pick.outputs.package }}
+      from: ${{ steps.pick.outputs.from }}
+      to: ${{ steps.pick.outputs.to }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pick the releases
+        id: pick
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PACKAGE: ${{ inputs.package_release }}
+        run: python3 tools/release/pick_releases.py --package "$PACKAGE"
+
   build:
+    needs: releases
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -46,7 +67,7 @@ jobs:
           dotnet-version: 8.0.x
       - name: Build Setup
         shell: bash
-        run: python tools/installer/build.py --release "${{ inputs.package_release || 'v1.0-beta' }}"
+        run: python tools/installer/build.py --release "${{ needs.releases.outputs.package }}"
       - name: Pictures of every page (100 % and 150 %)
         shell: pwsh
         run: |
@@ -99,10 +120,11 @@ jobs:
           path: C:\lsnewest\logs\
           if-no-files-found: warn
 
-  # The launcher's update path (GET UPDATE without the window): the published v1.1-beta package installed on a fake
-  # 0.37 game, then the launcher built from this commit applies the v1.1.1-beta release file with --apply-update,
-  # INSTALL.cmd runs after it closes, and ROLLBACK.cmd undoes it. About two minutes, no game download.
+  # The launcher's update path (GET UPDATE without the window): the release before the package Setup embeds is installed
+  # on a fake 0.37 game, then the launcher built from this commit applies that package's release file with
+  # --apply-update, INSTALL.cmd runs after it closes, and ROLLBACK.cmd undoes it. About two minutes, no game download.
   launcher-update:
+    needs: releases
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -112,12 +134,12 @@ jobs:
           dotnet-version: 10.0.x
       - name: Build the launcher
         run: dotnet build source/tools/OfflineDaoc.Launcher/OfflineDaoc.Launcher.csproj -c Release -p:SourceRevisionId=${{ github.sha }}
-      - name: Update v1.1-beta to v1.1.1-beta through the launcher, then roll back
+      - name: Update ${{ needs.releases.outputs.from }} to ${{ needs.releases.outputs.to }} through the launcher, then roll back
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/installer/test-launcher-update.ps1 -Launcher source/tools/OfflineDaoc.Launcher/bin/Release/net10.0-windows/OfflineDAoC.exe -Work C:\lsupdate -From v1.1-beta -To v1.1.1-beta
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/installer/test-launcher-update.ps1 -Launcher source/tools/OfflineDaoc.Launcher/bin/Release/net10.0-windows/OfflineDAoC.exe -Work C:\lsupdate -From "${{ needs.releases.outputs.from }}" -To "${{ needs.releases.outputs.to }}"
           exit $LASTEXITCODE
       - uses: actions/upload-artifact@v4
         if: always()
