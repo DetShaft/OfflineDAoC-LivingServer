@@ -1779,6 +1779,14 @@ public static class AutonomousBotChatCoordinator
         // The audit (2026-10-26): a 48 said "sure, send me an invite" to a 10. A player would mention the gap first.
         if (LevelGapReply(bot.Level, player.Level, random) is { } gap)
             return gap;
+        // 1.1.14: a friend invited from afar comes to the player (BotFriendTravel), so it says so instead of "meet up".
+        if (BotFriendTravel.Travels(player, bot))
+            return random.Next(3) switch
+            {
+                0 => "sure, inv me and ill head over",
+                1 => "yeah send an invite, ill come to you",
+                _ => "inv me, ill be there in a bit",
+            };
         if (!BotGroupInvite.CloseEnoughToInviteByName(player, bot))
         {
             string where = Clean(bot.CurrentZone?.Description, "the other side of the realm");

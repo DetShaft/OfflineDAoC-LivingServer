@@ -42,6 +42,12 @@ namespace DOL.GS.Commands
                     AutonomousLivingServer.OnInviteDeclined(client.Player, worldBot, duty, false);
                     return;
                 }
+                // 1.1.14: a friend (on the player's /friend list) comes to the player instead, and joins on arrival.
+                if (BotFriendTravel.Travels(client.Player, worldBot))
+                {
+                    BotFriendTravel.TryStart(client.Player, worldBot);
+                    return;
+                }
                 if (!BotGroupInvite.CloseEnoughToInviteByName(client.Player, worldBot))
                 {
                     client.Out.SendMessage($"{worldBot.Name} is too far away to join you. Meet up first.", eChatType.CT_System, eChatLoc.CL_SystemWindow);

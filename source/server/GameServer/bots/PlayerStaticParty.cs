@@ -162,6 +162,15 @@ public static class PlayerStaticParty
                 continue;
             }
 
+            // 1.1.14: a friend on the way counts as invited; it joins on arrival (BotFriendTravel).
+            if (BotFriendTravel.IsOnTheWay(bot, player))
+                continue;
+            if (BotFriendTravel.Travels(player, bot))
+            {
+                if (BotFriendTravel.TryStart(player, bot))
+                    invited++;
+                continue;
+            }
             if (!BotGroupInvite.CloseEnoughToInviteByName(player, bot))
             {
                 ChatUtil.SendSystemMessage(player, $"{bot.Name} is too far away to join you. Meet up first.");

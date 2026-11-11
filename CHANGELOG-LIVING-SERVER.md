@@ -8,6 +8,19 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.14 (in development)
+
+**Friends come to you.** Inviting a bot friend (one on your /friend list) that is too far away no longer answers
+"too far away to join you. Meet up first." Instead you get "<name> is on the way to you
+and will join your group on arrival (about 20 seconds)" (30 seconds from another region), and the friend sends you
+an "omw" tell. When the wait is over the friend arrives beside you, you get "<name> has arrived and joins your group",
+and the friend says hello in /group. The wait stands in for the journey: the friend is moved to you, as a released
+groupmate in another region already is. Everything is checked again on arrival. A friend still in a fight waits for
+it to end (up to 30 more seconds), as it does if you are dead or between regions, and a friend that got a duty (siege,
+relic, raid, stable route), died, logged off or joined another player in the meantime doesn't come, and you are told
+why. This works from /invite, the friends window's INVITE button, the LFG window, a static party and a friend's own
+invitation. A bot that isn't your friend still has to be met first. Tests only: not yet seen in game.
+
 ## Beta 1.1.13 — 2026-11-11
 
 **Commander hammer styles.** 1.1.12 gave a commander its weapon lines' styles only up to its own level, and the
