@@ -492,8 +492,8 @@
   {
     "Path": "new-client/godot/game/ui/lfg_window.gd",
     "Released": "",
-    "Fixed": "be335036a876326cc27f5485a04e3ab3a0ca17c4e52b2718d648c7a29660c0b7",
-    "Size": 6649,
+    "Fixed": "b1580a81f7a4cabb59e1f90242678fec2c993727361a113eee6954858dcfbba1",
+    "Size": 6747,
     "File": "content/godot/game/ui/lfg_window.gd",
     "Create": true
   },

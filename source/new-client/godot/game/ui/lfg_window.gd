@@ -27,8 +27,8 @@ var _class_edit: LineEdit
 var _level_edit: LineEdit
 var _zone_edit: LineEdit
 var _selected_label: Label
-var _invite: Button
-var _tell: Button
+var _invite_button: Button
+var _tell_button: Button
 
 
 func build() -> void:
@@ -87,14 +87,14 @@ func build() -> void:
 	_selected_label.size = Vector2(220, 12)
 	add_child(_selected_label)
 
-	_invite = UiArt.button("INVITE", Vector2(64, 16), 8)
-	_invite.position = Vector2(BODY.x - 150, BODY.y - 40)
-	_invite.pressed.connect(_invite)
-	add_child(_invite)
-	_tell = UiArt.button("TELL", Vector2(54, 16), 8)
-	_tell.position = Vector2(BODY.x - 80, BODY.y - 40)
-	_tell.pressed.connect(_tell)
-	add_child(_tell)
+	_invite_button = UiArt.button("INVITE", Vector2(64, 16), 8)
+	_invite_button.position = Vector2(BODY.x - 150, BODY.y - 40)
+	_invite_button.pressed.connect(_invite)
+	add_child(_invite_button)
+	_tell_button = UiArt.button("TELL", Vector2(54, 16), 8)
+	_tell_button.position = Vector2(BODY.x - 80, BODY.y - 40)
+	_tell_button.pressed.connect(_tell)
+	add_child(_tell_button)
 	_sync_actions()
 
 
@@ -162,10 +162,10 @@ func _tell() -> void:
 
 func _sync_actions() -> void:
 	var on := selected != ""
-	if _invite:
-		_invite.disabled = not on
-	if _tell:
-		_tell.disabled = not on
+	if _invite_button:
+		_invite_button.disabled = not on
+	if _tell_button:
+		_tell_button.disabled = not on
 
 
 func _redraw() -> void:
