@@ -33,7 +33,7 @@ const RESTORABLE := [["panel", "CHARACTER PANEL"], ["status", "STATUS"], ["chat"
 const FriendsWindow := preload("res://game/ui/friends_window.gd")
 const LfgWindow := preload("res://game/ui/lfg_window.gd")
 const CommanderPanel := preload("res://game/ui/commander_panel.gd")
-const LIVING_SERVER_CLIENT_PATCH := "1.1.10"
+const LIVING_SERVER_CLIENT_PATCH := "1.1.11"
 
 var root: Control
 var ui_scale := 1.0
@@ -1096,7 +1096,7 @@ func _build_minipet() -> void:
 	# Bonedancer commander panel (weapon / style / taunt) — separate script to avoid colliding with friends UI work.
 	if living_server_social_windows():
 		commander_panel = CommanderPanel.new()
-		commander_panel.position = Vector2(-136, 0)
+		commander_panel.position = Vector2(-72, 0)
 		commander_panel.build()
 		commander_panel.command.connect(func(text: String):
 			if Server.active:
@@ -1887,7 +1887,6 @@ func handle_input(event: InputEvent) -> bool:
 			options.toggle_window()
 		return true
 	return false
-
 
 
 ## The world behind the windows as a drop target, only while something is being dragged (otherwise it lets every
