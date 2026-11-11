@@ -8,7 +8,8 @@ namespace DOL.GS.Commands
         "&friend",
         ePrivLevel.Player,
         "Adds/Removes a player to/from your friendlist!",
-        "/friend <playerName>")]
+        "/friend <playerName>",
+        "/friend target - adds your current target")]
     public class FriendCommandHandler : AbstractCommandHandler, ICommandHandler
     {
         public void OnCommand(GameClient client, string[] args)
@@ -23,7 +24,14 @@ namespace DOL.GS.Commands
                 client.Player.SendFriendsListSocial();
                 return;
             }
-            
+            // Fork: the Friends window's ADD TARGET button. A friend really named Target is still removed by typing it.
+            else if (args.Length == 2 && args[1].Equals("target", StringComparison.OrdinalIgnoreCase) &&
+                     !IsNameInFriendsList(args[1], client, StringComparer.OrdinalIgnoreCase))
+            {
+                BotFriends.AddTarget(client.Player);
+                return;
+            }
+
             string name = string.Join(" ", args, 1, args.Length - 1);
 
             // attempt to remove from friends list now to avoid being unable to do so because of a guessed name from an online player
@@ -52,7 +60,7 @@ namespace DOL.GS.Commands
             {
                 case ClientService.PlayerGuessResult.NOT_FOUND:
                 {
-                    DisplayMessage(client, "No players with that name, or you cannot add this player.");
+                    DisplayMessage(client, "No player or gamebot of your realm has that name (a gamebot needs its full name). Target them and use /friend target.");
                     return;
                 }
                 case ClientService.PlayerGuessResult.FOUND_MULTIPLE:
@@ -115,7 +123,7 @@ namespace DOL.GS.Commands
         private void AddFriend(string name, GamePlayer user)
         {
             if (user.AddFriend(name))
-                DisplayMessage(user.Client, $"{name} was added from your friend list!");
+                DisplayMessage(user.Client, $"{name} was added to your friend list!");
         }
     }
 }

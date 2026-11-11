@@ -484,8 +484,8 @@
   {
     "Path": "new-client/godot/game/ui/friends_window.gd",
     "Released": "",
-    "Fixed": "032171f7101fc1f2b0e81d227b540e77af701f3806213b351a065732018740fc",
-    "Size": 10385,
+    "Fixed": "ea5558fe1e57d887bfaf80d9edb94a2fe3a6caf206a74a7c732cf881b68744fa",
+    "Size": 11018,
     "File": "content/godot/game/ui/friends_window.gd",
     "Create": true
   },
