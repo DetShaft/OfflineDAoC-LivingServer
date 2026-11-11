@@ -14,7 +14,8 @@ The banner reads `LivingServer client patch 1.1.11`.
 
 **Commander.** Targeting your commander, right-clicking it, or pressing Orders opens a small dialog.
 The commander's lines use bracketed keywords. Clicking one whispers it back, and the reply appends
-in the same window. A skeletal commander offers lines such as
+in the same window. The box is titled with the commander's name and ends with
+`Click on HIGHLIGHTED text`. A skeletal commander offers lines such as
 `I can use a [Twohanded Sword] [Twohanded Axe] [Hammer] [Sword] [Axe]` and
 `My minions can [assist] me or [split]`. Replies look like `My minions will assist me.` and
 `I will no longer taunt.`
