@@ -33,7 +33,7 @@ const RESTORABLE := [["panel", "CHARACTER PANEL"], ["status", "STATUS"], ["chat"
 const FriendsWindow := preload("res://game/ui/friends_window.gd")
 const LfgWindow := preload("res://game/ui/lfg_window.gd")
 const CommanderPanel := preload("res://game/ui/commander_panel.gd")
-const LIVING_SERVER_CLIENT_PATCH := "1.1.9"
+const LIVING_SERVER_CLIENT_PATCH := "1.1.10"
 
 var root: Control
 var ui_scale := 1.0

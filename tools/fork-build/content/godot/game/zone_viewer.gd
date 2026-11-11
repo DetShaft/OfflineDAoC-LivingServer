@@ -5,6 +5,7 @@ extends Node3D
 ##   --bench                                 stand at every spot facing four ways, print the average FPS, then quit
 ##   --anim=run                              hold one character animation (for test shots)
 ##   --time=14 --storm=1                     start at a game hour / force a storm level (0..1)
+##   --smoke                                 print LS_SMOKE ZONE_BUILT / IN_WORLD, then quit (tools/smoke)
 ##   --shots="x,y,face,dist;x,y,face,dist" --out=<abs png prefix>   free camera shots at DAoC zone coordinates
 ##                                           (camera stands dist metres back from x,y looking along face), then quit
 ## Keys: WoW-style movement (see player.gd): W/S, A/D turn, Q/E strafe, right mouse steer, left mouse look,
@@ -54,7 +55,7 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		var kv := a.trim_prefix("--").split("=", true, 1)
 		args[kv[0]] = kv[1] if kv.size() > 1 else ""
-	if args.has("probe") or args.has("shots") or args.has("bench") or args.has("tour"):
+	if args.has("probe") or args.has("shots") or args.has("bench") or args.has("tour") or args.has("smoke"):
 		UiArt.settings_path = "user://settings_tests.cfg"   # test runs keep their window layout off the player's
 	if args.has("char-file"):                            # tests: a COPY of a character (json), saved only under a
 		var cf = JSON.parse_string(FileAccess.get_file_as_string(String(args["char-file"])))   # test account
@@ -81,7 +82,8 @@ func _ready() -> void:
 	var zone_dir := "res://content/zones/zone%03d" % zone_id
 	# loading screen (box art + the client's bronze bar) with the title music, unless this is a test run
 	var loading: LoadingScreen = null
-	if not (args.has("shots") or args.has("probe") or args.has("tour") or args.has("bench")) or args.has("with-loading"):
+	# --smoke is the world-entry check: no loading screen, then LS_SMOKE lines and a clean quit.
+	if not (args.has("shots") or args.has("probe") or args.has("tour") or args.has("bench") or args.has("smoke")) or args.has("with-loading"):
 		var head := FileAccess.get_file_as_string(zone_dir.path_join("zone.json")).substr(0, 400)
 		var m := RegEx.create_from_string('"name": *"([^"]+)"').search(head)
 		loading = LoadingScreen.new(m.get_string(1) if m else "the world")
@@ -101,6 +103,7 @@ func _ready() -> void:
 	zone.name = "Zone"
 	add_child(zone)
 	zone.load_zone(zone_dir, args.get("terrain", "blend"), args.get("textures", "x4plus"))
+	_smoke_zone_built()
 	if loading:
 		loading.set_progress(0.7)
 		await get_tree().process_frame
@@ -120,7 +123,7 @@ func _ready() -> void:
 		if loading:
 			region.set_process(false)                       # (the loading screen builds the first neighbours itself)
 	# the owner's camera is locked to the client's zoom range; my test runs (and --free-camera) keep it unlocked
-	player.free_camera = args.has("free-camera") or args.has("probe") or args.has("shots") or args.has("tour") or args.has("bench")
+	player.free_camera = args.has("free-camera") or args.has("probe") or args.has("shots") or args.has("tour") or args.has("bench") or args.has("smoke")
 	if not CharacterStore.selected.is_empty() and not args.has("model"):
 		player.set_figure(CharacterStore.selected)       # the character picked on the select screen
 	elif args.has("figure"):
@@ -156,7 +159,7 @@ func _ready() -> void:
 	# (Jay's second 1.1.8 log, zone_viewer.gd:154) instead of saying the UI script did not load.
 	var game_ui_script := GameUI as GDScript
 	if game_ui_script == null or not game_ui_script.can_instantiate():
-		push_error("LivingServer: game_ui.gd did not compile, so the interface cannot open. Install 1.1.9 to restore game_ui.gd and the Godot class cache.")
+		push_error("LivingServer: game_ui.gd did not compile, so the interface cannot open. Install 1.1.10 to restore game_ui.gd and the Godot class cache.")
 		return
 	ui = game_ui_script.new()
 	ui.player = player
@@ -319,7 +322,7 @@ func _ready() -> void:
 			region.set_process(true)
 		loading.set_progress(0.9)
 		await get_tree().process_frame
-	_ready_rest(loading)
+	await _ready_rest(loading)
 
 
 ## The teleport spots: the designer list in zone.json (pipeline/data/zone_spots.json), else the zone's jump points.
@@ -426,6 +429,7 @@ func _ready_rest(loading: LoadingScreen) -> void:
 		PregameMusic.fade_out(1.5)                       # owner: the title music plays until you zone in
 		if audio:
 			audio.begin()
+		await _smoke_in_world()
 	else:                                                # test runs (no loading screen): in the world at once
 		await get_tree().process_frame
 		if Server.active:
@@ -435,6 +439,22 @@ func _ready_rest(loading: LoadingScreen) -> void:
 			WorldLink.zone_entered(zone, int(zone.info.id))
 		if companions:
 			companions.zone_ready()
+		await _smoke_in_world()
+
+
+## Headless world-entry smoke (tools/smoke). Printed only with --smoke, then Godot quits.
+func _smoke_zone_built() -> void:
+	if not args.has("smoke"):
+		return
+	print("LS_SMOKE ZONE_BUILT %s" % String(zone.info.get("name", "")))
+
+
+func _smoke_in_world() -> void:
+	if not args.has("smoke"):
+		return
+	print("LS_SMOKE IN_WORLD %s" % String(zone.info.get("name", "")))
+	await get_tree().create_timer(2.0).timeout
+	get_tree().quit(0)
 
 
 func _build_sky() -> void:
