@@ -25,6 +25,16 @@ const RESTORABLE := [["panel", "CHARACTER PANEL"], ["status", "STATUS"], ["chat"
 		["journal", "QUEST JOURNAL"], ["conc", "CONCENTRATION"], ["benefits", "BENEFITS"], ["warmap", "WAR MAP"],
 		["target", "TARGET"], ["raid", "RAID"], ["guild", "GUILD"]]
 
+## Friends / LFG / commander are Living Server Create scripts. Typed global class_name refs fail on a
+## packaged 0.37c client whose .godot/global_script_class_cache.cfg was built without them (INSTALL
+## adds the .gd files but does not rewrite that cache), so GameUI never compiles and the loading
+## screen never finishes. preload() resolves by path once the files exist on disk.
+## Off switch (trouble): user://settings.cfg → [living_server] social_windows=false (default true).
+const FriendsWindow := preload("res://game/ui/friends_window.gd")
+const LfgWindow := preload("res://game/ui/lfg_window.gd")
+const CommanderPanel := preload("res://game/ui/commander_panel.gd")
+const LIVING_SERVER_CLIENT_PATCH := "1.1.8"
+
 var root: Control
 var ui_scale := 1.0
 var windows := {}
@@ -74,11 +84,15 @@ var sky: Node                            # SkySystem: the game clock on the time
 var hidden_all := false
 
 
+## Living Server friends / LFG / commander. Default on; set social_windows=false under [living_server]
+## in user://settings.cfg (new-client/save) to leave the windows unwired without rolling back scripts.
+func living_server_social_windows() -> bool:
+	var cfg := ConfigFile.new()
+	cfg.load(UiArt.settings_path)
+	return bool(cfg.get_value("living_server", "social_windows", true))
+
+
 func _ready() -> void:
-	# Living Server patch marker (must appear in godot*.log so we know which game_ui.gd loaded).
-	print("LivingServer client patch 1.1.8")
-	# Extra windows (friends / LFG / commander) ship as optional scripts but stay OFF until a later build
-	# wires them without depending on a regenerated global_script_class_cache.cfg.
 	layer = 5
 	root = Control.new()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -87,6 +101,8 @@ func _ready() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(UiArt.settings_path)
 	ui_scale = float(cfg.get_value("interface", "ui_scale", 1.0))
+	var social := living_server_social_windows()
+	print("LivingServer client patch %s (social_windows=%s)" % [LIVING_SERVER_CLIENT_PATCH, social])
 	get_viewport().size_changed.connect(_rescale)
 	_rescale()
 	var drop := WorldDrop.new()                            # behind every window: items dragged onto the world / an NPC
@@ -357,10 +373,14 @@ func _build() -> void:
 	_build_target()
 	_build_raid()
 	_build_minipet()
+	if living_server_social_windows():
+		_build_lfg()
 	_build_conc()
 	_build_benefits()
 	_build_warmap()
 	_build_guild()
+	if living_server_social_windows():
+		_build_friends()
 	PlayerData.window_toggle.connect(func(id: String):
 		if windows.has(id):
 			if windows[id].visible:
@@ -534,12 +554,12 @@ func _refresh_target_window() -> void:
 func _target_command(cmd: String) -> void:
 	if cmd == "attack":
 		PlayerData.attack_toggle_requested.emit()
-	elif Server.active:                                     # the server's commands, as the client's buttons sent them
-		Server.command("/" + cmd)
+	elif cmd in ["face", "follow", "stick"]:               # the client's own commands, in the server's game too: the
+		PlayerData.track_requested.emit(cmd)                # server has none of them ("No such command (/follow)",
+	elif Server.active:                                     # 2026-10-17); typed /follow already went this way
+		Server.command("/" + cmd)                           # the server's commands, as the client's buttons sent them
 	elif cmd == "invite":
 		PlayerData.invite_requested.emit("")
-	elif cmd in ["face", "follow", "stick"]:
-		PlayerData.track_requested.emit(cmd)
 	else:
 		message("You can't do that here.", "system")
 
@@ -810,6 +830,12 @@ func siege_window_close() -> void:
 
 ## The guild window (Shift+G): the server's guild roster (GuildWindow).
 var guild_window: GuildWindow
+## Looking For Group browser (Shift+L): FindGroupUpdate 0x86 + /lfg list.
+var lfg_window  # preload consts above (not global class_name cache)
+## Bonedancer commander controls beside the minipet.
+var commander_panel
+## Modern friends window (Shift+F / /friend window).
+var friends_window
 ## The guild emblem picker - the server opens it (EmblemDialogue).
 var emblem_window: EmblemWindow
 
@@ -838,6 +864,48 @@ func _build_guild() -> void:
 		if chat:
 			chat.start_typing(text)
 	guild_window.build()
+
+
+func _build_lfg() -> void:
+	lfg_window = LfgWindow.new()
+	lfg_window.resizable = true
+	lfg_window.patch = [6, 19, 13, 33]
+	lfg_window.min_size = LfgWindow.BODY
+	lfg_window.max_size = LfgWindow.BODY
+	lfg_window.size = LfgWindow.BODY
+	var at := Vector2(area().x * 0.5 - LfgWindow.BODY.x * 0.5, 80)
+	lfg_window.setup("lfg", "interact", Rect2(), at)
+	_add(lfg_window, at, false)
+	lfg_window.command.connect(func(text: String):
+		if Server.active:
+			Server.command(text)
+		elif chat:
+			chat.start_typing(text))
+	lfg_window.build()
+
+
+func lfg_entries(rows: Array) -> void:
+	if lfg_window:
+		lfg_window.apply_entries(rows)
+		# /lfg window (and FindGroupUpdate) should surface the browser, not only fill a hidden panel.
+		if not lfg_window.visible:
+			lfg_window.show_window()
+
+
+func _build_friends() -> void:
+	friends_window = FriendsWindow.new()
+	friends_window.resizable = true
+	friends_window.patch = [6, 19, 13, 33]
+	friends_window.min_size = FriendsWindow.BODY
+	friends_window.max_size = FriendsWindow.BODY
+	friends_window.size = FriendsWindow.BODY
+	var at := Vector2(area().x * 0.5 - FriendsWindow.BODY.x * 0.5, 80)
+	friends_window.setup("friends", "interact", Rect2(), at)
+	_add(friends_window, at, false)
+	friends_window.typing = func(text: String):
+		if chat:
+			chat.start_typing(text)
+	friends_window.build()
 
 
 func _build_warmap() -> void:
@@ -1025,12 +1093,25 @@ func _build_minipet() -> void:
 	_pet_buffs.add_child(_pet_icons)
 	w.add_child(_pet_buffs)
 	_pet_buffs.visible = bool(_saved("windows", "pet_buffs", true))
+	# Bonedancer commander panel (weapon / style / taunt) — separate script to avoid colliding with friends UI work.
+	if living_server_social_windows():
+		commander_panel = CommanderPanel.new()
+		commander_panel.position = Vector2(-136, 0)
+		commander_panel.build()
+		commander_panel.command.connect(func(text: String):
+			if Server.active:
+				Server.command(text))
+		w.add_child(commander_panel)
 	PlayerData.hook(self, PlayerData.pet_changed, func():
 		if PlayerData.pet.is_empty():
 			w.hide_window()
+			if commander_panel:
+				commander_panel.show_for_bonedancer(false)
 		else:
 			(w.get_node("PetName") as Label).text = String(PlayerData.pet.get("name", "")).to_upper()
-			w.show_window())
+			w.show_window()
+			if commander_panel:
+				commander_panel.show_for_bonedancer(PlayerData.class_id() == 30))
 
 
 ## A greyscale (and dimmed) version of a texture: a bar with nothing behind it.
@@ -1724,6 +1805,15 @@ func handle_input(event: InputEvent) -> bool:
 		return true
 	if Keybinds.pressed(event, "show_guild") and guild_window:
 		guild_window.toggle_window()
+		return true
+	if Keybinds.pressed(event, "show_lfg") and lfg_window:
+		if lfg_window.visible:
+			lfg_window.hide_window()
+		else:
+			lfg_window.open_window()
+		return true
+	if Keybinds.pressed(event, "show_friends") and friends_window:
+		friends_window.toggle_window()
 		return true
 	if Keybinds.pressed(event, "show_map") and map_window:
 		map_window.player = player

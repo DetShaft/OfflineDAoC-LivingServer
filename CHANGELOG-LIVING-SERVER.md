@@ -10,12 +10,13 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.8 — 2026-11-11
 
-Safe client rollback after 1.1.6/1.1.7 left players stuck on "Entering Offline DAoC". Confirmed: INSTALL
-updated the server under the game root but left 1.1.6's typed `game_ui.gd` alone (Fixed ≠ Released, no
-`ReplaceAny`); the launcher already starts that same `new-client\godot`. 1.1.8 restores stock 0.37c
-`game_ui.gd` (plus a LivingServer patch banner), forces Living Server `.gd` File payloads to replace, clears
-Godot's script class cache on install, makes apply-update verify those hashes, and keeps the server
-resurrection NRE fix ([docs/RELEASE-NOTES-1.1.8.md](docs/RELEASE-NOTES-1.1.8.md)).
+Fixes the 1.1.7 updater miss that left players stuck on "Entering Offline DAoC". Confirmed: INSTALL updated
+the server under the game root but left 1.1.6's typed `game_ui.gd` alone (Fixed ≠ Released, no
+`ReplaceAny`); the launcher already starts that same `new-client\godot`. 1.1.8 ships the 1.1.7 preload-based
+friends/LFG/commander UI with a LivingServer patch banner, `[living_server] social_windows` off-switch,
+forces Living Server `.gd` File payloads to replace, clears Godot's script class cache on install, makes
+apply-update verify those hashes, and keeps the server resurrection NRE fix
+([docs/RELEASE-NOTES-1.1.8.md](docs/RELEASE-NOTES-1.1.8.md)).
 
 ## Beta 1.1.7 — 2026-11-11
 

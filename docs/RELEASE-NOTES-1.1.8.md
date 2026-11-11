@@ -19,13 +19,13 @@ apply-update only checked those DLLs. Jay's Godot log still showed parse errors 
 (`LfgWindow` at :812, etc.): that is the 1.1.6 `game_ui.gd`, not the published 1.1.7 preload file (where
 :808–818 is siege/guild code). Server WorldInit completed because the hang is client-side.
 
-**1.1.8 client:** restores **stock 0.37c** `game_ui.gd` / `keybinds.gd` / `server_world.gd` (friends / LFG /
-commander stay as optional Create scripts but are **not wired**; feature flag off). `game_ui.gd` prints
-`LivingServer client patch 1.1.8` at startup so godot logs show which script loaded. The `game_ui` patch uses
-`ReplaceAny`; INSTALL also always replaces any Living Server `new-client/godot/game/**.gd` File payload even
-if a future entry forgets the flag. INSTALL clears `new-client/godot/.godot/global_script_class_cache.cfg`
-(and `uid_cache.bin`, any loose `.gdc`) after new-client script changes. apply-update verifies those `.gd`
-Fixed hashes under the launcher's godot folder before reporting success.
+**1.1.8 client:** ships the **1.1.7 preload-based** friends / LFG / commander UI (`const FriendsWindow :=
+preload(...)` etc.), not stock 0.37c. `game_ui.gd` prints `LivingServer client patch 1.1.8
+(social_windows=...)` at startup so godot logs show which script loaded. **Off switch:** in
+`user://settings.cfg` (under `new-client/save`) set `[living_server] social_windows=false` — windows stay
+unwired without rolling scripts back (default `true`). INSTALL `ReplaceAny` / always-replace for Living
+Server `new-client/godot/game/**.gd` File payloads, clears `global_script_class_cache.cfg` /
+`uid_cache.bin` / loose `.gdc`, and apply-update verifies those Fixed hashes before success.
 
 **Server:** keeps the `TryResurrectGroupMember` null-guard from 1.1.7.
 

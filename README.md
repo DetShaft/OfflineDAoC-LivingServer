@@ -38,10 +38,11 @@ run themselves, whether or not you come along.
 
 ## New in Beta 1.1.8
 
-Restores stock 0.37c new-client UI after 1.1.6/1.1.7 left a typed `game_ui.gd` in place (1.1.7 could not
-overwrite a prior Living Server Fixed hash on the same game-root `new-client/godot` the launcher starts). INSTALL
-now always replaces Living Server `.gd` File payloads there, clears Godot script cache, prints a client patch
-banner, and apply-update verifies those hashes ([what's new](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.8-beta)).
+Fixes 1.1.7 leaving 1.1.6's typed `game_ui.gd` in place (INSTALL skipped a prior Living Server Fixed hash).
+Ships the preload-based friends/LFG/commander UI, a LivingServer client patch banner, and
+`[living_server] social_windows=false` to turn those windows off. INSTALL always replaces Living Server `.gd`
+File payloads, clears Godot script cache, and apply-update verifies those hashes
+([what's new](https://github.com/DetShaft/OfflineDAoC-LivingServer/releases/tag/v1.1.8-beta)).
 
 ## New in Beta 1.1.7
 
