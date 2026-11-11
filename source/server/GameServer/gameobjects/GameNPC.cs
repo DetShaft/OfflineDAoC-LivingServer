@@ -677,10 +677,31 @@ namespace DOL.GS
 				if (ObjectState == eObjectState.Active)
 				{
 					if (oldflags != m_flags)
-						ClientService.CreateObjectForPlayers(this);
+					{
+						// A mob revealed by script (Snarls, Stripe: hidden until their adds die) stayed untargetable and
+						// nameless on the player's screen while it fought: the client appears to keep the targeting
+						// flags of an object it already knows when a second NPCCreate arrives. Remove the old copy
+						// first so the client builds it again from the new flags.
+						if (NeedsClientRecreate(oldflags, m_flags))
+							ClientService.RecreateObjectForPlayers(this);
+						else
+							ClientService.CreateObjectForPlayers(this);
+					}
 				}
 			}
 		}
+
+		/// <summary>
+		/// Flags the client only reads when it first creates an NPC: changing one needs a remove and a new create.
+		/// </summary>
+		public const eFlags CLIENT_CREATE_ONLY_FLAGS = eFlags.CANTTARGET | eFlags.DONTSHOWNAME | eFlags.PEACE | eFlags.GHOST;
+
+		/// <summary>
+		/// True when a flag change from <paramref name="oldFlags"/> to <paramref name="newFlags"/> touches a flag the
+		/// client does not update in place (targetable, name shown, peaceful, ghost).
+		/// </summary>
+		public static bool NeedsClientRecreate(eFlags oldFlags, eFlags newFlags) =>
+			((oldFlags ^ newFlags) & CLIENT_CREATE_ONLY_FLAGS) != 0;
 
 		public override bool IsUnderwater => (m_flags & eFlags.SWIMMING) is eFlags.SWIMMING || base.IsUnderwater;
 

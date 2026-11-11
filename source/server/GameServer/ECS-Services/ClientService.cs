@@ -757,6 +757,23 @@ namespace DOL.GS
                 CreateObjectForPlayer(player, gameObject);
         }
 
+        /// <summary>
+        /// Removes the object from every nearby client, then creates it again. Use it when a value the client only
+        /// reads at creation changed (an NPC's can't-target, don't-show-name, peace or ghost flag): a second create
+        /// for an object the client already has does not appear to replace those.
+        /// </summary>
+        public static void RecreateObjectForPlayers(GameObject gameObject)
+        {
+            foreach (GamePlayer player in gameObject.GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
+            {
+                if (player.Client?.ClientState is not GameClient.eClientState.Playing)
+                    continue;
+
+                player.Out.SendObjectRemove(gameObject);
+                CreateObjectForPlayer(player, gameObject);
+            }
+        }
+
         private static void CheckPingTimeout(GameClient client)
         {
             // Offline DAoC is intentionally a local, single-player server. The legacy

@@ -8,6 +8,17 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.12 (in development)
+
+Snarls, the named wolf in East Svealand, can be targeted once it shows itself. It hides (no name, can't be
+targeted, can't fight) until three of its wolves die; when it came out, the classic client kept it untargetable and
+nameless while it attacked, and it killed a group's bots that the player could not help. Any change to an NPC's
+can't-target, don't-show-name, peace or ghost flag now removes the NPC from every client and creates it again, so
+the client takes the new flags (this also covers Stripe and the other mobs that hide until their adds die, and the
+day/night spawns). Snarls sets its hidden flags instead of toggling them and drops any aggro while hidden. The new
+client rebuilds an NPC whose targeting flags change instead of keeping the old ones. Tests only; not yet checked
+in game.
+
 ## Beta 1.1.11 — 2026-11-11
 
 The commander's orders are a small dialog with clickable [keywords], the way Eden's commander

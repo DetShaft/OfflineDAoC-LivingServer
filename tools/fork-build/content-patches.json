@@ -476,8 +476,8 @@
   {
     "Path": "new-client/godot/game/net/server_world.gd",
     "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
-    "Fixed": "5bde0e60cd5259c286b3e428d0b52dac18ebc6cc3042800d2000b54d96ac7a3d",
-    "Size": 87277,
+    "Fixed": "65cd1c3ffb63b3341c48bbbf03dc28ccbd7023813b9a8fae438ab549fbd77cef",
+    "Size": 87558,
     "File": "content/godot/game/net/server_world.gd",
     "ReplaceAny": true
   },

@@ -56,7 +56,7 @@ namespace DOL.AI.Brain
                 IsVisible = ShouldBeVisible();
 
                 if (previousVisibility != IsVisible)
-                    ClientService.CreateObjectForPlayers(Body);
+                    ClientService.RecreateObjectForPlayers(Body);
             }
 
             base.Think();
