@@ -122,6 +122,8 @@ namespace DOL.UnitTests
                 return SpellResult ?? false;
             }
             public override bool CanAggroTarget(GameLiving target) => target != null && target.IsAlive;
+            // The aggro table cleanup needs a live world; the leader's target stands in (FindLeaderTarget).
+            protected override GameLiving CalculateNextAttackTarget() => null;
         }
 
         [SetUp]
