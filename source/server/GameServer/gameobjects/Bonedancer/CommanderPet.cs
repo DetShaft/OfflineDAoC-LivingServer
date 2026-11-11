@@ -229,27 +229,126 @@ namespace DOL.GS
 		}
 
 		/// <summary>
-		/// The commander's opening lines: weapon keywords, minion keywords, and styles for the
-		/// weapon that is out.
+		/// Styles the player can name as the commander's favorite: the equipped weapon's styles that
+		/// open on their own or from a position. Chain and defensive styles need an opening the
+		/// commander cannot wait for every swing, so they stay in its own rotation only.
 		/// </summary>
-		public string DialogMenu()
+		public List<Style> PickableStylesForEquippedWeapon()
+			=> PickableStyles(StylesForEquippedWeapon());
+
+		public static List<Style> PickableStyles(IEnumerable<Style> styles)
 		{
-			eWeaponType[] order =
+			var list = new List<Style>();
+			if (styles == null)
+				return list;
+			foreach (Style style in styles)
 			{
-				eWeaponType.TwoHandSword, eWeaponType.TwoHandAxe, eWeaponType.TwoHandHammer,
-				eWeaponType.OneHandHammer, eWeaponType.OneHandSword, eWeaponType.OneHandAxe, eWeaponType.Bow,
+				if (style == null || style.OpeningRequirementType == Style.eOpening.Defensive)
+					continue;
+				if (style.OpeningRequirementType == Style.eOpening.Offensive && style.OpeningRequirementValue > 0)
+					continue;
+				list.Add(style);
+			}
+			list.Sort((a, b) =>
+			{
+				int byLevel = a.SpecLevelRequirement.CompareTo(b.SpecLevelRequirement);
+				return byLevel != 0 ? byLevel : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+			});
+			return list;
+		}
+
+		/// <summary>The weapon the commander has out, as a dialog type (None when it holds nothing it can name).</summary>
+		public eWeaponType EquippedWeaponType()
+		{
+			DbInventoryItem weapon = ActiveWeapon;
+			if (weapon == null)
+				return eWeaponType.None;
+			bool twoHanded = ActiveWeaponSlot == eActiveWeaponSlot.TwoHanded;
+			return (eObjectType)weapon.Object_Type switch
+			{
+				eObjectType.CompositeBow or eObjectType.Longbow or eObjectType.RecurvedBow or eObjectType.Fired => eWeaponType.Bow,
+				eObjectType.Staff => eWeaponType.Staff,
+				eObjectType.Sword => twoHanded ? eWeaponType.TwoHandSword : eWeaponType.OneHandSword,
+				eObjectType.Axe or eObjectType.LeftAxe => twoHanded ? eWeaponType.TwoHandAxe : eWeaponType.OneHandAxe,
+				eObjectType.Hammer => twoHanded ? eWeaponType.TwoHandHammer : eWeaponType.OneHandHammer,
+				_ => eWeaponType.None,
 			};
+		}
+
+		private static string WithArticle(string phrase, bool link)
+		{
+			string shown = link ? "[" + phrase + "]" : phrase;
+			bool vowel = phrase.Length > 0 && "AEIOUaeiou".IndexOf(phrase[0]) >= 0;
+			return (vowel ? "an " : "a ") + shown;
+		}
+
+		/// <summary>"a, b or c" (one item: "a"; two: "a or b").</summary>
+		public static string JoinChoices(IList<string> items, string last = "or")
+		{
+			if (items == null || items.Count == 0)
+				return string.Empty;
+			if (items.Count == 1)
+				return items[0];
+			return string.Join(", ", items.Take(items.Count - 1)) + " " + last + " " + items[^1];
+		}
+
+		/// <summary>
+		/// What the commander says when you speak to it: a line of speech for each order you can
+		/// give, each with its [keywords]. The first line is the answer to what you just said
+		/// (or its greeting), so the dialog reads as one exchange instead of a growing log.
+		/// </summary>
+		public string DialogMenu(string reply = null)
+		{
+			var lines = new List<string> { string.IsNullOrWhiteSpace(reply) ? "What are your orders, master?" : reply };
+
 			var have = new HashSet<eWeaponType>(AvailableWeaponTypes());
-			var words = order.Where(have.Contains).Select(type => "[" + WeaponPhrase(type) + "]").ToArray();
-			string weapons = words.Length == 0
-				? "I cannot change weapons."
-				: "I can use a " + string.Join(" ", words) + ".";
-			string minions = "My minions can [assist] me or [split]. I can [taunt].";
-			List<Style> styles = StylesForEquippedWeapon();
-			string styleLine = styles.Count == 0
-				? "I have no styles for this weapon."
-				: "With this weapon I use " + string.Join(" ", styles.Take(8).Select(style => "[" + style.Name + "]")) + ". Or [auto].";
-			return weapons + "\n" + minions + "\n" + styleLine;
+			eWeaponType holding = EquippedWeaponType();
+			var oneHand = new[] { eWeaponType.OneHandSword, eWeaponType.OneHandAxe, eWeaponType.OneHandHammer }
+				.Where(have.Contains).Select(t => WithArticle(WeaponPhrase(t), true)).ToList();
+			var twoHand = new[] { eWeaponType.TwoHandSword, eWeaponType.TwoHandAxe, eWeaponType.TwoHandHammer }
+				.Where(have.Contains).Select(t => WithArticle(WeaponPhrase(t), true)).ToList();
+			if (oneHand.Count > 0 || twoHand.Count > 0)
+			{
+				string weapons = holding == eWeaponType.None || holding == eWeaponType.Bow
+					? "I can take up "
+					: "I hold " + WithArticle(WeaponPhrase(holding), false) + ". I can take up ";
+				if (oneHand.Count > 0 && twoHand.Count > 0)
+					weapons += JoinChoices(oneHand) + ", or in both hands " + JoinChoices(twoHand) + ".";
+				else
+					weapons += JoinChoices(oneHand.Count > 0 ? oneHand : twoHand) + ".";
+				if (have.Contains(eWeaponType.Bow))
+					weapons += " I also carry a [Bow].";
+				lines.Add(weapons);
+			}
+			else if (have.Contains(eWeaponType.Bow))
+				lines.Add("I carry a [Bow].");
+
+			List<Style> styles = PickableStylesForEquippedWeapon();
+			if (holding != eWeaponType.None && holding != eWeaponType.Bow)
+			{
+				if (styles.Count == 0)
+					lines.Add("I know no styles with this weapon yet.");
+				else
+				{
+					string known = "With it I know " + JoinChoices(styles.Select(s => "[" + s.Name + "]").ToList(), "and") + ".";
+					known += PreferredCombatStyle != null
+						? " I favor " + PreferredCombatStyle.Name + ", or I can [choose] my own."
+						: " Name one and I will favor it. For now I choose my own.";
+					lines.Add(known);
+				}
+			}
+
+			if (SubPetCapacity > 0)
+			{
+				lines.Add(MinionsAssisting
+					? "My minions fight my target. Shall they [split] and pick their own?"
+					: "My minions pick their own targets. Shall they [assist] me again?");
+			}
+
+			lines.Add(Taunting
+				? "I am holding the enemy's eye. Shall I [stop taunting]?"
+				: "Shall I [taunt] the enemy away from you?");
+			return string.Join("\n", lines);
 		}
 
 		/// <summary>
@@ -276,7 +375,12 @@ namespace DOL.GS
 				SetTaunting(!Taunting);
 				return Taunting ? "I will taunt." : "I will no longer taunt.";
 			}
-			if (key is "auto" or "clear")
+			if (key is "stop taunting" or "stop")
+			{
+				SetTaunting(false);
+				return "I will no longer taunt.";
+			}
+			if (key is "auto" or "clear" or "choose")
 			{
 				SetPreferredCombatStyle(null);
 				return "I will choose my own styles.";
@@ -289,7 +393,7 @@ namespace DOL.GS
 					return "I cannot take up a " + WeaponPhrase(weapon) + " right now.";
 				return "I will wield the " + WeaponPhrase(weapon) + ".";
 			}
-			Style match = StylesForEquippedWeapon().FirstOrDefault(style =>
+			Style match = PickableStylesForEquippedWeapon().FirstOrDefault(style =>
 				style.Name != null && style.Name.Equals(text.Trim(), StringComparison.OrdinalIgnoreCase));
 			if (match == null)
 				return null;
@@ -311,6 +415,138 @@ namespace DOL.GS
 			player.Out.SendMessage((append ? DialogAppendPrefix : string.Empty) + text,
 				eChatType.CT_Say, eChatLoc.CL_PopupWindow);
 		}
+
+		#region Level styles
+		/// <summary>
+		/// The Midgard classes whose sword, axe and hammer styles a commander learns, in order of
+		/// preference. The Warrior trains all three lines; the rest only fill a line it lacks.
+		/// </summary>
+		private static readonly int[] StyleTeachers =
+		{
+			(int)eCharacterClass.Warrior, (int)eCharacterClass.Thane, (int)eCharacterClass.Skald,
+			(int)eCharacterClass.Berserker, (int)eCharacterClass.Savage,
+		};
+
+		/// <summary>Where level styles come from. Tests replace it; the server reads the style table.</summary>
+		public static Func<string, int, List<Style>> StyleSource = SkillBase.GetStyleList;
+
+		/// <summary>
+		/// Styles a commander of this level knows in each weapon line: every style of the line
+		/// up to the commander's level, so a higher commander knows more of them. The npc template's
+		/// own styles covered only some weapons (a hammer had none).
+		/// </summary>
+		public static List<Style> LevelStyles(int level, IEnumerable<string> specs, Func<string, int, List<Style>> stylesOf = null)
+		{
+			stylesOf ??= StyleSource;
+			var result = new List<Style>();
+			var seen = new HashSet<int>();
+			if (specs == null || stylesOf == null)
+				return result;
+			foreach (string spec in specs.Where(s => !string.IsNullOrEmpty(s)).Distinct(StringComparer.OrdinalIgnoreCase))
+			{
+				List<Style> line = null;
+				foreach (int classId in StyleTeachers)
+				{
+					line = stylesOf(spec, classId);
+					if (line != null && line.Count > 0)
+						break;
+				}
+				if (line == null || line.Count == 0)
+					line = stylesOf(spec, 0);
+				if (line == null)
+					continue;
+				foreach (Style style in line.OrderBy(s => s.SpecLevelRequirement).ThenBy(s => s.ID))
+				{
+					if (style != null && style.SpecLevelRequirement <= level && seen.Add(style.ID))
+						result.Add(style);
+				}
+			}
+			return result;
+		}
+
+		/// <summary>The weapon lines this commander can hold.</summary>
+		public IEnumerable<string> StyleSpecs()
+		{
+			var specs = new List<string>();
+			var types = new List<eWeaponType>(AvailableWeaponTypes());
+			eWeaponType holding = EquippedWeaponType();
+			if (holding != eWeaponType.None)
+				types.Add(holding);
+			foreach (eWeaponType type in types)
+			{
+				string spec = type switch
+				{
+					eWeaponType.OneHandSword or eWeaponType.TwoHandSword => Specs.Sword,
+					eWeaponType.OneHandAxe or eWeaponType.TwoHandAxe => Specs.Axe,
+					eWeaponType.OneHandHammer or eWeaponType.TwoHandHammer => Specs.Hammer,
+					_ => null,
+				};
+				if (spec != null && !specs.Contains(spec))
+					specs.Add(spec);
+			}
+			return specs;
+		}
+
+		private HashSet<Style> _levelStyles = new(ReferenceEqualityComparer.Instance);
+		private bool _commanderReady;
+
+		/// <summary>
+		/// Adds the level styles of every weapon this commander can hold to its styles, keeping
+		/// the template's own. Runs at summon and whenever the commander's level changes.
+		/// </summary>
+		public void RefreshLevelStyles()
+		{
+			var kept = new List<Style>();
+			var ids = new HashSet<int>();
+			if (Styles != null)
+			{
+				foreach (Style style in Styles)
+				{
+					if (style == null || _levelStyles.Contains(style))
+						continue;
+					kept.Add(style);
+					ids.Add(style.ID);
+				}
+			}
+
+			List<Style> learned;
+			try
+			{
+				learned = LevelStyles(Math.Max((int)Level, 1), StyleSpecs());
+			}
+			catch (Exception e)
+			{
+				log.Warn($"CommanderPet.RefreshLevelStyles(): could not read the style table for {Name}: {e.Message}");
+				learned = new List<Style>();
+			}
+
+			var added = new HashSet<Style>(ReferenceEqualityComparer.Instance);
+			foreach (Style style in learned)
+			{
+				if (ids.Add(style.ID))
+				{
+					kept.Add(style);
+					added.Add(style);
+				}
+			}
+			_levelStyles = added;
+			Styles = kept;
+			if (PreferredCombatStyle != null && !Styles.Any(s => s.ID == PreferredCombatStyle.ID))
+				SetPreferredCombatStyle(null);
+		}
+
+		public override byte Level
+		{
+			get => base.Level;
+			set
+			{
+				byte before = base.Level;
+				base.Level = value;
+				if (_commanderReady && base.Level != before)
+					RefreshLevelStyles();
+			}
+		}
+		#endregion
 
 		/// <summary>
 		/// Create a commander.
@@ -373,6 +609,9 @@ namespace DOL.GS
 			// Get a bow if we can use one
 			if (CanUseWeaponSlot(eActiveWeaponSlot.Distance))
 				CommanderSwitchWeapon(eWeaponType.Bow);
+
+			_commanderReady = true;
+			RefreshLevelStyles();
 		}
 
 		public override bool AddToWorld()
@@ -381,6 +620,8 @@ namespace DOL.GS
 			// orders. Reassert the final visible loadout before the create packet
 			// is sent so every client receives the shield in the initial update.
 			EnsureCommanderOffhandMatchesMeleeWeapon();
+			// The summon sets the level after the constructor; learn that level's styles.
+			RefreshLevelStyles();
 			return base.AddToWorld();
 		}
 
@@ -479,9 +720,9 @@ namespace DOL.GS
 			if (!menu && reply == null)
 				return false;
 
-			if (reply != null)
-				Tell(player, reply, append: true);
-			Tell(player, DialogMenu(), append: reply != null);
+			// One message: the answer on top and the orders under it, replacing what the dialog
+			// showed (owner 2026-11-11: each click repeated the whole block below the last one).
+			Tell(player, DialogMenu(reply), append: false);
 			return true;
 		}
 

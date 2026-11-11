@@ -1,27 +1,16 @@
 class_name CommanderPanel
 extends Control
-## Bonedancer orders. The commander's own dialog (clickable [keywords]) is the window;
-## this button opens it when the pet is out and you have not targeted it.
-## Talks to the server with /commander menu so the same dialog opens from the pet window.
+## Bonedancer orders used to have an ORDERS button beside the pet window. Since 1.1.12 the commander's dialog opens
+## only when you right-click the commander (ServerWorld.interact -> /commander menu), so the panel shows nothing.
+## The script stays because game_ui.gd still creates it (the installer ships game_ui.gd and this file as a pair).
 
 signal command(text: String)
-
-var _root: Control
 
 
 func build() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root = Control.new()
-	_root.size = Vector2(72, 18)
-	_root.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(_root)
-	var orders := UiArt.button("ORDERS", Vector2(64, 15), 8)
-	orders.position = Vector2(4, 1)
-	orders.tooltip_text = "Open your commander's dialog"
-	orders.pressed.connect(func(): command.emit("/commander menu"))
-	_root.add_child(orders)
 	visible = false
 
 
-func show_for_bonedancer(on: bool) -> void:
-	visible = on
+func show_for_bonedancer(_on: bool) -> void:
+	visible = false

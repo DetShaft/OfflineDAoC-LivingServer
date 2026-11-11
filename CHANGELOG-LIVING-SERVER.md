@@ -10,11 +10,21 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.12 (in development)
 
-The Friends and Looking For Group windows fill their frame (a dark backing under the stone frame closes the gap
+**Commander.** Right-click your commander to talk to it; a left click only targets it, and the ORDERS button
+beside the pet window is gone. The dialog reads as one exchange: the commander's answer to your last order
+is on top in its own colour, and the orders under it show what it does now (the weapon it holds, the style it
+favors, whether its minions assist and whether it taunts) instead of the whole block repeating under every
+click. Returned and Decayed commanders, which have no minions, no longer offer minion orders.
+Every weapon a commander can hold now has styles: it learns the Midgard sword, axe and hammer styles up to
+its own level (a higher commander knows more of them), on top of its template's styles. A hammer had none.
+Only styles that open on their own or from a position can be picked as a favorite; chain and defensive styles
+stay in its own rotation. Tests only: not yet seen in a log from Jay's PC.
+
+**Friends and Looking For Group.** The Friends and Looking For Group windows fill their frame (a dark backing under the stone frame closes the gap
 that showed the world through the top edge), and their column headers sort: click one to sort by it, again to
 reverse it. Looking For Group shows full class names and real zone names in place of the four-letter class codes
 and zone numbers the packet carries, drops the LFG/LFM column, and its CLASS / LEVEL / ZONE filters are boxed
-fields above the headers instead of loose hint text over them. Friends that do not fit scroll.
+fields above the headers instead of loose hint text over them. Friends that do not fit scroll. Tests only: not yet seen in game.
 
 ## Beta 1.1.11 — 2026-11-11
 
