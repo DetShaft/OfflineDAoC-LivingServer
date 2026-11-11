@@ -9,6 +9,7 @@ signal keyword(npc_id: String, word: String)
 var npc_id := ""
 var _title: Label
 var _body: RichTextLabel
+var _compact := false
 
 
 func build() -> void:
@@ -30,18 +31,38 @@ func build() -> void:
 	add_child(_body)
 
 
+## "[word]" becomes a gold link the click handler whispers back.
+static func links(text: String) -> String:
+	var re := RegEx.create_from_string("\\[([^\\]]+)\\]")
+	return re.sub(text.replace("\n", "\n\n"), "[url=$1][color=#f0c060]$1[/color][/url]", true)
+
+
 ## Show an NPC's words. "[word]" becomes a gold link.
 ## Several things one NPC says at one moment stack (a trainer's greeting and the quests it offers you) instead of the
 ## last one replacing the rest (owner 2026-10-09: Magus Oreal's quest offer vanished under his training line).
+## append keeps the earlier lines (a commander's reply under the menu). compact is the small commander window.
 var _frame := -1
 
 
-func say(id: String, npc_name: String, text: String) -> void:
-	var stack := Engine.get_process_frames() == _frame and id == npc_id and visible
+func say(id: String, npc_name: String, text: String, append := false, compact := false) -> void:
+	var stack := (append or Engine.get_process_frames() == _frame) and id == npc_id and visible
 	_frame = Engine.get_process_frames()
+	_fit(compact)
 	npc_id = id
 	_title.text = npc_name.to_upper()
-	var re := RegEx.create_from_string("\\[([^\\]]+)\\]")
-	var bb := re.sub(text.replace("\n", "\n\n"), "[url=$1][color=#f0c060]$1[/color][/url]", true)
+	var bb := links(text)
+	_body.scroll_following = stack
 	_body.text = (_body.text + "\n\n" + bb) if stack else bb
 	show_window()
+
+
+func _fit(compact: bool) -> void:
+	if compact == _compact and (not compact or resizable):
+		return
+	_compact = compact
+	resizable = true
+	min_size = Vector2(220, 120)
+	set_frame("npctalk")
+	set_window_size(Vector2(280, 176) if compact else Vector2(384, 320))
+	_title.size = Vector2(size.x - 28, 16)
+	_body.size = Vector2(size.x - 24, size.y - 56)
