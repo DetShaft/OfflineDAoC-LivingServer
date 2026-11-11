@@ -1278,7 +1278,7 @@ const EFFECT_ICON := 32.0                     # px (the client's 20; owner 2026-
 ## reaches it; owner 2026-10-14: "hovering over buffs and debuffs doesn't tell you anything"), else its name.
 class EffectBox extends Control:
 	var fx := -1
-var title := ""
+	var title := ""
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_MOUSE_ENTER and Server.active and fx > 0:
@@ -1887,7 +1887,6 @@ func handle_input(event: InputEvent) -> bool:
 			options.toggle_window()
 		return true
 	return false
-
 
 
 ## The world behind the windows as a drop target, only while something is being dragged (otherwise it lets every
