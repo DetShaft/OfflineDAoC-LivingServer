@@ -1,8 +1,8 @@
 """Builds the Living Server Setup exe: one file that installs Offline DAoC and Living Server.
 
-    python tools/installer/build.py                                  # embeds the published Beta 1.0 package
+    python tools/installer/build.py                                  # embeds the newest published release's package
     python tools/installer/build.py --package path/to/OfflineDAoC-LivingServer-<build>.zip
-    python tools/installer/build.py --release v1.0-beta              # downloads that release's package
+    python tools/installer/build.py --release v1.1.10-beta           # downloads that release's package
 
 Writes tools/installer/dist/LivingServer-Setup-<build>.exe (needs the .NET SDK; builds on Windows or Linux).
 
@@ -82,11 +82,15 @@ def check_package(path):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--package", help="a Living Server package zip")
-    ap.add_argument("--release", default="v1.0-beta", help="a release tag to download the package from (default v1.0-beta)")
+    ap.add_argument("--release", help="a release tag to download the package from (default: the newest published release)")
     ap.add_argument("--no-build", action="store_true", help="only stage the payloads")
     a = ap.parse_args()
 
     PAYLOAD.mkdir(parents=True, exist_ok=True)
+    if not a.package and not a.release:
+        sys.path.insert(0, str(ROOT / "tools" / "release"))
+        import pick_releases
+        a.release = pick_releases.pick(pick_releases.fetch(os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")))["package"]
     package = Path(a.package) if a.package else fetch_release(a.release)
     info = check_package(package)
     shutil.copyfile(package, PAYLOAD / "LivingServer.zip")

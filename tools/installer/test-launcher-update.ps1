@@ -1,6 +1,9 @@
 # End-to-end check of the launcher's Living Server update path on Windows (CI: installer.yml, job launcher-update).
 #
-#   powershell -File tools\installer\test-launcher-update.ps1 -Launcher <built OfflineDAoC.exe> -Work C:\lsupdate
+#   powershell -File tools\installer\test-launcher-update.ps1 -Launcher <built OfflineDAoC.exe> -Work C:\lsupdate -From v1.1.9-beta -To v1.1.10-beta
+#
+# -From and -To are published release tags of this fork (CI picks the newest one and the one before it with
+# tools\release\pick_releases.py; v1.1-beta to v1.1.3-beta are only tags here, not releases, so they can't be used).
 #
 # A fake Offline DAoC 0.37 game folder (the layout tools\fork-build\test-install-scripts.ps1 uses: no real game
 # download) gets the published -From package installed with its own install script, as a player would. Then the
@@ -17,8 +20,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Launcher,
     [string]$Work = 'C:\lsupdate',
-    [string]$From = 'v1.1-beta',
-    [string]$To = 'v1.1.1-beta'
+    [Parameter(Mandatory = $true)][string]$From,
+    [Parameter(Mandatory = $true)][string]$To
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'   # Invoke-WebRequest's progress bar makes Windows PowerShell 5.1 downloads crawl

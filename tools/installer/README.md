@@ -43,9 +43,9 @@ applies, Setup asks the player to let it finish.
 ## Build
 
 ```
-python tools/installer/build.py                       # the published Beta 1.0 package
-python tools/installer/build.py --release v1.0-beta   # any release tag
-python tools/installer/build.py --package <zip>       # a package built by CI
+python tools/installer/build.py                          # the newest published release's package
+python tools/installer/build.py --release v1.1.10-beta   # any published release tag
+python tools/installer/build.py --package <zip>          # a package built by CI
 ```
 
 Needs the .NET SDK (8 or later; it targets .NET Framework 4.7.2 through reference assemblies, so it builds on Windows
