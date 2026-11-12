@@ -4285,6 +4285,8 @@ namespace DOL.GS
             Mana = MaxMana * manaPercent / 100;
             Endurance = MaxEndurance * endurancePercent / 100;
             UpdateNPCEquipmentAppearance();
+            if (previousLevel < Level)
+                ShowNewLevelToClients();
             Group?.UpdateMember(this, false, false);
 
             if (previousLevel < Level)
@@ -4295,6 +4297,29 @@ namespace DOL.GS
                          $"level={previousLevel}->{Level}");
             }
             return true;
+        }
+
+        // The 1.124 client takes an NPC's level (con color) from the NPC create
+        // packet and ignores the level in ObjectDataUpdate, and the group window
+        // reads a member's level only from the full group window packet, so a
+        // level sync must re-send both (issue #36). An observer that cannot see a
+        // stealthed bot is left alone, as Stealth() does.
+        private void ShowNewLevelToClients()
+        {
+            if (ObjectState != eObjectState.Active)
+                return;
+            foreach (GamePlayer viewer in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
+            {
+                if (viewer?.Out == null || IsStealthed && !viewer.CanDetect(this))
+                    continue;
+                bool targeted = viewer.TargetObject == this;
+                viewer.Out.SendObjectRemove(this);
+                viewer.Out.SendNPCCreate(this);
+                viewer.Out.SendLivingEquipmentUpdate(this);
+                if (targeted)
+                    viewer.Out.SendChangeTarget(this);
+            }
+            Group?.UpdateGroupWindow();
         }
 
         private void SetWeapons(bool includeOffhand = true)
