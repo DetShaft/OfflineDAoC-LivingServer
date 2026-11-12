@@ -276,19 +276,44 @@ namespace DOL.UnitTests
                 DateTime now = new(2026, 11, 12, 10, 52, 0, DateTimeKind.Utc);
                 Assert.That(BefriendedHelpers.LogsInNow(601, now), Is.False);
 
-                BefriendedHelpers.SetFirstSessionForTests(601, now + BefriendedHelpers.FirstSession);
+                TimeSpan session = BefriendedHelpers.FirstSessionLength(0.5);
+                BefriendedHelpers.SetFirstSessionForTests(601, now + session);
                 Assert.That(BefriendedHelpers.LogsInNow(601, now), Is.True);
                 Assert.That(BefriendedHelpers.KeepsOnline(601, now.AddMinutes(59)), Is.True);
                 Assert.That(AutonomousBotSchedule.WantsOnline(new OfflineWorldBotRecord { BotId = 601 }, now), Is.True);
                 Assert.That(BefriendedHelpers.LogsInNow(602, now), Is.False);
 
                 // Then the schedule decides again, as for every gamebot.
-                Assert.That(BefriendedHelpers.KeepsOnline(601, now + BefriendedHelpers.FirstSession), Is.False);
+                Assert.That(BefriendedHelpers.KeepsOnline(601, now + session), Is.False);
             }
             finally
             {
                 BefriendedHelpers.ResetForTests();
             }
+        }
+
+        [TestCase(0.0, 120)]
+        [TestCase(0.5, 150)]
+        [TestCase(1.0, 180)]
+        [TestCase(-1.0, 120)]
+        [TestCase(2.0, 180)]
+        public void FirstSession_LastsTwoToThreeHours(double roll, int minutes)
+        {
+            // Owner 2026-11-12: "leave em online for 2-3 hours upon first befriending".
+            Assert.That(BefriendedHelpers.FirstSessionLength(roll), Is.EqualTo(TimeSpan.FromMinutes(minutes)));
+        }
+
+        [Test]
+        public void StarterKit_OnlyForABefriendedHelperWithNoEquipment()
+        {
+            // Issue #39: Kettleboil's gear was never saved; she gets a kit for her level once, on her first login.
+            string origin = "Was Ferac's " + BefriendedHelpers.OriginNote;
+            Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, []), Is.True);
+            Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [40, 41]), Is.True);                       // backpack only
+            Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [(int)eInventorySlot.TorsoArmor]), Is.False);
+            Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [(int)eInventorySlot.RightHandWeapon]), Is.False);
+            Assert.That(BefriendedHelpers.NeedsStarterKitFor("Entered world through staggered login queue", []), Is.False);
+            Assert.That(BefriendedHelpers.NeedsStarterKitFor((string)null, []), Is.False);
         }
 
         private void AddBot(string name, eRealm realm, int level, int classId, bool retired = false, string lastSaved = "", string lastUpdate = "")

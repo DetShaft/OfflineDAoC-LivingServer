@@ -2611,7 +2611,10 @@ namespace DOL.GS
                     Inventory.LoadFromDatabase(InternalID);
                 else
                     Inventory.LoadInventory(InternalID, preparedInventory);
-                bool starterWeaponAdded = EnsureAutonomousStarterWeapon();
+                // 1.1.14 never saved a befriended helper's gear (issue #39): such a gamebot gets a kit for its level once.
+                bool befriendedKitAdded = BefriendedHelpers.NeedsStarterKit(record, Inventory) && GiveBefriendedHelperKit();
+                bool starterWeaponAdded = befriendedKitAdded;
+                starterWeaponAdded |= EnsureAutonomousStarterWeapon();
                 starterWeaponAdded |= BotRangedCombat.EnsureStarter(this);
                 starterWeaponAdded |= BotStarterInstruments.Ensure(this);
                 RefreshItemBonuses();
@@ -3480,15 +3483,59 @@ namespace DOL.GS
             if (Inventory is not BotInventory inventory)
                 return false;
 
-            // A helper's kit is GeneratedUniqueItem, which defaults to AllowAdd=false, so the database refused every
-            // definition and nothing was saved (issue #39: "ItemUnique ... not allowed to be added to Database" for
-            // Kettleboil, who would have logged in with no gear). Persist them as SetMeleeWeapon does for a saved bot.
+            AllowGeneratedItemsToBeSaved(inventory);
+            return inventory.SaveIntoDatabase(ownerId);
+        }
+
+        /// <summary>
+        /// A helper's kit is GeneratedUniqueItem, which defaults to AllowAdd=false, so the database refused every
+        /// definition and nothing was saved (issue #39: "ItemUnique ... not allowed to be added to Database" for
+        /// Kettleboil, who would have logged in with no gear). Persist them as SetMeleeWeapon does for a saved bot.
+        /// </summary>
+        private static void AllowGeneratedItemsToBeSaved(BotInventory inventory)
+        {
             foreach (DbInventoryItem item in inventory.AllItems)
             {
                 if (item?.IUWrapper is { IsPersisted: false } unique)
                     unique.AllowAdd = true;
             }
-            return inventory.SaveIntoDatabase(ownerId);
+        }
+
+        /// <summary>
+        /// A befriended helper's gamebot whose gear 1.1.14 never saved (issue #39; owner 2026-11-12: "give her starter kit
+        /// for her level"): weapons, armor and jewelry generated at its level, as /spawn gave it, into its own saved
+        /// inventory. Runs while it loads, before the starter weapon and instrument checks fill the hands.
+        /// </summary>
+        private bool GiveBefriendedHelperKit()
+        {
+            if (Inventory is not BotInventory { IsPersistent: true } inventory)
+                return false;
+
+            byte level = Level;
+            try
+            {
+                EquipmentLevelFloor = Math.Max(1, level - 10);
+                EquipmentLevelCap = level;
+                bool mayUseOffhand = !SluaghbinderUsesScythe &&
+                    (BotSpec?.SpecType is eSpecType.DualWield or eSpecType.DualWieldAndShield or eSpecType.LeftAxe ||
+                     BestShieldLevel > 0);
+                SetWeapons(mayUseOffhand);
+                if (mayUseOffhand)
+                    SetShield();
+                SetRanged();
+                SetArmor();
+                SetJewelry();
+            }
+            finally
+            {
+                EquipmentLevelFloor = 0;
+                EquipmentLevelCap = 0;
+                Level = level;
+            }
+
+            AllowGeneratedItemsToBeSaved(inventory);
+            log.Info($"BEFRIENDED_HELPER_STARTER_KIT bot=\"{Name}\" id={DatabaseID} level={Level} items={inventory.AllItems.Count}");
+            return true;
         }
 
         #endregion
