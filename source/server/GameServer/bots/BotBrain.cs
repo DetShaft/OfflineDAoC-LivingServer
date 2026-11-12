@@ -2504,49 +2504,58 @@ namespace DOL.AI.Brain
             }
             else
             {
-                bool injured = bot.HealthPercent < 95 || bot.Group?.GetMembersInTheGroup().Any(member =>
-                    member.IsAlive && member.HealthPercent < 95 && member.CurrentRegionID == bot.CurrentRegionID &&
-                    bot.IsWithinRadius(member, GROUP_DEFENSE_ASSIST_RADIUS)) == true;
-                bool combatHealing = injured && (bot.InCombat || HasAggro || bot.IsAttacking);
-                // A solo Paladin holds one chant instead of cycling three: each recast briefly
-                // retargets the bot to itself mid-fight, and the held chant was endurance or
-                // armor, not damage (solo Paladins killed at half the Armsman rate, Oct 3-5).
                 bool fighting = bot.InCombat || HasAggro || bot.IsAttacking;
+                eSpellType anchor;
                 if ((bot.Group?.MemberCount ?? 1) <= 1)
                 {
-                    eSpellType anchor = BotSongTwistPolicy.SoloPaladinAnchor(fighting, bot.HealthPercent);
-                    chosen = chants.FirstOrDefault(spell => spell.SpellType == anchor) ??
-                        chants.FirstOrDefault(spell => spell.SpellType == eSpellType.DamageAdd) ??
-                        chants.FirstOrDefault(spell => spell.SpellType != eSpellType.CombatHeal);
-                    if (chosen == null || chosen.ID == active?.ID || bot.GetSkillDisabledDuration(chosen) > 0 ||
-                        bot.Mana < bot.PowerCost(chosen)) return;
-                    GameObject soloTarget = bot.TargetObject;
-                    try { bot.TargetObject = bot; bot.CastSpell(chosen, m_mobSpellLine, false); }
-                    finally { bot.TargetObject = soloTarget; }
-                    return;
+                    // A solo Paladin holds one chant instead of cycling three: each recast briefly
+                    // retargets the bot to itself mid-fight, and the held chant was endurance or
+                    // armor, not damage (solo Paladins killed at half the Armsman rate, Oct 3-5).
+                    anchor = BotSongTwistPolicy.SoloPaladinAnchor(fighting, bot.HealthPercent);
                 }
-                chants = chants.Where(spell => spell.SpellType != eSpellType.CombatHeal || combatHealing)
-                    .OrderByDescending(spell => spell.SpellType == eSpellType.EnduranceRegenBuff)
-                    .ThenByDescending(spell => spell.SpellType == eSpellType.SpecArmorFactorBuff)
-                    .ThenByDescending(spell => spell.SpellType == eSpellType.DamageAdd).ToList();
-                if (chants.Count == 0) return;
-                int id = BotSongTwistPolicy.Choose(chants[0].ID, active?.ID ?? 0,
-                    chants.Select(spell => new BotSongTwistPolicy.Song(spell.ID, spell.CastTime,
-                        bot.Mana >= bot.PowerCost(spell) ? bot.GetSkillDisabledDuration(spell) : int.MaxValue,
-                        SongRemainingMilliseconds(spell))).ToArray());
-                chosen = chants.FirstOrDefault(spell => spell.ID == id);
+                else
+                {
+                    // A grouped Paladin holds one chant too. It used to twist endurance, armor, damage
+                    // and the combat heal, recasting a chant every second or two even while the group
+                    // traveled (play report 2026-11-12, issue #32).
+                    bool groupInjured = bot.HealthPercent < 95 || bot.Group?.GetMembersInTheGroup().Any(member =>
+                        member.IsAlive && member.HealthPercent < 95 && member.CurrentRegionID == bot.CurrentRegionID &&
+                        bot.IsWithinRadius(member, GROUP_DEFENSE_ASSIST_RADIUS)) == true;
+                    anchor = BotSongTwistPolicy.GroupPaladinAnchor(fighting, groupInjured);
+                }
+                chosen = chants.FirstOrDefault(spell => spell.SpellType == anchor) ??
+                    chants.FirstOrDefault(spell => spell.SpellType == eSpellType.DamageAdd && fighting) ??
+                    chants.FirstOrDefault(spell => spell.SpellType == eSpellType.EnduranceRegenBuff) ??
+                    chants.FirstOrDefault(spell => spell.SpellType == eSpellType.SpecArmorFactorBuff) ??
+                    chants.FirstOrDefault(spell => spell.SpellType != eSpellType.CombatHeal);
             }
 
-            if (chosen == null || chosen.ID == active?.ID || bot.GetSkillDisabledDuration(chosen) > 0 ||
-                bot.Mana < bot.PowerCost(chosen)) return;
+            if (chosen == null || bot.GetSkillDisabledDuration(chosen) > 0 || bot.Mana < bot.PowerCost(chosen))
+                return;
+            bool paladin = (eCharacterClass)bot.CharacterClass.ID == eCharacterClass.Paladin;
+            bool moving = bot.IsMoving || bot.Group?.LivingLeader?.IsMoving == true;
+            // A Paladin keeps its chant while it or its leader moves, and for at least
+            // PaladinChantHoldMilliseconds before switching. A Warden switches as soon as its anchor
+            // changes (travel speed, bladeturn), as before.
+            if (!BotSongTwistPolicy.MayStartTankChant(chosen.ID, active?.ID ?? 0, _lastTankChantId,
+                    _lastTankChantTick, GameLoop.GameLoopTime, moving, keepWhileMoving: paladin,
+                    holdMilliseconds: paladin ? BotSongTwistPolicy.PaladinChantHoldMilliseconds : 0))
+                return;
             GameObject oldTarget = bot.TargetObject;
             try
             {
                 bot.TargetObject = bot;
-                bot.CastSpell(chosen, m_mobSpellLine, false);
+                if (bot.CastSpell(chosen, m_mobSpellLine, false))
+                {
+                    _lastTankChantId = chosen.ID;
+                    _lastTankChantTick = GameLoop.GameLoopTime;
+                }
             }
             finally { bot.TargetObject = oldTarget; }
         }
+
+        private int _lastTankChantId;
+        private long _lastTankChantTick;
 
         private bool IsUnderImmediateMeleePressure() =>
             AggroList.Keys.Any(attacker => attacker?.IsAlive == true &&
