@@ -8,6 +8,8 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.15 — 2026-11-12
+
 **Robes look like robes in the new client (#37).** A worn robe was drawn as a short tunic over bare legs (Jay,
 2026-11-12: a Friar's Robes of the Novice from Brother Ethelbald). Robe textures ("robBody", such as robBody01_02_m)
 are laid out for the long robe body mesh, which is body mesh 7 for every player race, but the new client put them on
@@ -15,6 +17,49 @@ the short tunic mesh. A robe now uses the robe mesh and hides the arms, the legs
 the client's own robe items ask (objects.csv Cata Arms# / Legs# -1). This holds for players, companions, gamebots and
 NPCs, and for epic robes. New-client script `game/fig3_figure.gd`, installed by INSTALL like the other client fixes.
 Tests only: checked in a headless Godot render of the Briton and Highlander figures, not yet seen in game.
+
+**Helpers show their new level (#36).** After a /spawn helper matched your level (1.1.14), chat said "is now level 3,
+matching you", but the group window still showed its old level and it conned as before (Jay, 2026-11-12). The group
+window only got the new level in a full group window update, and the client keeps the level an NPC had when it was
+created. After a level sync the server now re-sends the helper to every player in range (keeping your target on it, and
+skipping players who can't see it while it is stealthed) and refreshes the group window. Tests only: not yet seen in
+game.
+
+**Paladin bots hold one chant (#32).** Paladin bots cast a chant over and over, even while moving (Jay, 2026-11-12). A
+grouped Paladin twisted endurance, armor, damage add and the combat heal, recasting a chant each time its effect was
+about to run out, every second or two. A grouped Paladin now holds one chant: endurance out of combat, the combat heal
+while someone nearby is hurt in a fight, damage add otherwise. It keeps its running chant while it or its leader moves,
+holds a chant at least 10 seconds before switching, and never casts the same chant again within 6 seconds (Wardens
+too, since recasting a running chant turns it off). This is a gameplay change: a group now has one Paladin chant's buff
+at a time. It is the base for smarter, level-based twisting for every chanting class later (issue #32 stays open).
+Tests only: not yet seen in game.
+
+**Healers in every realm hold their place (#33).** 1.1.13 stopped the Midgard Healer, Cleric and Druid from running
+back and forth in fights. Friar, Shaman, Warden and Bard, which heal and also fight, never reached that fix. A walk back
+to the formation slot now ends a follow on an enemy for every class (follows on the leader, the group and the bot's own
+pet are kept), and a healing hybrid that stops to heal ends a chase on an enemy outside melee reach. A hybrid still
+fights in melee between heals. Tests only: not yet seen in game.
+
+**Befriended helpers keep their gear and come online (#39).** Jay's 1.1.14 log showed Kettleboil, a befriended
+helper, released with `saved=False`: the database refused her generated gear, and the clock schedule had her offline
+until evening while the Friends window still said ONLINE.
+- Her gear is saved now.
+- A befriended helper stays online as a gamebot for 2 to 3 hours from when it leaves you (or, for one released by
+  1.1.14 or before a restart, from its first login), then follows the schedule like every gamebot.
+- A befriended helper's gamebot that logs in for the first time with no equipment (Kettleboil) gets a kit for its
+  level, once.
+- When a helper leaves you, Friends stops showing it online until its gamebot logs in.
+Tests only: not yet seen in game.
+
+**Fewer stalls in crowded cities, and a log to find the rest (#34, partial).** Jay's new-client performance logs in
+Camelot show frames of 100 to 370 ms, with draw calls jumping between about 900 and 5,000 while the crowd stays the
+same. The likely cause, from the code: every figure switched its shadow off when it left the camera view and on when it
+came back, so turning the camera in a crowd switched most of them at once. Now distance alone decides a figure's shadow
+(with a 5 m margin so one at the edge doesn't flip), and at most 8 shadow switches are applied per frame.
+`perf_live.log` lines now add `views built N | shadow switches N`, so the next city log shows what is behind any stalls
+that remain. New-client scripts `game/anim_lod.gd` and `game/perf_governor.gd`, installed by INSTALL. Tests only:
+checked in a headless Godot load, not yet run in a city.
+([docs/RELEASE-NOTES-1.1.15.md](docs/RELEASE-NOTES-1.1.15.md))
 
 ## Beta 1.1.14 — 2026-11-12
 
