@@ -1248,6 +1248,12 @@ namespace DOL.AI.Brain
                 return;
             }
 
+            // Walking back to a formation slot while a follow on an enemy is still running pulls the
+            // bot back and forth: StopAttack and WalkTo leave that follow in place. PR #23 ended it for
+            // support bots in HoldSupportCombat; every class that returns to formation needs the same
+            // (issue #33). Follows on the leader, a group member or the bot's own pet are kept.
+            StopSupportEnemyChase();
+
             bool tightInterior = Body.CurrentRegion?.IsDungeon == true;
             bool companionTravel = CompanionFollowPolicy.Applies(BotBody);
             // Do not run native owner-follow and formation orders concurrently.
@@ -3121,7 +3127,13 @@ namespace DOL.AI.Brain
                 }
                 else if (_brain.IsHealer)
                 {
-                    if (!_brain.CheckHeals())
+                    // A healing class outside the exclusive support role (Friar, Shaman, Warden, Bard,
+                    // Paladin, or a Cleric/Druid/Healer without a combat partner) heals first and fights
+                    // otherwise. A heal ends a melee chase on an enemy it cannot reach, the same rule
+                    // HoldSupportCombat applies to support bots (issue #33).
+                    if (_brain.CheckHeals())
+                        _brain.StopHealerEnemyChase();
+                    else
                         _brain.AttackMostWanted();
                 }
                 else
@@ -3899,6 +3911,18 @@ namespace DOL.AI.Brain
         private void StopSupportEnemyChase()
         {
             if (Body.FollowTarget is GameLiving followed && IsSupportEnemyChase(followed))
+                Body.StopFollowing();
+        }
+
+        /// <summary>
+        /// After a heal from a healing class that is not an exclusive support bot: end a follow on an enemy
+        /// that is out of melee reach, so the bot does not run off after it between heals. A follow on an
+        /// enemy it is already swinging at in reach is kept.
+        /// </summary>
+        private void StopHealerEnemyChase()
+        {
+            if (Body.FollowTarget is GameLiving followed && IsSupportEnemyChase(followed) &&
+                !Body.IsWithinRadius(followed, Body.MeleeAttackRange + SupportIdleMeleeHoldSlack))
                 Body.StopFollowing();
         }
 
