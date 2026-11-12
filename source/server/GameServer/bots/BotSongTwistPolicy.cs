@@ -81,6 +81,44 @@ namespace DOL.GS
                 (!pending || IsMobileSong(living, requested));
         }
 
+        /// <summary>
+        /// The one chant a grouped Paladin holds: endurance out of combat, the combat heal while someone
+        /// nearby is hurt in a fight, damage otherwise. Grouped Paladins used to twist three or four chants
+        /// (see Choose), which recast a chant every second or two, while moving too (issue #32).
+        /// </summary>
+        public static eSpellType GroupPaladinAnchor(bool fighting, bool groupInjured) =>
+            !fighting ? eSpellType.EnduranceRegenBuff : groupInjured ? eSpellType.CombatHeal : eSpellType.DamageAdd;
+
+        /// <summary>How long a Paladin keeps a chant before it may switch to another one.</summary>
+        public const int PaladinChantHoldMilliseconds = 10_000;
+
+        /// <summary>
+        /// A chant this brain cast this recently is never cast again. Casting a chant that is already
+        /// running turns it off (CastingComponent.StartSkill), so a recast while its pulse effect is not
+        /// yet visible would toggle it off and on every think.
+        /// </summary>
+        public const int TankChantRecastGuardMilliseconds = 6_000;
+
+        /// <summary>
+        /// Whether a tank chant upkeep pass may cast chosenId now.
+        /// lastCastId is 0 when this brain has not cast a chant yet.
+        /// holdMilliseconds and keepWhileMoving apply only when another chant is already running:
+        /// nothing running always starts the chosen chant.
+        /// </summary>
+        public static bool MayStartTankChant(int chosenId, int activeId, int lastCastId, long lastCastTick,
+            long now, bool moving, bool keepWhileMoving, int holdMilliseconds)
+        {
+            if (chosenId == 0 || chosenId == activeId)
+                return false;
+            if (lastCastId != 0 && chosenId == lastCastId && now - lastCastTick < TankChantRecastGuardMilliseconds)
+                return false;
+            if (activeId == 0)
+                return true;
+            if (keepWhileMoving && moving)
+                return false;
+            return lastCastId == 0 || now - lastCastTick >= holdMilliseconds;
+        }
+
         public static eSpellType WardenAnchor(bool traveling, bool combat, bool grouped, bool hasBladeturn)
         {
             if (traveling && !combat) return eSpellType.SpeedEnhancement;

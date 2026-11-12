@@ -2611,7 +2611,10 @@ namespace DOL.GS
                     Inventory.LoadFromDatabase(InternalID);
                 else
                     Inventory.LoadInventory(InternalID, preparedInventory);
-                bool starterWeaponAdded = EnsureAutonomousStarterWeapon();
+                // 1.1.14 never saved a befriended helper's gear (issue #39): such a gamebot gets a kit for its level once.
+                bool befriendedKitAdded = BefriendedHelpers.NeedsStarterKit(record, Inventory) && GiveBefriendedHelperKit();
+                bool starterWeaponAdded = befriendedKitAdded;
+                starterWeaponAdded |= EnsureAutonomousStarterWeapon();
                 starterWeaponAdded |= BotRangedCombat.EnsureStarter(this);
                 starterWeaponAdded |= BotStarterInstruments.Ensure(this);
                 RefreshItemBonuses();
@@ -3474,8 +3477,66 @@ namespace DOL.GS
             record.Dirty = true;
         }
 
-        /// <summary>The helper's gear, saved under its gamebot's owner id (BefriendedHelpers.Release).</summary>
-        internal bool SaveGearAs(string ownerId) => Inventory is BotInventory inventory && inventory.SaveIntoDatabase(ownerId);
+        /// <summary>The helper's gear, saved under its gamebot's owner id (BefriendedHelpers).</summary>
+        internal bool SaveGearAs(string ownerId)
+        {
+            if (Inventory is not BotInventory inventory)
+                return false;
+
+            AllowGeneratedItemsToBeSaved(inventory);
+            return inventory.SaveIntoDatabase(ownerId);
+        }
+
+        /// <summary>
+        /// A helper's kit is GeneratedUniqueItem, which defaults to AllowAdd=false, so the database refused every
+        /// definition and nothing was saved (issue #39: "ItemUnique ... not allowed to be added to Database" for
+        /// Kettleboil, who would have logged in with no gear). Persist them as SetMeleeWeapon does for a saved bot.
+        /// </summary>
+        private static void AllowGeneratedItemsToBeSaved(BotInventory inventory)
+        {
+            foreach (DbInventoryItem item in inventory.AllItems)
+            {
+                if (item?.IUWrapper is { IsPersisted: false } unique)
+                    unique.AllowAdd = true;
+            }
+        }
+
+        /// <summary>
+        /// A befriended helper's gamebot whose gear 1.1.14 never saved (issue #39; owner 2026-11-12: "give her starter kit
+        /// for her level"): weapons, armor and jewelry generated at its level, as /spawn gave it, into its own saved
+        /// inventory. Runs while it loads, before the starter weapon and instrument checks fill the hands.
+        /// </summary>
+        private bool GiveBefriendedHelperKit()
+        {
+            if (Inventory is not BotInventory { IsPersistent: true } inventory)
+                return false;
+
+            byte level = Level;
+            try
+            {
+                EquipmentLevelFloor = Math.Max(1, level - 10);
+                EquipmentLevelCap = level;
+                bool mayUseOffhand = !SluaghbinderUsesScythe &&
+                    (BotSpec?.SpecType is eSpecType.DualWield or eSpecType.DualWieldAndShield or eSpecType.LeftAxe ||
+                     BestShieldLevel > 0);
+                SetWeapons(mayUseOffhand);
+                if (mayUseOffhand)
+                    SetShield();
+                SetRanged();
+                SetArmor();
+                SetJewelry();
+            }
+            finally
+            {
+                EquipmentLevelFloor = 0;
+                EquipmentLevelCap = 0;
+                Level = level;
+            }
+
+            AllowGeneratedItemsToBeSaved(inventory);
+            log.Info($"BEFRIENDED_HELPER_STARTER_KIT bot=\"{Name}\" id={DatabaseID} level={Level} items={inventory.AllItems.Count}");
+            return true;
+        }
 
         #endregion
 
@@ -4285,6 +4346,8 @@ namespace DOL.GS
             Mana = MaxMana * manaPercent / 100;
             Endurance = MaxEndurance * endurancePercent / 100;
             UpdateNPCEquipmentAppearance();
+            if (previousLevel < Level)
+                ShowNewLevelToClients();
             Group?.UpdateMember(this, false, false);
 
             if (previousLevel < Level)
@@ -4295,6 +4358,29 @@ namespace DOL.GS
                          $"level={previousLevel}->{Level}");
             }
             return true;
+        }
+
+        // The 1.124 client takes an NPC's level (con color) from the NPC create
+        // packet and ignores the level in ObjectDataUpdate, and the group window
+        // reads a member's level only from the full group window packet, so a
+        // level sync must re-send both (issue #36). An observer that cannot see a
+        // stealthed bot is left alone, as Stealth() does.
+        private void ShowNewLevelToClients()
+        {
+            if (ObjectState != eObjectState.Active)
+                return;
+            foreach (GamePlayer viewer in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
+            {
+                if (viewer?.Out == null || IsStealthed && !viewer.CanDetect(this))
+                    continue;
+                bool targeted = viewer.TargetObject == this;
+                viewer.Out.SendObjectRemove(this);
+                viewer.Out.SendNPCCreate(this);
+                viewer.Out.SendLivingEquipmentUpdate(this);
+                if (targeted)
+                    viewer.Out.SendChangeTarget(this);
+            }
+            Group?.UpdateGroupWindow();
         }
 
         private void SetWeapons(bool includeOffhand = true)

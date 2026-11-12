@@ -1248,6 +1248,12 @@ namespace DOL.AI.Brain
                 return;
             }
 
+            // Walking back to a formation slot while a follow on an enemy is still running pulls the
+            // bot back and forth: StopAttack and WalkTo leave that follow in place. PR #23 ended it for
+            // support bots in HoldSupportCombat; every class that returns to formation needs the same
+            // (issue #33). Follows on the leader, a group member or the bot's own pet are kept.
+            StopSupportEnemyChase();
+
             bool tightInterior = Body.CurrentRegion?.IsDungeon == true;
             bool companionTravel = CompanionFollowPolicy.Applies(BotBody);
             // Do not run native owner-follow and formation orders concurrently.
@@ -2504,49 +2510,58 @@ namespace DOL.AI.Brain
             }
             else
             {
-                bool injured = bot.HealthPercent < 95 || bot.Group?.GetMembersInTheGroup().Any(member =>
-                    member.IsAlive && member.HealthPercent < 95 && member.CurrentRegionID == bot.CurrentRegionID &&
-                    bot.IsWithinRadius(member, GROUP_DEFENSE_ASSIST_RADIUS)) == true;
-                bool combatHealing = injured && (bot.InCombat || HasAggro || bot.IsAttacking);
-                // A solo Paladin holds one chant instead of cycling three: each recast briefly
-                // retargets the bot to itself mid-fight, and the held chant was endurance or
-                // armor, not damage (solo Paladins killed at half the Armsman rate, Oct 3-5).
                 bool fighting = bot.InCombat || HasAggro || bot.IsAttacking;
+                eSpellType anchor;
                 if ((bot.Group?.MemberCount ?? 1) <= 1)
                 {
-                    eSpellType anchor = BotSongTwistPolicy.SoloPaladinAnchor(fighting, bot.HealthPercent);
-                    chosen = chants.FirstOrDefault(spell => spell.SpellType == anchor) ??
-                        chants.FirstOrDefault(spell => spell.SpellType == eSpellType.DamageAdd) ??
-                        chants.FirstOrDefault(spell => spell.SpellType != eSpellType.CombatHeal);
-                    if (chosen == null || chosen.ID == active?.ID || bot.GetSkillDisabledDuration(chosen) > 0 ||
-                        bot.Mana < bot.PowerCost(chosen)) return;
-                    GameObject soloTarget = bot.TargetObject;
-                    try { bot.TargetObject = bot; bot.CastSpell(chosen, m_mobSpellLine, false); }
-                    finally { bot.TargetObject = soloTarget; }
-                    return;
+                    // A solo Paladin holds one chant instead of cycling three: each recast briefly
+                    // retargets the bot to itself mid-fight, and the held chant was endurance or
+                    // armor, not damage (solo Paladins killed at half the Armsman rate, Oct 3-5).
+                    anchor = BotSongTwistPolicy.SoloPaladinAnchor(fighting, bot.HealthPercent);
                 }
-                chants = chants.Where(spell => spell.SpellType != eSpellType.CombatHeal || combatHealing)
-                    .OrderByDescending(spell => spell.SpellType == eSpellType.EnduranceRegenBuff)
-                    .ThenByDescending(spell => spell.SpellType == eSpellType.SpecArmorFactorBuff)
-                    .ThenByDescending(spell => spell.SpellType == eSpellType.DamageAdd).ToList();
-                if (chants.Count == 0) return;
-                int id = BotSongTwistPolicy.Choose(chants[0].ID, active?.ID ?? 0,
-                    chants.Select(spell => new BotSongTwistPolicy.Song(spell.ID, spell.CastTime,
-                        bot.Mana >= bot.PowerCost(spell) ? bot.GetSkillDisabledDuration(spell) : int.MaxValue,
-                        SongRemainingMilliseconds(spell))).ToArray());
-                chosen = chants.FirstOrDefault(spell => spell.ID == id);
+                else
+                {
+                    // A grouped Paladin holds one chant too. It used to twist endurance, armor, damage
+                    // and the combat heal, recasting a chant every second or two even while the group
+                    // traveled (play report 2026-11-12, issue #32).
+                    bool groupInjured = bot.HealthPercent < 95 || bot.Group?.GetMembersInTheGroup().Any(member =>
+                        member.IsAlive && member.HealthPercent < 95 && member.CurrentRegionID == bot.CurrentRegionID &&
+                        bot.IsWithinRadius(member, GROUP_DEFENSE_ASSIST_RADIUS)) == true;
+                    anchor = BotSongTwistPolicy.GroupPaladinAnchor(fighting, groupInjured);
+                }
+                chosen = chants.FirstOrDefault(spell => spell.SpellType == anchor) ??
+                    chants.FirstOrDefault(spell => spell.SpellType == eSpellType.DamageAdd && fighting) ??
+                    chants.FirstOrDefault(spell => spell.SpellType == eSpellType.EnduranceRegenBuff) ??
+                    chants.FirstOrDefault(spell => spell.SpellType == eSpellType.SpecArmorFactorBuff) ??
+                    chants.FirstOrDefault(spell => spell.SpellType != eSpellType.CombatHeal);
             }
 
-            if (chosen == null || chosen.ID == active?.ID || bot.GetSkillDisabledDuration(chosen) > 0 ||
-                bot.Mana < bot.PowerCost(chosen)) return;
+            if (chosen == null || bot.GetSkillDisabledDuration(chosen) > 0 || bot.Mana < bot.PowerCost(chosen))
+                return;
+            bool paladin = (eCharacterClass)bot.CharacterClass.ID == eCharacterClass.Paladin;
+            bool moving = bot.IsMoving || bot.Group?.LivingLeader?.IsMoving == true;
+            // A Paladin keeps its chant while it or its leader moves, and for at least
+            // PaladinChantHoldMilliseconds before switching. A Warden switches as soon as its anchor
+            // changes (travel speed, bladeturn), as before.
+            if (!BotSongTwistPolicy.MayStartTankChant(chosen.ID, active?.ID ?? 0, _lastTankChantId,
+                    _lastTankChantTick, GameLoop.GameLoopTime, moving, keepWhileMoving: paladin,
+                    holdMilliseconds: paladin ? BotSongTwistPolicy.PaladinChantHoldMilliseconds : 0))
+                return;
             GameObject oldTarget = bot.TargetObject;
             try
             {
                 bot.TargetObject = bot;
-                bot.CastSpell(chosen, m_mobSpellLine, false);
+                if (bot.CastSpell(chosen, m_mobSpellLine, false))
+                {
+                    _lastTankChantId = chosen.ID;
+                    _lastTankChantTick = GameLoop.GameLoopTime;
+                }
             }
             finally { bot.TargetObject = oldTarget; }
         }
+
+        private int _lastTankChantId;
+        private long _lastTankChantTick;
 
         private bool IsUnderImmediateMeleePressure() =>
             AggroList.Keys.Any(attacker => attacker?.IsAlive == true &&
@@ -3121,7 +3136,13 @@ namespace DOL.AI.Brain
                 }
                 else if (_brain.IsHealer)
                 {
-                    if (!_brain.CheckHeals())
+                    // A healing class outside the exclusive support role (Friar, Shaman, Warden, Bard,
+                    // Paladin, or a Cleric/Druid/Healer without a combat partner) heals first and fights
+                    // otherwise. A heal ends a melee chase on an enemy it cannot reach, the same rule
+                    // HoldSupportCombat applies to support bots (issue #33).
+                    if (_brain.CheckHeals())
+                        _brain.StopHealerEnemyChase();
+                    else
                         _brain.AttackMostWanted();
                 }
                 else
@@ -3899,6 +3920,18 @@ namespace DOL.AI.Brain
         private void StopSupportEnemyChase()
         {
             if (Body.FollowTarget is GameLiving followed && IsSupportEnemyChase(followed))
+                Body.StopFollowing();
+        }
+
+        /// <summary>
+        /// After a heal from a healing class that is not an exclusive support bot: end a follow on an enemy
+        /// that is out of melee reach, so the bot does not run off after it between heals. A follow on an
+        /// enemy it is already swinging at in reach is kept.
+        /// </summary>
+        private void StopHealerEnemyChase()
+        {
+            if (Body.FollowTarget is GameLiving followed && IsSupportEnemyChase(followed) &&
+                !Body.IsWithinRadius(followed, Body.MeleeAttackRange + SupportIdleMeleeHoldSlack))
                 Body.StopFollowing();
         }
 

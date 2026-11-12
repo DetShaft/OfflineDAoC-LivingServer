@@ -662,6 +662,10 @@ def build_cata(skeleton, part_list, clips, out_path, texture_uri):
 
 
 CATA_SLOTS = {'body': 1, 'legs': 3, 'boot': 4, 'arms': 5, 'glove': 6}     # texture-name word -> fig3map part slot
+# the long robe body mesh: fig3map body part 7 for every player race (the only one reaching the ankles). The client's
+# robe items (objects.csv Cata Body# 16, Arms# / Legs# -1) wear "robBody" textures laid out for it (issue #37);
+# Fig3Figure.robe_worn hides the arms, legs and kilt under it
+ROBE_BODY_MESH = 7
 OBJECT_SKIN_COLS = {4: 'body', 6: 'arms', 7: 'glove', 9: 'legs', 10: 'boot'}  # objects.csv Skins columns (male)
 
 
@@ -699,7 +703,10 @@ def cata_outfit(rows, item_ids, gender='m'):
                     continue
                 if m.group(1) == 'body' and not low.endswith('_' + gender):
                     continue
-                out[CATA_SLOTS[word]] = (int(m.group(2)), tex)
+                variant = int(m.group(2))
+                if m.group(1) == 'body' and low.startswith('robbody'):
+                    variant = ROBE_BODY_MESH                # a robe sheet is laid out for the long robe mesh (#37)
+                out[CATA_SLOTS[word]] = (variant, tex)
     return out
 
 

@@ -44,6 +44,7 @@ SHIPPED = [
     "game/combat/spell_fx.gd",
     "game/perf_governor.gd",
     "game/anim_lod.gd",
+    "game/fig3_figure.gd",
 ]
 CREATE_ONLY = [
     "game/ui/friends_window.gd",
@@ -58,6 +59,7 @@ RELEASED_PATHS = [
     "game/combat/spell_fx.gd",
     "game/perf_governor.gd",
     "game/anim_lod.gd",
+    "game/fig3_figure.gd",
 ]
 NEW_CLASSES = ("FriendsWindow", "LfgWindow", "CommanderPanel")
 GODOT_VERSION = "4.7.2"

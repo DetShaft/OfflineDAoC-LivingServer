@@ -420,15 +420,45 @@ static func dye(id: int) -> Color:
 	return Color(float(c[0]), float(c[1]), float(c[2]))
 
 
+## Robes (issue #37): a robe's Catacombs body texture is a "robBody" sheet (robBody01_02_m for "Robe 1",
+## robBody01_epic_friar_f ...), laid out for the long robe mesh, which is body mesh 7 for every player race in
+## fig3map (the only body mesh that reaches the ankles; Avalonian, Elf, Lurikeen, Inconnu, Firbolg, Sylvan and Half
+## Ogre also have a long mesh 8). The robe items' objects.csv Cata Arms# / Legs# are -1: the robe's own sleeves and
+## skirt stand in for the arms and legs, so those meshes and the Highlander kilt are hidden. armor.json names the
+## texture's number as the variant (robBody01 -> 1, the short tunic), which drew the robe as a tunic over bare legs.
+const ROBE_BODY := 7
+const ROBE_HIDES := ["arms", "legs"]
+
+
+## True when the worn body armour is a robe this figure has the robe mesh for.
+func robe_worn() -> bool:
+	var want: Array = armor.get("body", [])
+	if want.size() < 2 or not String(want[1]).to_lower().begins_with("robbody"):
+		return false
+	# figure.json numbers come back from JSON.parse_string as floats, and Array.has(7) is false for [7.0]
+	for k in (meta.get("variants", {}).get("body", []) as Array):
+		if int(k) == ROBE_BODY:
+			return true
+	return false
+
+
 func _apply_armor() -> void:
 	var parts := armor
 	var variants: Dictionary = meta.get("variants", {})
 	var clothes: Dictionary = meta.get("clothes", {})
+	var robe := robe_worn()
 	for slot in ["body", "legs", "boots", "arms", "gloves"]:
 		var default_v := int(clothes.get(slot, {}).get("variant", 1))
+		if robe and slot in ROBE_HIDES:
+			for k in (variants.get(slot, []) as Array):
+				for mi in _parts(slot if int(k) == default_v else "%s_v%d" % [slot, int(k)]):
+					mi.visible = false                       # under the robe
+			continue
 		var want: Array = parts.get(slot, [])
 		var v := int(want[0]) if want.size() > 0 else default_v
-		if not (variants.get(slot, []) as Array).has(v):
+		if robe and slot == "body":
+			v = ROBE_BODY                                    # robe_worn checked that this race has it
+		elif not (variants.get(slot, []) as Array).has(v):
 			v = default_v                                    # this race lacks that mesh: keep the default shape
 		for k in (variants.get(slot, []) as Array):
 			var node: String = slot if int(k) == default_v else "%s_v%d" % [slot, int(k)]
@@ -480,6 +510,11 @@ func _apply_kilt() -> void:
 	var kilts: Array = meta.get("variants", {}).get("lbody", [])
 	var kilt: Dictionary = meta.get("clothes", {}).get("lbody", {})
 	if kilts.is_empty() or kilt.is_empty():
+		return
+	if robe_worn():
+		for k in kilts:
+			for mi in _parts("lbody" if int(k) == int(kilt.get("variant", 1)) else "lbody_v%d" % int(k)):
+				mi.visible = false                           # the robe's skirt covers it (issue #37)
 		return
 	var body_default := int(meta.get("clothes", {}).get("body", {}).get("variant", 1))
 	var want: Array = armor.get("body", [])

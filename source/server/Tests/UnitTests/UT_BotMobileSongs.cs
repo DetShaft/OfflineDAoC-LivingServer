@@ -1028,6 +1028,44 @@ namespace DOL.UnitTests
             Assert.That(bot.LastRequested?.ID, Is.EqualTo(99972), "a solo Paladin in a fight holds the damage chant");
         }
 
+        [Test]
+        public void PaladinDoesNotRecastAChantItJustCastBeforeItsPulseShows()
+        {
+            // Casting a running chant turns it off, so a second cast before the pulse effect is
+            // visible would toggle the chant off and on every think (issue #32).
+            Bot bot = NewBot(typeof(ClassPaladin)); bot.CaptureCasts = true;
+            Spell endurance = Song("EnduranceRegenBuff");
+            bot.InstantMiscSpells = new List<Spell> { endurance };
+            MethodInfo maintain = typeof(BotBrain).GetMethod("TryMaintainTankChant", Hidden);
+            maintain.Invoke(bot.Brain, null);
+            Assert.That(bot.LastRequested, Is.SameAs(endurance));
+            bot.LastRequested = null;
+            Field(typeof(BotBrain), bot.Brain, "_nextSongTwistTick", 0L);
+            maintain.Invoke(bot.Brain, null);
+            Assert.That(bot.LastRequested, Is.Null, "the same chant is not cast again inside the recast guard");
+        }
+
+        [Test]
+        public void PaladinKeepsItsRunningChantWhileMoving()
+        {
+            Bot bot = NewBot(typeof(ClassPaladin)); bot.CaptureCasts = true; bot.Attacking = true; bot.Moving = true;
+            Spell endurance = Song("EnduranceRegenBuff");
+            Spell damage = Song("DamageAdd", id: 99972);
+            bot.InstantMiscSpells = new List<Spell> { endurance, damage };
+            var source = new ECSPulseEffect(new(bot, 0, 1, new SpellHandler(bot, endurance, Line)), endurance.Frequency);
+            source.Start();
+            bot.effectListComponent.BeginTick();
+            // The brain has cast a chant before, so the hold and the moving rule apply.
+            Field(typeof(BotBrain), bot.Brain, "_lastTankChantId", endurance.ID);
+            Field(typeof(BotBrain), bot.Brain, "_lastTankChantTick", -60_000L);
+            typeof(BotBrain).GetMethod("TryMaintainTankChant", Hidden).Invoke(bot.Brain, null);
+            Assert.That(bot.LastRequested, Is.Null, "a moving Paladin keeps the chant it has");
+            bot.Moving = false;
+            Field(typeof(BotBrain), bot.Brain, "_nextSongTwistTick", 0L);
+            typeof(BotBrain).GetMethod("TryMaintainTankChant", Hidden).Invoke(bot.Brain, null);
+            Assert.That(bot.LastRequested?.ID, Is.EqualTo(99972), "once it stops, it switches to the damage chant");
+        }
+
         [TestCase(typeof(ClassSkald), "HealthRegenBuff")]
         [TestCase(typeof(ClassPaladin), "EnduranceRegenBuff")]
         [TestCase(typeof(ClassPaladin), "SpecArmorFactorBuff")]

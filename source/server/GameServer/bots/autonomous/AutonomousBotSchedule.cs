@@ -245,6 +245,9 @@ public static class AutonomousBotSchedule
     {
         if (record == null)
             return false;
+        // A befriended /spawn helper's first hour as a gamebot (BefriendedHelpers, issue #39).
+        if (BefriendedHelpers.KeepsOnline(record.BotId, nowUtc))
+            return true;
         if (RageQuitting(record.BotId, nowUtc))
             return false;
         Mode mode = CurrentMode;
