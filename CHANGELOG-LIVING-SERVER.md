@@ -8,6 +8,17 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.16 — 2026-11-12
+
+**Healers stay idle when nobody needs healing.** Healer AI was still rough in play (Jay, 2026-11-12), so healer bots go
+back to standing by between heals. A Cleric, Druid or Healer that is a group's only support no longer nukes, debuffs or
+swings at the group's target when nobody needs healing. That idle combat (from 1.1.4) is now off by default, under a
+new server setting `bots / healer_idle_combat_enabled`. The new name means a `True` saved under the old
+`healer_idle_combat` does not carry over. 1.1.15's change for the hybrid healers (Friar, Shaman, Warden, Bard: walking
+back to the formation slot ended a chase on an enemy) is reverted. Heals, cures, resurrection, group rez priority and
+leader chat orders are unchanged. A better healer design is tracked in issue #48. Tests only: not yet seen in game.
+([docs/RELEASE-NOTES-1.1.16.md](docs/RELEASE-NOTES-1.1.16.md))
+
 ## Beta 1.1.15 — 2026-11-12
 
 **Robes look like robes in the new client (#37).** A worn robe was drawn as a short tunic over bare legs (Jay,
