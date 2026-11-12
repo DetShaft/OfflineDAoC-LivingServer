@@ -3474,8 +3474,22 @@ namespace DOL.GS
             record.Dirty = true;
         }
 
-        /// <summary>The helper's gear, saved under its gamebot's owner id (BefriendedHelpers.Release).</summary>
-        internal bool SaveGearAs(string ownerId) => Inventory is BotInventory inventory && inventory.SaveIntoDatabase(ownerId);
+        /// <summary>The helper's gear, saved under its gamebot's owner id (BefriendedHelpers).</summary>
+        internal bool SaveGearAs(string ownerId)
+        {
+            if (Inventory is not BotInventory inventory)
+                return false;
+
+            // A helper's kit is GeneratedUniqueItem, which defaults to AllowAdd=false, so the database refused every
+            // definition and nothing was saved (issue #39: "ItemUnique ... not allowed to be added to Database" for
+            // Kettleboil, who would have logged in with no gear). Persist them as SetMeleeWeapon does for a saved bot.
+            foreach (DbInventoryItem item in inventory.AllItems)
+            {
+                if (item?.IUWrapper is { IsPersisted: false } unique)
+                    unique.AllowAdd = true;
+            }
+            return inventory.SaveIntoDatabase(ownerId);
+        }
 
         #endregion
 

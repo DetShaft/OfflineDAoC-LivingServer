@@ -266,6 +266,31 @@ namespace DOL.UnitTests
             Assert.That(BotFriends.TargetMessage(result, "Haralhelm"), Is.Not.Empty);
         }
 
+        [Test]
+        public void ReleasedHelper_LogsInAtOnceAndStaysOnlineForItsFirstSession()
+        {
+            // Issue #39: Kettleboil, released at 4:52 a.m. with the clock schedule on, waited for her slot in the evening.
+            BefriendedHelpers.ResetForTests();
+            try
+            {
+                DateTime now = new(2026, 11, 12, 10, 52, 0, DateTimeKind.Utc);
+                Assert.That(BefriendedHelpers.LogsInNow(601, now), Is.False);
+
+                BefriendedHelpers.SetFirstSessionForTests(601, now + BefriendedHelpers.FirstSession);
+                Assert.That(BefriendedHelpers.LogsInNow(601, now), Is.True);
+                Assert.That(BefriendedHelpers.KeepsOnline(601, now.AddMinutes(59)), Is.True);
+                Assert.That(AutonomousBotSchedule.WantsOnline(new OfflineWorldBotRecord { BotId = 601 }, now), Is.True);
+                Assert.That(BefriendedHelpers.LogsInNow(602, now), Is.False);
+
+                // Then the schedule decides again, as for every gamebot.
+                Assert.That(BefriendedHelpers.KeepsOnline(601, now + BefriendedHelpers.FirstSession), Is.False);
+            }
+            finally
+            {
+                BefriendedHelpers.ResetForTests();
+            }
+        }
+
         private void AddBot(string name, eRealm realm, int level, int classId, bool retired = false, string lastSaved = "", string lastUpdate = "")
         {
             Assert.That(_database.AddObject(new OfflineWorldBotRecord

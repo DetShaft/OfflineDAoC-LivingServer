@@ -127,6 +127,21 @@ public static class AutonomousPopulationController
             _populationSatisfied = missing <= 0;
             if (!_rampFinished && AutonomousPopulationRamp.Finished(_cachedEnabled, _cachedRampMinutes, nowUtc - _startedUtc, missing <= 0))
                 _rampFinished = true;
+
+            // A befriended /spawn helper that just left its owner logs in at once, ahead of the schedule and the
+            // population numbers (BefriendedHelpers, issue #39: it waited for its clock schedule, hours away).
+            if (_cachedEnabled)
+            {
+                foreach (OfflineWorldBotRecord released in roster.Where(record => BefriendedHelpers.LogsInNow(record.BotId, nowUtc) &&
+                             !record.IsOnline && !AutonomousBotRegistry.Contains(record.BotId) && !PendingSpawns.ContainsKey(record.BotId)))
+                {
+                    if (!PendingSpawns.TryAdd(released.BotId, 0))
+                        continue;
+                    if (!EnqueueSpawn(released))
+                        return;
+                }
+            }
+
             if (missing <= 0)
                 return;
 
@@ -164,27 +179,8 @@ public static class AutonomousPopulationController
 
                 eRealm realm = (eRealm)next.Realm;
                 realmLoad[realm] = realmLoad.TryGetValue(realm, out int count) ? count + 1 : 1;
-                try
-                {
-                    // Fetch the exact real inventory on this existing background
-                    // poller. Applying slots/bonuses and actor creation still belong
-                    // to the game loop; it must never spin waiting for SQLite here.
-                    int generation = Volatile.Read(ref _loginGeneration);
-                    string ownerId = AutonomousBotEconomy.GetOwnerId(next.BotId);
-                    var inventory = new BotInventory(ownerId);
-                    var items = inventory.SelectPersonalItems(ownerId);
-                    if (generation != Volatile.Read(ref _loginGeneration) || _timer == null)
-                    {
-                        PendingSpawns.TryRemove(next.BotId, out _);
-                        return;
-                    }
-                    NpcService.Instance.Post(SpawnOnGameLoop, new PreparedSpawn(next.BotId, items, generation));
-                }
-                catch
-                {
-                    PendingSpawns.TryRemove(next.BotId, out _);
-                    throw;
-                }
+                if (!EnqueueSpawn(next))
+                    return;
             }
         }
         catch (Exception exception)
@@ -196,6 +192,39 @@ public static class AutonomousPopulationController
             Volatile.Write(ref _polling, 0);
         }
     }
+
+    /// <summary>
+    /// Reads a bot's inventory here on the poller and posts its login to the game loop. The caller has added it to
+    /// PendingSpawns. False when the server is stopping or restarting, so the poll ends.
+    /// </summary>
+    private static bool EnqueueSpawn(OfflineWorldBotRecord next)
+    {
+        try
+        {
+            // Fetch the exact real inventory on this existing background
+            // poller. Applying slots/bonuses and actor creation still belong
+            // to the game loop; it must never spin waiting for SQLite here.
+            int generation = Volatile.Read(ref _loginGeneration);
+            string ownerId = AutonomousBotEconomy.GetOwnerId(next.BotId);
+            var inventory = new BotInventory(ownerId);
+            var items = inventory.SelectPersonalItems(ownerId);
+            if (generation != Volatile.Read(ref _loginGeneration) || _timer == null)
+            {
+                PendingSpawns.TryRemove(next.BotId, out _);
+                return false;
+            }
+            NpcService.Instance.Post(SpawnOnGameLoop, new PreparedSpawn(next.BotId, items, generation));
+            return true;
+        }
+        catch
+        {
+            PendingSpawns.TryRemove(next.BotId, out _);
+            throw;
+        }
+    }
+
+    /// <summary>Reads the roster again on the next poll (BefriendedHelpers: a helper just saved as a gamebot).</summary>
+    public static void RefreshRosterSoon() => _nextRosterRefreshUtc = DateTime.MinValue;
 
     private sealed record PreparedSpawn(long BotId, System.Collections.IList Inventory, int Generation);
 
