@@ -125,7 +125,10 @@ func receive_friend(fields: Array) -> void:
 		else:
 			activity = "online"
 	var online := activity != "offline"
-	if Server.friends_online.has(String(fields[2])):
+	# The server's offline line is a last-played time ("11/12/2026 4:51:46 AM"): it wins over the online list, which can
+	# be stale (issue #39: a befriended helper that had left still read ONLINE, so INVITE and TELL found nobody).
+	var stamp := sep < 0 and where.contains(":") and RegEx.create_from_string("\\d").search(where) != null
+	if Server.friends_online.has(String(fields[2])) and not stamp:
 		online = true
 		if activity == "offline":
 			activity = "online"

@@ -22,6 +22,54 @@ public static class BefriendedHelpers
 {
     private static readonly Logging.Logger Log = Logging.LoggerManager.Create(typeof(BefriendedHelpers));
     private static readonly ConcurrentDictionary<GameBot, OfflineWorldBotRecord> Pending = new(ReferenceEqualityComparer.Instance);
+    // Released helpers' first session as a gamebot (issue #39): logged in at once and kept online for 2 to 3 hours,
+    // whatever the Living Server schedule says, so the owner can still invite the friend they just made (owner
+    // 2026-11-12: "leave em online for 2-3 hours upon first befriending"). Then the schedule applies.
+    private static readonly ConcurrentDictionary<long, DateTime> FirstSessionUntil = new();
+    public static readonly TimeSpan FirstSessionMinimum = TimeSpan.FromHours(2);
+    public static readonly TimeSpan FirstSessionMaximum = TimeSpan.FromHours(3);
+
+    /// <summary>A first session's length: 2 to 3 hours, by <paramref name="roll"/> in 0-1. Pure.</summary>
+    public static TimeSpan FirstSessionLength(double roll) =>
+        FirstSessionMinimum + (FirstSessionMaximum - FirstSessionMinimum) * Math.Clamp(roll, 0.0, 1.0);
+
+    /// <summary>Written into a befriended helper's ObjectiveProgress until its gamebot first logs in.</summary>
+    public const string OriginNote = "/spawn companion; added as a friend";
+
+    /// <summary>
+    /// A befriended helper's gamebot logging in for the first time with no equipment: 1.1.14 never saved its gear
+    /// (issue #39), so it gets a kit for its level once (GameBot.GiveBefriendedHelperKit).
+    /// </summary>
+    public static bool NeedsStarterKit(OfflineWorldBotRecord record, IGameInventory inventory) =>
+        NeedsStarterKitFor(record?.ObjectiveProgress, inventory?.AllItems?.Select(item => item?.SlotPosition ?? 0));
+
+    public static bool NeedsStarterKitFor(string objectiveProgress, IEnumerable<int> slots) =>
+        objectiveProgress?.Contains(OriginNote, StringComparison.Ordinal) == true &&
+        !(slots ?? Enumerable.Empty<int>()).Any(slot => slot >= (int)eInventorySlot.MinEquipable && slot <= (int)eInventorySlot.MaxEquipable);
+
+    /// <summary>A just-released helper's gamebot: the population controller logs it in now, ahead of the numbers.</summary>
+    public static bool LogsInNow(long botId, DateTime nowUtc) => FirstSessionUntil.TryGetValue(botId, out DateTime until) && nowUtc < until;
+
+    /// <summary>
+    /// The population poll, for a roster row that is offline: log it in now? A just-released helper, or a befriended
+    /// helper's gamebot that has not logged in yet (released before a restart, or by 1.1.14 like Kettleboil), whose first
+    /// session then starts here.
+    /// </summary>
+    public static bool LogsInNow(OfflineWorldBotRecord record, DateTime nowUtc)
+    {
+        if (record == null)
+            return false;
+        if (LogsInNow(record.BotId, nowUtc))
+            return true;
+        if (record.ObjectiveProgress?.Contains(OriginNote, StringComparison.Ordinal) != true || FirstSessionUntil.ContainsKey(record.BotId))
+            return false;
+
+        FirstSessionUntil[record.BotId] = nowUtc + FirstSessionLength(Random.Shared.NextDouble());
+        return true;
+    }
+
+    /// <summary>A just-released helper's gamebot stays online through its first session (AutonomousBotSchedule.WantsOnline).</summary>
+    public static bool KeepsOnline(long botId, DateTime nowUtc) => LogsInNow(botId, nowUtc);
 
     /// <summary>Whether the target can become a gamebot for this player: their own /spawn helper of their realm.</summary>
     public static bool IsConvertible(bool temporaryHelper, bool epicSpecialForce, bool autonomous, bool ownedByPlayer, bool sameRealm) =>
@@ -121,11 +169,18 @@ public static class BefriendedHelpers
                 saved &= GameServer.Database.SaveObject(record);
             }
 
+            FirstSessionUntil[record.BotId] = DateTime.UtcNow + FirstSessionLength(Random.Shared.NextDouble());
+            AutonomousPopulationController.RefreshRosterSoon();
             Log.Info($"BEFRIENDED_HELPER_RELEASED bot=\"{record.Name}\" id={record.BotId} level={record.Level} " +
                      $"region={record.RegionId} at={record.X},{record.Y},{record.Z} saved={saved}");
             if (owner?.Client != null && owner.ObjectState == GameObject.eObjectState.Active)
+            {
+                // The friends list had the helper online (BotFriends.OnlineBots); it is offline until the gamebot logs in,
+                // and BotFriends.OnBotOnline announces that. Without this the new client kept showing it ONLINE (#39).
+                owner.Out.SendRemoveFriends([record.Name]);
                 owner.Out.SendMessage($"{record.Name} leaves your group and carries on as a gamebot. They are still on your friend list.",
                     eChatType.CT_System, eChatLoc.CL_SystemWindow);
+            }
         }
         catch (Exception exception)
         {
@@ -156,9 +211,16 @@ public static class BefriendedHelpers
         record.IsRetired = false;
         record.Activity = online ? $"Grouped with {ownerName}" : $"Left {ownerName}'s group";
         record.CurrentGoal = online ? $"Helping {ownerName}" : "Queued for staggered login";
-        record.ObjectiveProgress = $"Was {ownerName}'s /spawn companion; added as a friend";
+        record.ObjectiveProgress = $"Was {ownerName}'s {OriginNote}";
     }
 
     /// <summary>Tests only.</summary>
-    public static void ResetForTests() => Pending.Clear();
+    public static void ResetForTests()
+    {
+        Pending.Clear();
+        FirstSessionUntil.Clear();
+    }
+
+    /// <summary>Tests only: a released helper's gamebot in its first session until <paramref name="untilUtc"/>.</summary>
+    public static void SetFirstSessionForTests(long botId, DateTime untilUtc) => FirstSessionUntil[botId] = untilUtc;
 }
