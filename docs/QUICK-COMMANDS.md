@@ -38,6 +38,8 @@ modifier, create one bot. Start small and increase population for your PC's capa
 
 `/spawn 40` and `/spawn 80` are **not** the raid-size commands. Use `/raid` first.
 The aggressive/defensive commands control your companions, not autonomous gamebots.
+
+Companions you `/spawn` level up with you while they are in your group. After you ding, each one catches up to your level once it is out of combat, with its specializations, spells, styles, generated equipment and pet brought up to date, so you no longer need to respawn them. They never level down. Autonomous gamebots in your group keep their own levels.
 The `/raid` command does not implement Darkness Falls raid AI. In the v0.32/
 v0.32b Darkness Falls Beta, Legion, the hardest level-70+ encounters,
 unreachable flying targets, and unverified routes are excluded from ordinary
