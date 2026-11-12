@@ -380,6 +380,7 @@ NORMAL PLAYER COMMANDS
 /friend
   Adds/Removes a player to/from your friendlist!
   /friend <playerName>
+  /friend target - adds your current target
   Handler: DOL.GS.Commands.FriendCommandHandler
 
 /gc (aliases: /guildcommand)

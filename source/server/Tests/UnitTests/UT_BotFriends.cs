@@ -202,6 +202,70 @@ namespace DOL.UnitTests
             Assert.That(manager[player], Is.Empty);
         }
 
+        // /friend target (the Friends window's ADD TARGET): hasTarget, isSelf, isPlayer, isGamebot, isCompanion, isOwnHelper,
+        // sameRealm, alreadyFriend.
+        [TestCase(false, false, false, false, false, false, false, false, BotFriends.TargetFriend.NoTarget)]
+        [TestCase(true, true, true, false, false, false, true, false, BotFriends.TargetFriend.Self)]
+        [TestCase(true, false, false, false, true, false, true, false, BotFriends.TargetFriend.Companion)]
+        [TestCase(true, false, false, false, true, true, true, false, BotFriends.TargetFriend.AddHelper)]
+        [TestCase(true, false, false, false, true, true, true, true, BotFriends.TargetFriend.AlreadyFriend)]
+        [TestCase(true, false, false, false, false, false, false, false, BotFriends.TargetFriend.NotACharacter)]
+        [TestCase(true, false, true, false, false, false, false, false, BotFriends.TargetFriend.OtherRealm)]
+        [TestCase(true, false, false, true, false, false, false, false, BotFriends.TargetFriend.OtherRealm)]
+        [TestCase(true, false, false, true, false, false, true, true, BotFriends.TargetFriend.AlreadyFriend)]
+        [TestCase(true, false, true, false, false, false, true, false, BotFriends.TargetFriend.Add)]
+        [TestCase(true, false, false, true, false, false, true, false, BotFriends.TargetFriend.Add)]
+        public void AddTarget_AddsOnlyPlayersGamebotsAndYourOwnHelpersOfTheRealm(bool hasTarget, bool isSelf, bool isPlayer,
+            bool isGamebot, bool isCompanion, bool isOwnHelper, bool sameRealm, bool alreadyFriend, BotFriends.TargetFriend expected)
+        {
+            Assert.That(BotFriends.ClassifyTarget(hasTarget, isSelf, isPlayer, isGamebot, isCompanion, isOwnHelper, sameRealm, alreadyFriend),
+                Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void AddTarget_NeverTakesAFriendOff()
+        {
+            // Typing /friend name toggles; the button must not: a friend already listed only gets a message.
+            Assert.That(BotFriends.ClassifyTarget(true, false, true, false, false, false, true, true), Is.EqualTo(BotFriends.TargetFriend.AlreadyFriend));
+            Assert.That(BotFriends.TargetMessage(BotFriends.TargetFriend.AlreadyFriend, "Haralhelm"), Does.Contain("already"));
+        }
+
+        // Only your own /spawn helper of your realm becomes a gamebot: temporaryHelper, epicSpecialForce, autonomous,
+        // ownedByPlayer, sameRealm.
+        [TestCase(true, false, false, true, true, true)]
+        [TestCase(true, false, false, false, true, false)]
+        [TestCase(true, false, false, true, false, false)]
+        [TestCase(false, true, true, false, true, false)]
+        [TestCase(false, false, true, false, true, false)]
+        [TestCase(false, false, false, true, true, false)]
+        public void OnlyYourOwnHelper_BecomesAGamebot(bool helper, bool epic, bool autonomous, bool owned, bool sameRealm, bool expected)
+        {
+            Assert.That(BefriendedHelpers.IsConvertible(helper, epic, autonomous, owned, sameRealm), Is.EqualTo(expected));
+        }
+
+        [TestCase("Haralhelm", false)]
+        [TestCase("oldsven", false)]
+        [TestCase("Brenna", false)]
+        [TestCase("Sharedname", false)]
+        [TestCase("Freshname", true)]
+        [TestCase("", false)]
+        public void HelperName_MustBeFreeOfCharactersAndGamebots(string name, bool free)
+        {
+            // Any realm and retired bots too: a gamebot name is never given twice.
+            Assert.That(BefriendedHelpers.IsNameFree(_database, name), Is.EqualTo(free));
+        }
+
+        [TestCase(BotFriends.TargetFriend.NoTarget)]
+        [TestCase(BotFriends.TargetFriend.Self)]
+        [TestCase(BotFriends.TargetFriend.Companion)]
+        [TestCase(BotFriends.TargetFriend.NotACharacter)]
+        [TestCase(BotFriends.TargetFriend.OtherRealm)]
+        [TestCase(BotFriends.TargetFriend.AlreadyFriend)]
+        public void AddTarget_EveryRefusalSaysWhy(BotFriends.TargetFriend result)
+        {
+            Assert.That(BotFriends.TargetMessage(result, "Haralhelm"), Is.Not.Empty);
+        }
+
         private void AddBot(string name, eRealm realm, int level, int classId, bool retired = false, string lastSaved = "", string lastUpdate = "")
         {
             Assert.That(_database.AddObject(new OfflineWorldBotRecord
