@@ -57,6 +57,101 @@ public static class BotFriends
         record != null && !record.IsRetired && record.Realm == (int)realm &&
         string.Equals(record.Name, name?.Trim(), StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>What the Friends window's ADD TARGET button (/friend target) does with your current target.</summary>
+    public enum TargetFriend
+    {
+        NoTarget,
+        Self,
+        Companion,
+        NotACharacter,
+        OtherRealm,
+        AlreadyFriend,
+        Add,
+        /// <summary>Your own /spawn helper: added, and it stays on as a gamebot (BefriendedHelpers).</summary>
+        AddHelper,
+    }
+
+    /// <summary>
+    /// /friend target: your current target on your friends list, never off it (typing /friend name takes a friend off).
+    /// - Players and autonomous gamebots of your realm only; a gamebot whose name a player character has is that player.
+    /// - Your own /spawn helper goes on the list and becomes a gamebot when it leaves you (BefriendedHelpers, owner
+    ///   2026-11-11). Other companions (someone else's helper, the special forces) never go on the list.
+    /// </summary>
+    public static void AddTarget(GamePlayer player)
+    {
+        if (player == null)
+            return;
+
+        GameObject target = player.TargetObject;
+        GameBot bot = target as GameBot;
+        bool companion = bot != null && (!bot.IsAutonomousWorldBot || bot.IsTemporaryGroupHelper || bot.IsEpicSpecialForce);
+        string name = target?.Name?.Trim() ?? string.Empty;
+        // A gamebot by the name its offline_world_bots row has; one a player character shares is no bot (TryResolveName).
+        bool gamebot = bot != null && !companion && TryResolveName(name, bot.Realm, out name);
+        bool sameRealm = target is GameLiving living && living.Realm == player.Realm;
+        bool ownHelper = bot != null && BefriendedHelpers.IsConvertible(bot.IsTemporaryGroupHelper, bot.IsEpicSpecialForce,
+            bot.IsAutonomousWorldBot, bot.Owner == player, sameRealm);
+
+        TargetFriend result = ClassifyTarget(target != null, target == player, target is GamePlayer, gamebot, companion, ownHelper,
+            sameRealm, player.GetFriends().Contains(name, StringComparer.OrdinalIgnoreCase));
+        string shown = string.IsNullOrEmpty(name) ? target?.Name ?? string.Empty : name;
+        if (result == TargetFriend.Add)
+        {
+            if (player.AddFriend(name))
+                Say(player, $"{name} was added to your friend list!");
+            return;
+        }
+        if (result == TargetFriend.AddHelper)
+        {
+            // The gamebot row first: the friends list finds the new friend's level and class through it.
+            if (!BefriendedHelpers.TryBefriend(player, bot, out string why))
+            {
+                Say(player, why);
+                return;
+            }
+            if (player.AddFriend(name))
+                Say(player, $"{name} was added to your friend list! When {name} leaves your group, they carry on in the " +
+                            "world as a gamebot, with their level, specs and gear.");
+            return;
+        }
+
+        Say(player, TargetMessage(result, shown));
+    }
+
+    /// <summary>The choice behind <see cref="AddTarget"/>, kept free of the world so it is unit-tested.</summary>
+    public static TargetFriend ClassifyTarget(bool hasTarget, bool isSelf, bool isPlayer, bool isGamebot, bool isCompanion,
+        bool isOwnHelper, bool sameRealm, bool alreadyFriend)
+    {
+        if (!hasTarget)
+            return TargetFriend.NoTarget;
+        if (isSelf)
+            return TargetFriend.Self;
+        if (isCompanion)
+            return !isOwnHelper ? TargetFriend.Companion : alreadyFriend ? TargetFriend.AlreadyFriend : TargetFriend.AddHelper;
+        if (!isPlayer && !isGamebot)
+            return TargetFriend.NotACharacter;
+        if (!sameRealm)
+            return TargetFriend.OtherRealm;
+        return alreadyFriend ? TargetFriend.AlreadyFriend : TargetFriend.Add;
+    }
+
+    public static string TargetMessage(TargetFriend result, string name) => result switch
+    {
+        TargetFriend.NoTarget => "Target a player or a gamebot of your realm first, then press ADD TARGET.",
+        TargetFriend.Self => "You can't add yourself!",
+        TargetFriend.Companion => $"{name} is not your own companion, so they can't go on your friend list.",
+        TargetFriend.NotACharacter => $"{name} is not a player or a gamebot, so it can't go on your friend list.",
+        TargetFriend.OtherRealm => $"{name} is not of your realm, so you cannot add them.",
+        TargetFriend.AlreadyFriend => $"{name} is already on your friend list.",
+        _ => string.Empty,
+    };
+
+    private static void Say(GamePlayer player, string text)
+    {
+        if (!string.IsNullOrEmpty(text))
+            player.Out.SendMessage(text, eChatType.CT_System, eChatLoc.CL_SystemWindow);
+    }
+
     /// <summary>The offline status of a bot just added (FriendsManager.AddFriendToPlayerList); null if it is no bot.</summary>
     public static FriendStatus OfflineStatus(string name, eRealm realm)
     {
@@ -180,7 +275,8 @@ public static class BotFriends
     private static GameBot[] OnlineBots(GamePlayer player, IEnumerable<string> names)
     {
         GameBot[] bots = names
-            .Select(name => AutonomousBotRegistry.TryGetOnline(name, player.Realm, out GameBot bot) ? bot : null)
+            // A befriended /spawn helper still with its owner counts as online too (BefriendedHelpers).
+            .Select(name => AutonomousBotRegistry.TryGetOnline(name, player.Realm, out GameBot bot) ? bot : BefriendedHelpers.FindLive(name, player.Realm))
             .Where(bot => bot != null)
             .ToArray();
         if (bots.Length == 0)

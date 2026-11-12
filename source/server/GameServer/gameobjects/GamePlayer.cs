@@ -7536,6 +7536,8 @@ namespace DOL.GS
                 else
                     // Message: {0} sends, "{1}"
                     ChatUtil.SendSendMessage(Client, "Social.ReceiveMessage.Private.Sends", source.Name, str);
+                // /reply answers whoever sent the last tell
+                DOL.GS.Commands.TellReplies.Record(this, source.Name);
             }
             else
             {
@@ -7558,6 +7560,7 @@ namespace DOL.GS
                     ChatUtil.SendSystemMessage(source.Client, "Social.ReceiveMessage.AFK.PlayerAFK", Name);
                     // Message: <AFK> {0} sends, "{1}"
                     ChatUtil.SendSendMessage(source.Client, "Social.ReceiveMessage.AFK.Sends", Name, afkmessage);
+                    DOL.GS.Commands.TellReplies.Record(source, Name);
                 }
             }
 

@@ -380,6 +380,7 @@ NORMAL PLAYER COMMANDS
 /friend
   Adds/Removes a player to/from your friendlist!
   /friend <playerName>
+  /friend target - adds your current target
   Handler: DOL.GS.Commands.FriendCommandHandler
 
 /gc (aliases: /guildcommand)
@@ -713,6 +714,11 @@ NORMAL PLAYER COMMANDS
   You can repair an item when you are a crafter
   /repair
   Handler: DOL.GS.Commands.RepairCommandHandler
+
+/reply (aliases: /r)
+  Replies to the last private message you received.
+  '/reply <message>' or '/r <message>' - Sends <message> to whoever last sent you a private message (a player or a gamebot).
+  Handler: DOL.GS.Commands.ReplyCommandHandler
 
 /report
   'Reports a bug

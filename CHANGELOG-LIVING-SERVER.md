@@ -8,6 +8,47 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.14 — 2026-11-12
+
+**Friends come to you.** Inviting a bot friend (one on your /friend list) that is too far away no longer answers
+"too far away to join you. Meet up first." Instead you get "<name> is on the way to you and will join your group on
+arrival (about 30 seconds)", and the friend sends you an "omw" tell. The journey takes 30 seconds from your own zone and
+30 seconds more for each zone between you (zones are counted on the region's map, a diagonal neighbour is two). A friend
+in another region (frontier, dungeon, capital) counts as three zones away, and no journey takes longer than five minutes.
+When the wait is over the friend arrives beside you, you get "<name> has arrived and joins your group", and the friend
+says hello in /group. The wait stands in for the journey: the friend is moved to you, as a released groupmate in another
+region already is. Everything is checked again on arrival. A friend still in a fight waits for it to end (up to 30 more
+seconds), as it does if you are dead or between regions, and a friend that got a duty (siege, relic, raid, stable
+route), died, logged off or joined another player in the meantime doesn't come, and you are told why.
+
+**A grouped friend asks you to ask again.** A friend who is in a group of their own turns down your first invite
+("in a group rn, give me a min to wrap up and ask again"), and you are told to ask again in about 60 seconds. Asking
+sooner gets the seconds left. An invite a minute or more later is accepted: the friend leaves their group, tells you so,
+and joins you (or sets out for you if far away). After 15 minutes the turned-down invite is forgotten. This holds for a
+friend nearby too. It works from /invite, the friends window's INVITE button, the LFG window, a static party and a
+friend's own invitation. A bot that isn't your friend still has to be met first and still joins at once. Tests only:
+not yet seen in game.
+
+**/spawn helpers level up with you.** A /spawn helper in your group that is below your level now jumps to your level
+on its next idle moment (never in a fight, while casting, on a horse route or while its pet fights): stats, spec
+points, spells, styles, a new kit in the same level band a fresh spawn gets (never worse than what it wore) and its pet
+resummoned at the new level. You see "<name> is now level N, matching you." It only goes up. Autonomous gamebots and
+the Epic Special Forces are unchanged. Before, a helper stayed at the level it was spawned at until you hit 50.
+Tests only: not yet seen in game.
+
+**Add a friend from your target, and keep befriended helpers.** The new client's Friends window has an ADD TARGET
+button, and `/friend target` adds your current target if it is a player or a gamebot of your realm (it never removes
+a friend). Each refusal now says why, and a typed name that isn't found says a gamebot needs its full name. ADD TARGET
+on your own /spawn helper makes it a friend and a real gamebot: when it leaves you (dismissed, group disbanded, you log
+off) it logs in as a gamebot where it stood, with its name, class, level, specs and its gear. Keeping its gear is an
+exception, for befriended helpers only, to gamebots starting without armor (Jay's choice). Tests only: not yet seen in
+game.
+
+**Reply to tells.** `/reply` and `/r` answer the last person who sent you a private message, player or gamebot. Before,
+`/r` matched several commands (/realm, /release, ...) and did nothing. In the new client, clicking a tell line in chat
+opens the typing line with `/send <name> `. Tests only: not yet seen in game.
+([docs/RELEASE-NOTES-1.1.14.md](docs/RELEASE-NOTES-1.1.14.md))
+
 ## Beta 1.1.13 — 2026-11-11
 
 **Commander hammer styles.** 1.1.12 gave a commander its weapon lines' styles only up to its own level, and the

@@ -2,7 +2,8 @@ class_name FriendsWindow
 extends ClassicWindow
 ## Modern friends window (change plan #5): online/offline, level, class, zone and activity from the
 ## server's /friend window social lines (CT_SocialInterface "TF" / "F,..."), with one-click Invite
-## and Tell. Kept separate from game_ui.gd so other agents can edit that file without merge fights.
+## and Tell, and ADD TARGET for whoever you have selected in the world (/friend target, owner 2026-11-11: "add to
+## friends list via your target"). Kept separate from game_ui.gd so other agents can edit that file without merge fights.
 ## Click a column header to sort by it, again to reverse it (owner 2026-11-11); until then online friends come first,
 ## then A-Z.
 
@@ -66,17 +67,19 @@ func build() -> void:
 	_empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_empty)
 	var x := 14.0
-	for a in [["invite", "INVITE", "INVITE THE SELECTED FRIEND (/INVITE)"],
+	for a in [["add", "ADD TARGET", "ADD YOUR CURRENT TARGET - A PLAYER OR GAMEBOT OF YOUR REALM, OR YOUR OWN /SPAWN HELPER, WHO THEN STAYS ON AS A GAMEBOT (/FRIEND TARGET)"],
+			["invite", "INVITE", "INVITE THE SELECTED FRIEND (/INVITE)"],
 			["tell", "TELL", "OPEN A TELL TO THE SELECTED FRIEND"],
 			["refresh", "REFRESH", "ASK THE SERVER AGAIN (/FRIEND WINDOW)"]]:
-		var b := UiArt.button(a[1], Vector2(70, 15), 8)
+		var w := 84.0 if a[0] == "add" else 70.0
+		var b := UiArt.button(a[1], Vector2(w, 15), 8)
 		b.position = Vector2(x, BODY.y - 28)
 		b.tooltip_text = a[2]
 		var key: String = a[0]
 		b.pressed.connect(func(): _act(key))
 		add_child(b)
 		_actions[key] = b
-		x += 74.0
+		x += w + 4.0
 	_rebuild()
 
 
@@ -163,13 +166,14 @@ func _rebuild() -> void:
 	if not Server.active:
 		_empty.text = "THE FRIENDS WINDOW NEEDS THE SERVER'S GAME"
 	elif friends.is_empty() and Time.get_ticks_msec() - _asked_at > 1500:
-		_empty.text = "NO FRIENDS YET — /FRIEND <NAME> TO ADD ONE"
+		_empty.text = "NO FRIENDS YET — TARGET SOMEONE AND PRESS ADD TARGET, OR /FRIEND <FULL NAME>"
 	else:
 		_empty.text = ""
 	_empty.visible = friends.is_empty()
 	var has := selected != "" and friends.any(func(f): return f.name == selected)
 	if not has:
 		selected = ""
+	(_actions["add"] as Button).disabled = not Server.active
 	(_actions["invite"] as Button).disabled = selected == ""
 	(_actions["tell"] as Button).disabled = selected == ""
 
@@ -232,6 +236,11 @@ func _row(f: Dictionary, index: int) -> Control:
 func _act(key: String) -> void:
 	if key == "refresh":
 		request()
+		return
+	if key == "add":                                    # the server checks the target and says why it can't add one
+		if Server.active:
+			Server.command("/friend target")
+			get_tree().create_timer(0.6).timeout.connect(request, CONNECT_ONE_SHOT)
 		return
 	if selected == "":
 		return

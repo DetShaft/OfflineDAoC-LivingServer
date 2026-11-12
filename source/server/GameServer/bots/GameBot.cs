@@ -3007,6 +3007,9 @@ namespace DOL.GS
             CompleteStableMasterRoute();
             if (IsAutonomousWorldBot && !IsIntentionalWorldMove)
                 SaveAutonomousState(true);
+            // Fork: a /spawn helper its owner befriended lives on as a gamebot (BefriendedHelpers).
+            if (IsTemporaryGroupHelper)
+                BefriendedHelpers.Release(this);
             if (Owner != null)
             {
                 GameEventMgr.RemoveHandler(Owner, GamePlayerEvent.Quit, new DOLEventHandler(OnOwnerQuit));
@@ -3431,6 +3434,48 @@ namespace DOL.GS
         }
 
         public void MarkAutonomousStateSaved() => AutonomousStateDirty = false;
+
+        /// <summary>
+        /// A befriended /spawn helper as a gamebot record (BefriendedHelpers): identity, level, place, specs and build,
+        /// fully trained for its level as /spawn trains it. Its gear is saved separately (owner 2026-11-11: it keeps it).
+        /// </summary>
+        internal void CaptureAsGamebot(OfflineWorldBotRecord record)
+        {
+            string now = DateTime.UtcNow.ToString("O");
+            record.Name = Name;
+            record.Realm = (int)Realm;
+            record.ClassId = ClassId;
+            record.ClassName = ClassName ?? string.Empty;
+            record.RaceId = RaceId;
+            record.RaceName = ((eRace)RaceId).ToString();
+            record.Gender = GenderId;
+            record.Level = Level;
+            // A level-L character has at least the experience that reached L (AwardExperience levels past it).
+            record.Experience = Math.Max(Experience, Level > 1 ? GamePlayer.GetExperienceAmountForLevel(Level - 1) : 0);
+            record.RegionId = CurrentRegionID;
+            record.ZoneId = CurrentZone?.ID ?? 0;
+            record.ZoneName = CurrentZone?.Description;
+            record.X = X;
+            record.Y = Y;
+            record.Z = Z;
+            record.Health = Math.Max(1, MaxHealth);
+            record.Mana = Math.Max(0, MaxMana);
+            record.Endurance = Math.Max(0, MaxEndurance);
+            record.IsAlive = true;
+            record.SerializedSpecs = string.Join(';', GetSpecList().Where(spec => spec.Trainable).Select(spec => $"{spec.KeyName}|{spec.Level}"));
+            record.SerializedBuildPlan = BotSpec == null ? string.Empty : BotLifetimeBuild.Encode(BotSpec);
+            record.PreferredSpecType = BotSpec == null ? BotSpecializationChoices.AutoPreferredSpec : (int)BotSpec.SpecType;
+            record.UnspentSpecPoints = Math.Max(0, m_leftOverSpecPoints);
+            record.SerializedAbilities = $"trained-level|{Level}|realm-points|0";
+            record.LastSavedUtc = now;
+            record.LastUpdateUtc = now;
+            record.LastMeaningfulProgressUtc = now;
+            record.PersistedStateVersion = 1;
+            record.Dirty = true;
+        }
+
+        /// <summary>The helper's gear, saved under its gamebot's owner id (BefriendedHelpers.Release).</summary>
+        internal bool SaveGearAs(string ownerId) => Inventory is BotInventory inventory && inventory.SaveIntoDatabase(ownerId);
 
         #endregion
 

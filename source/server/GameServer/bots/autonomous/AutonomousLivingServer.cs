@@ -382,6 +382,7 @@ public static partial class AutonomousLivingServer
             return;
         text = AutonomousBotVoiceCorpus.ForNow(AutonomousRoleplayers.Voice(bot, text));
         ChatUtil.SendSendMessage(player.Client, "Social.ReceiveMessage.Private.Sends", bot.Name, text);
+        DOL.GS.Commands.TellReplies.Record(player, bot.Name);   // /reply answers the bot
         BotChatTranscript.Bot("tell", bot.Name, bot.Realm, text, player.Name);
         // The talking update: the player's next tell to this bot continues this exchange.
         AutonomousChatThreads.Log.Record(AutonomousChatThreads.Tell(player.Name, bot.Name), bot.DatabaseID, bot.Name, text, invites,

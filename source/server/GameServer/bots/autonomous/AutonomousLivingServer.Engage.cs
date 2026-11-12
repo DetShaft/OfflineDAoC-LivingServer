@@ -189,6 +189,13 @@ public static partial class AutonomousLivingServer
                 Log.Info($"BOT_INVITE_RESULT bot=\"{bot.Name}\" player=\"{player.Name}\" from=bot result=declined_by_player");
                 return;
             }
+            // 1.1.14: a friend that wandered off meanwhile comes back to the player instead (BotFriendTravel).
+            if (IsSpeaker(bot) && BotFriendTravel.Travels(player, bot))
+            {
+                bool started = BotFriendTravel.TryStart(player, bot);
+                Log.Info($"BOT_INVITE_RESULT bot=\"{bot.Name}\" player=\"{player.Name}\" from=bot result={(started ? "traveling" : "failed")}");
+                return;
+            }
             if (!IsSpeaker(bot) || bot.Group != null || BotGroupInvite.DutyOf(bot) != BotGroupInvite.Duty.None ||
                 !BotGroupInvite.CloseEnoughToInviteByName(player, bot))
             {
