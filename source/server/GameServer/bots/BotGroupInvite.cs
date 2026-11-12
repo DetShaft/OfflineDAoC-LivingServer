@@ -58,7 +58,9 @@ public static class BotGroupInvite
         return duty == Duty.None && AutonomousBeggars.Is(bot) ? Duty.Begging : duty;
     }
 
-    public static bool TryInvite(GamePlayer player, GameBot bot)
+    /// <param name="joinedMessage">What the player is told on joining instead of "joins your group and starts moving to you"
+    /// (a friend that came to the player says it arrived: BotFriendTravel).</param>
+    public static bool TryInvite(GamePlayer player, GameBot bot, string joinedMessage = null)
     {
         if (player == null || bot == null || player.Realm != bot.Realm)
         {
@@ -122,7 +124,7 @@ public static class BotGroupInvite
         }
 
         bot.PathTo(player, bot.MaxSpeed);
-        ChatUtil.SendSystemMessage(player, $"{bot.Name} joins your group and starts moving to you.");
+        ChatUtil.SendSystemMessage(player, joinedMessage ?? $"{bot.Name} joins your group and starts moving to you.");
         if (bot.IsAutonomousWorldBot)
             AutonomousLivingServer.LogInviteResult(player, bot, "grouped");
         AutonomousBotGroupChatter.OnJoinedPlayerGroup(bot);
