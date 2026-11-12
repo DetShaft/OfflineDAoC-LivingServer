@@ -540,9 +540,17 @@
   {
     "Path": "new-client/godot/game/perf_governor.gd",
     "Released": "4433f0c26de6260f6e3a8c4ecd9df7a7026a5aea47377b2af1e08d5bc65d1350",
-    "Fixed": "7180d400637c2f7a0ebb03cd9e19eea346774312e0b7a7c0c1650867f91f20c4",
-    "Size": 12472,
+    "Fixed": "1a6d3621d3048c7a50b23174bca9783cfa1fb578e6697c02665262874a790af3",
+    "Size": 13079,
     "File": "content/godot/game/perf_governor.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/anim_lod.gd",
+    "Released": "776d7b31afbced41997f43b40948cc4bd3d40371e4ac180c60e4ad55a009c1f3",
+    "Fixed": "6f8862889d330f1ca72c58727742544a148cec8182a0a7dc25c67dfc2de35b9e",
+    "Size": 11092,
+    "File": "content/godot/game/anim_lod.gd",
     "ReplaceAny": true
   },
   {

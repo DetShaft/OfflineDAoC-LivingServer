@@ -37,6 +37,7 @@ static func snapshot(cam: Camera3D) -> void:
 	_snap_frame = f
 	cam_pos = cam.global_position
 	cam_planes = cam.get_frustum()
+	flush_shadows()                                      # (the switches the posing threads queued last frame)
 
 
 ## In the camera's view: a sphere VIEW_MARGIN_M round the figure's middle, not the point alone (owner 2026-10-15:
@@ -127,7 +128,7 @@ func step(delta: float, cam: Camera3D) -> void:
 		snapshot(cam)                                     # (once a frame: the camera's planes)
 		if not in_view(view.global_position + Vector3(0, 1, 0)):
 			_dt = minf(_dt, 2.0)
-			_shadow_tick(delta, 1e9)
+			_shadow_tick(delta, last_dist)
 			return
 		if FULL or last_dist < NEAR_FULL_M:
 			_shadow_tick(delta, last_dist)
@@ -174,7 +175,7 @@ func _step_threaded(delta: float) -> void:
 		return
 	if not in_view(at + Vector3(0, 1, 0)):
 		_dt = minf(_dt, 2.0)
-		_shadow_tick(delta, 1e9)
+		_shadow_tick(delta, last_dist)
 		return
 	if FULL or last_dist < NEAR_FULL_M:
 		_shadow_tick(delta, last_dist)
@@ -211,15 +212,53 @@ func pose_now() -> void:
 
 ## Characters beyond Perf.npc_shadow_m cast no shadow (checked twice a second; new gear is picked up at the next
 ## change - refresh_shadow() after a redress).
+## Living Server issue #34 (city stutter): a figure off screen used to switch its shadow off, and on again as it came
+## back into view, so turning the camera in a city of 200 figures switched most of them at once, and each switch walked
+## the whole model from the posing threads, taking the shared lock once per node. Now distance alone decides (a figure
+## just off screen can still throw a shadow into it), SHADOW_HYSTERESIS_M keeps a figure at the edge from flipping, and
+## the walks are queued for the main thread, at most SHADOW_SWITCHES_PER_FRAME a frame (flush_shadows).
+const SHADOW_HYSTERESIS_M := 5.0
+const SHADOW_SWITCHES_PER_FRAME := 8
+static var _shadow_queue: Array = []
+static var shadow_switches := 0                # switches applied since the performance log last read it
+
+
 func _shadow_tick(delta: float, dist: float) -> void:
 	_shadow_check -= delta
 	if _shadow_check > 0.0 or model == null:
 		return
 	_shadow_check = 0.5 + fmod(float(view.get_instance_id() % 97) * 0.0103, 0.25)   # (no shared RNG from threads)
-	var cast := dist <= Perf.npc_shadow_m
+	var cast := dist <= Perf.npc_shadow_m + (SHADOW_HYSTERESIS_M if _casting_shadow else 0.0)
 	if cast != _casting_shadow:
 		_casting_shadow = cast
+		_queue_shadow()
+
+
+func _queue_shadow() -> void:
+	if not threaded:
 		_apply_shadow()
+		shadow_switches += 1
+		return
+	_lock.lock()
+	if not _shadow_queue.has(self):
+		_shadow_queue.append(self)
+	_lock.unlock()
+
+
+## The main thread, once a frame (snapshot): the queued shadow switches, a few at a time.
+static func flush_shadows(max_n := SHADOW_SWITCHES_PER_FRAME) -> void:
+	if _shadow_queue.is_empty():
+		return
+	_lock.lock()
+	var n := mini(max_n, _shadow_queue.size())
+	var batch := _shadow_queue.slice(0, n)
+	_shadow_queue = _shadow_queue.slice(n)
+	_lock.unlock()
+	for lod in batch:
+		var l := lod as AnimLod
+		if is_instance_valid(l.model):
+			l._apply_shadow()
+			shadow_switches += 1
 
 
 func refresh_shadow() -> void:

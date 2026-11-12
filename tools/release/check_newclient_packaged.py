@@ -27,6 +27,7 @@ SCAN_ROOTS = (
     ROOT / "source/new-client/godot/game/net",
     ROOT / "source/new-client/godot/game/combat",
     ROOT / "source/new-client/godot/game/perf_governor.gd",
+    ROOT / "source/new-client/godot/game/anim_lod.gd",
 )
 PATCHES = ROOT / "tools/fork-build/content-patches.json"
 DLL_PATH = "new-client/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll"
