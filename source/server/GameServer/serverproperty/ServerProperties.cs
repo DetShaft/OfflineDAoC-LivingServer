@@ -2441,7 +2441,7 @@ namespace DOL.GS.ServerProperties
 		/// <summary>
 		/// Cleric/Druid/Healer support bots assist with nukes or melee when nobody needs healing.
 		/// </summary>
-		[ServerProperty("bots", "healer_idle_combat_enabled", "Off by default since 1.1.15 (healer AI was rough; see issue #48). When on: when a Cleric, Druid or Healer is the exclusive support in a group: if nobody needs healing, the group is fighting, mana is at least 40%, and stance is not Passive, the healer may nuke, debuff or melee the group's target instead of standing idle. Healing, cures and resurrection still come first. False keeps healers support-only (buff/follow only while grouped).", false)]
+		[ServerProperty("bots", "healer_idle_combat_enabled", "Off by default since 1.1.16 (healer AI was rough; see issue #48). When on: when a Cleric, Druid or Healer is the exclusive support in a group: if nobody needs healing, the group is fighting, mana is at least 40%, and stance is not Passive, the healer may nuke, debuff or melee the group's target instead of standing idle. Healing, cures and resurrection still come first. False keeps healers support-only (buff/follow only while grouped).", false)]
 		public static bool HEALER_IDLE_COMBAT;
 
 		/// <summary>
