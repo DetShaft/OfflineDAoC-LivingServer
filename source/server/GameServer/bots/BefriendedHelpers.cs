@@ -50,6 +50,24 @@ public static class BefriendedHelpers
     /// <summary>A just-released helper's gamebot: the population controller logs it in now, ahead of the numbers.</summary>
     public static bool LogsInNow(long botId, DateTime nowUtc) => FirstSessionUntil.TryGetValue(botId, out DateTime until) && nowUtc < until;
 
+    /// <summary>
+    /// The population poll, for a roster row that is offline: log it in now? A just-released helper, or a befriended
+    /// helper's gamebot that has not logged in yet (released before a restart, or by 1.1.14 like Kettleboil), whose first
+    /// session then starts here.
+    /// </summary>
+    public static bool LogsInNow(OfflineWorldBotRecord record, DateTime nowUtc)
+    {
+        if (record == null)
+            return false;
+        if (LogsInNow(record.BotId, nowUtc))
+            return true;
+        if (record.ObjectiveProgress?.Contains(OriginNote, StringComparison.Ordinal) != true || FirstSessionUntil.ContainsKey(record.BotId))
+            return false;
+
+        FirstSessionUntil[record.BotId] = nowUtc + FirstSessionLength(Random.Shared.NextDouble());
+        return true;
+    }
+
     /// <summary>A just-released helper's gamebot stays online through its first session (AutonomousBotSchedule.WantsOnline).</summary>
     public static bool KeepsOnline(long botId, DateTime nowUtc) => LogsInNow(botId, nowUtc);
 

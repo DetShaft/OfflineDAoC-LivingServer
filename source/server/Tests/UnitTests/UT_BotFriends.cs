@@ -292,6 +292,30 @@ namespace DOL.UnitTests
             }
         }
 
+        [Test]
+        public void BefriendedHelperNotYetLoggedIn_StartsItsFirstSessionAtItsFirstLogin()
+        {
+            // Kettleboil was released by 1.1.14, before first sessions existed: her first login starts one.
+            BefriendedHelpers.ResetForTests();
+            try
+            {
+                DateTime now = new(2026, 11, 12, 12, 0, 0, DateTimeKind.Utc);
+                var kettleboil = new OfflineWorldBotRecord { BotId = 601, ObjectiveProgress = "Was Ferac's " + BefriendedHelpers.OriginNote };
+                var other = new OfflineWorldBotRecord { BotId = 602, ObjectiveProgress = "Entered world through staggered login queue" };
+
+                Assert.That(BefriendedHelpers.LogsInNow(other, now), Is.False);
+                Assert.That(BefriendedHelpers.LogsInNow(kettleboil, now), Is.True);
+                Assert.That(BefriendedHelpers.KeepsOnline(601, now.AddMinutes(119)), Is.True);
+                Assert.That(BefriendedHelpers.KeepsOnline(601, now.AddHours(3)), Is.False);
+                // Only once: after its first session the note no longer starts another.
+                Assert.That(BefriendedHelpers.LogsInNow(kettleboil, now.AddHours(4)), Is.False);
+            }
+            finally
+            {
+                BefriendedHelpers.ResetForTests();
+            }
+        }
+
         [TestCase(0.0, 120)]
         [TestCase(0.5, 150)]
         [TestCase(1.0, 180)]

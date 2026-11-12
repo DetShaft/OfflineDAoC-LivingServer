@@ -132,8 +132,8 @@ public static class AutonomousPopulationController
             // population numbers (BefriendedHelpers, issue #39: it waited for its clock schedule, hours away).
             if (_cachedEnabled)
             {
-                foreach (OfflineWorldBotRecord released in roster.Where(record => BefriendedHelpers.LogsInNow(record.BotId, nowUtc) &&
-                             !record.IsOnline && !AutonomousBotRegistry.Contains(record.BotId) && !PendingSpawns.ContainsKey(record.BotId)))
+                foreach (OfflineWorldBotRecord released in roster.Where(record => !record.IsOnline && !AutonomousBotRegistry.Contains(record.BotId) &&
+                             !PendingSpawns.ContainsKey(record.BotId) && BefriendedHelpers.LogsInNow(record, nowUtc)))
                 {
                     if (!PendingSpawns.TryAdd(released.BotId, 0))
                         continue;
