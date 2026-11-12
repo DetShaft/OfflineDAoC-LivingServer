@@ -267,6 +267,7 @@ public static class AutonomousGoldSpammers
                     new Dictionary<string, string> { ["site"] = site, ["player"] = player.Name }, out string reply))
             {
                 ChatUtil.SendSendMessage(player.Client, "Social.ReceiveMessage.Private.Sends", spammer, reply);
+                DOL.GS.Commands.TellReplies.Record(player, spammer);
                 BotChatTranscript.Bot("tell", spammer, player.Realm, reply, player.Name);
             }
             return 0;

@@ -82,6 +82,8 @@ func build() -> void:
 	_log.add_theme_font_size_override("bold_font_size", 10)
 	_log.add_theme_color_override("default_color", UiArt.CREAM)
 	_log.mouse_filter = Control.MOUSE_FILTER_PASS
+	_log.meta_underlined = false                           # a tell is a link (click to answer) but reads as text
+	_log.meta_clicked.connect(func(m): _reply_to(String(m)))
 	UiArt.themed(_log)
 	add_child(_log)
 	if role == "main":
@@ -146,11 +148,53 @@ func stop_typing() -> void:
 
 
 ## A message of one type; shown only if this box has that type switched on (GameUI sends every message to both).
+## A tell (kind "send") is a link: clicking it opens the typing line with "/send <name> " to answer that person
+## (owner 2026-11-11: replying to private messages didn't work). /r and /reply are the server's commands.
 func add_line(text: String, kind := "system") -> void:
 	if not kind in types:
 		return
 	var c: Color = COLORS.get(kind, UiArt.CREAM)
-	_log.append_text("[color=#%s]%s[/color]\n" % [c.to_html(false), text.replace("[", "[lb]")])
+	var shown := text.replace("[", "[lb]")
+	var who := tell_partner(text) if kind == "send" else ""
+	if who != "":
+		shown = "[url=%s]%s[/url]" % [who, shown]
+	_log.append_text("[color=#%s]%s[/color]\n" % [c.to_html(false), shown])
+
+
+## Who a tell line is from or to: "Name sends, ..." (also "Name [AFK] sends" and "Name [TEAM] sends") and
+## "You send, "..." to Name." (the server's Social.ReceiveMessage / Social.SendMessage lines). "" if neither.
+static func tell_partner(text: String) -> String:
+	var t := text.strip_edges()
+	var nm := ""
+	if t.begins_with("You send, \""):
+		var to := t.rfind("\" to ")
+		if to > 0 and t.ends_with("."):
+			nm = t.substr(to + 5, t.length() - to - 6).trim_suffix(" [ANON]")
+	else:
+		var at := t.find(" sends, \"")
+		if at > 0:
+			nm = t.substr(0, at).trim_suffix(" [AFK]").trim_suffix(" [TEAM]")
+	return nm if _is_name(nm) else ""
+
+
+## A character name: one word of letters (also ' and -), as the server allows them.
+static func _is_name(nm: String) -> bool:
+	if nm == "" or nm.length() > 30:
+		return false
+	for ch in nm:
+		if not (ch.to_upper() != ch.to_lower() or ch == "'" or ch == "-"):
+			return false
+	return true
+
+
+func _reply_to(who: String) -> void:
+	var line := "/send %s " % who
+	if _input:
+		start_typing(line)
+		return
+	var ui := get_parent().get_parent() as GameUI         # the combat box: answer on the chat box's typing line
+	if ui and ui.chat:
+		ui.chat.start_typing(line)
 
 
 func scroll(pages: int) -> void:

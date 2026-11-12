@@ -466,6 +466,14 @@
     "ReplaceAny": true
   },
   {
+    "Path": "new-client/godot/game/ui/chat_window.gd",
+    "Released": "43f3740344e2427b2745567a65168e6816bf2eb4ea0e6aa6f372ea4ed44173b8",
+    "Fixed": "13aa4fecb53f90a900f5b9a947a144766e245491262612ec580f03ca8656c4bd",
+    "Size": 16654,
+    "File": "content/godot/game/ui/chat_window.gd",
+    "ReplaceAny": true
+  },
+  {
     "Path": "new-client/godot/game/ui/keybinds.gd",
     "Released": "6a1be69702a57e79f08d71b785aa488e5e2d34d4198b1ed6588d365a24f31c78",
     "Fixed": "716af2e51ceaf061e333afaea0826f42f5705a03c78e69ef5f193d3bc7fae84e",
