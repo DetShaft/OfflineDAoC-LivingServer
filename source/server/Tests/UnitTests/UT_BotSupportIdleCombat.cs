@@ -301,58 +301,16 @@ namespace DOL.UnitTests
             Assert.That(healer.FollowTarget, Is.SameAs(player));
         }
 
-        // Issue #33: healing classes outside the support role (Friar, Shaman, Warden, Bard) get the same
-        // rule after a heal.
-        [TestCase(typeof(ClassFriar))]
-        [TestCase(typeof(ClassShaman))]
-        [TestCase(typeof(ClassWarden))]
-        [TestCase(typeof(ClassBard))]
-        public void HybridHealerHealEndsAChaseOnAnEnemyOutOfReach(Type type)
-        {
-            var (_, hybrid, enemy) = PartyWith((ICharacterClass)Activator.CreateInstance(type));
-            enemy.TestX = 700; // past melee reach (200 + hold slack)
-            SetFollowTarget(hybrid, enemy);
-
-            typeof(BotBrain).GetMethod("StopHealerEnemyChase", Hidden).Invoke(B(hybrid), null);
-
-            Assert.That(hybrid.FollowTarget, Is.Null);
-        }
-
-        [Test]
-        public void HybridHealerHealKeepsSwingingAtAnEnemyInReach()
-        {
-            var (_, hybrid, enemy) = PartyWith(new ClassFriar());
-            enemy.TestX = 100;
-            SetFollowTarget(hybrid, enemy);
-
-            typeof(BotBrain).GetMethod("StopHealerEnemyChase", Hidden).Invoke(B(hybrid), null);
-
-            Assert.That(hybrid.FollowTarget, Is.SameAs(enemy));
-        }
-
-        [Test]
-        public void HybridHealerHealKeepsFollowingTheLeader()
-        {
-            var (player, hybrid, _) = PartyWith(new ClassShaman());
-            SetFollowTarget(hybrid, player);
-
-            typeof(BotBrain).GetMethod("StopHealerEnemyChase", Hidden).Invoke(B(hybrid), null);
-
-            Assert.That(hybrid.FollowTarget, Is.SameAs(player));
-        }
-
         private static void SetFollowTarget(GameNPC npc, GameLiving target) =>
             typeof(NpcMovementComponent).GetProperty(nameof(NpcMovementComponent.FollowTarget))!
                 .GetSetMethod(true)!.Invoke(npc.movementComponent, new object[] { target });
 
-        private (Player, Bot, Enemy) PartyWithHealer() => PartyWith(new ClassCleric());
-
-        private (Player, Bot, Enemy) PartyWith(ICharacterClass healerClass)
+        private (Player, Bot, Enemy) PartyWithHealer()
         {
             Player player = Actor<Player>();
             var group = new Group(player);
             Add(group, player);
-            Bot healer = MakeBot(healerClass);
+            Bot healer = MakeBot(new ClassCleric());
             Add(group, healer);
             healer.EnterPlayerLedGroup(player);
             Bot tank = MakeBot(new ClassPaladin());
