@@ -43,6 +43,7 @@ SHIPPED = [
     "game/net/server_world.gd",
     "game/combat/spell_fx.gd",
     "game/perf_governor.gd",
+    "game/anim_lod.gd",
     "game/fig3_figure.gd",
 ]
 CREATE_ONLY = [
@@ -57,6 +58,7 @@ RELEASED_PATHS = [
     "game/net/server_world.gd",
     "game/combat/spell_fx.gd",
     "game/perf_governor.gd",
+    "game/anim_lod.gd",
     "game/fig3_figure.gd",
 ]
 NEW_CLASSES = ("FriendsWindow", "LfgWindow", "CommanderPanel")

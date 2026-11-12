@@ -233,11 +233,26 @@ func _live_log() -> void:
 		Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, _phys_max, _slow, gpu_ms,
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
 		Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0,
-		cpu_level, gpu_level, drawn, bots] + " | physics a tick by part (ms): " + parts)
+		cpu_level, gpu_level, drawn, bots] + _crowd_counts(npcs) + " | physics a tick by part (ms): " + parts)
 	f.close()
 	_phys_max = 0.0
 	_proc_max = 0.0
 	_slow = 0
+
+
+## Issue #34 (city stutter): frames of 100-370 ms in a city, about 1.5 ms per figure drawn, that none of the timed parts
+## above account for. These counts, per 2 s line, show whether they come with figures being built or switching shadows.
+var _built_seen := 0
+
+
+func _crowd_counts(npcs) -> String:
+	var built := 0
+	if npcs is NpcManager:
+		built = int(npcs.prof_built) - _built_seen
+		_built_seen = int(npcs.prof_built)
+	var shadows := AnimLod.shadow_switches
+	AnimLod.shadow_switches = 0
+	return " | views built %d | shadow switches %d" % [maxi(built, 0), shadows]
 
 
 func _apply() -> void:

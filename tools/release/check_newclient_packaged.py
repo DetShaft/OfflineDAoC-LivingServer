@@ -28,6 +28,7 @@ SCAN_ROOTS = (
     ROOT / "source/new-client/godot/game/net",
     ROOT / "source/new-client/godot/game/combat",
     ROOT / "source/new-client/godot/game/perf_governor.gd",
+    ROOT / "source/new-client/godot/game/anim_lod.gd",
     ROOT / "source/new-client/godot/game/fig3_figure.gd",
 )
 PATCHES = ROOT / "tools/fork-build/content-patches.json"
