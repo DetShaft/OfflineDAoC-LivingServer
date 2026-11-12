@@ -8,6 +8,14 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+**Robes look like robes in the new client (#37).** A worn robe was drawn as a short tunic over bare legs (Jay,
+2026-11-12: a Friar's Robes of the Novice from Brother Ethelbald). Robe textures ("robBody", such as robBody01_02_m)
+are laid out for the long robe body mesh, which is body mesh 7 for every player race, but the new client put them on
+the short tunic mesh. A robe now uses the robe mesh and hides the arms, the legs and the Highlander kilt under it, as
+the client's own robe items ask (objects.csv Cata Arms# / Legs# -1). This holds for players, companions, gamebots and
+NPCs, and for epic robes. New-client script `game/fig3_figure.gd`, installed by INSTALL like the other client fixes.
+Tests only: checked in a headless Godot render of the Briton and Highlander figures, not yet seen in game.
+
 ## Beta 1.1.14 — 2026-11-12
 
 **Friends come to you.** Inviting a bot friend (one on your /friend list) that is too far away no longer answers

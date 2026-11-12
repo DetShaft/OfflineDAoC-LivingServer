@@ -560,5 +560,13 @@
     "Size": 32190,
     "File": "content/godot/game/ui/exchange_window.gd",
     "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/fig3_figure.gd",
+    "Released": "e2961fc3113b939f6bfa4363b866cd1851971ae0add8adbed7a91dd3148784ff",
+    "Fixed": "ac9216eca208dc28be613a20478edea0982916042f2df5805e60964edad49d9a",
+    "Size": 33432,
+    "File": "content/godot/game/fig3_figure.gd",
+    "ReplaceAny": true
   }
 ]
