@@ -8,7 +8,7 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
-## Beta 1.1.14 (in development)
+## Beta 1.1.14 — 2026-11-12
 
 **Friends come to you.** Inviting a bot friend (one on your /friend list) that is too far away no longer answers
 "too far away to join you. Meet up first." Instead you get "<name> is on the way to you and will join your group on
@@ -28,6 +28,26 @@ and joins you (or sets out for you if far away). After 15 minutes the turned-dow
 friend nearby too. It works from /invite, the friends window's INVITE button, the LFG window, a static party and a
 friend's own invitation. A bot that isn't your friend still has to be met first and still joins at once. Tests only:
 not yet seen in game.
+
+**/spawn helpers level up with you.** A /spawn helper in your group that is below your level now jumps to your level
+on its next idle moment (never in a fight, while casting, on a horse route or while its pet fights): stats, spec
+points, spells, styles, a new kit in the same level band a fresh spawn gets (never worse than what it wore) and its pet
+resummoned at the new level. You see "<name> is now level N, matching you." It only goes up. Autonomous gamebots and
+the Epic Special Forces are unchanged. Before, a helper stayed at the level it was spawned at until you hit 50.
+Tests only: not yet seen in game.
+
+**Add a friend from your target, and keep befriended helpers.** The new client's Friends window has an ADD TARGET
+button, and `/friend target` adds your current target if it is a player or a gamebot of your realm (it never removes
+a friend). Each refusal now says why, and a typed name that isn't found says a gamebot needs its full name. ADD TARGET
+on your own /spawn helper makes it a friend and a real gamebot: when it leaves you (dismissed, group disbanded, you log
+off) it logs in as a gamebot where it stood, with its name, class, level, specs and its gear. Keeping its gear is an
+exception, for befriended helpers only, to gamebots starting without armor (Jay's choice). Tests only: not yet seen in
+game.
+
+**Reply to tells.** `/reply` and `/r` answer the last person who sent you a private message, player or gamebot. Before,
+`/r` matched several commands (/realm, /release, ...) and did nothing. In the new client, clicking a tell line in chat
+opens the typing line with `/send <name> `. Tests only: not yet seen in game.
+([docs/RELEASE-NOTES-1.1.14.md](docs/RELEASE-NOTES-1.1.14.md))
 
 ## Beta 1.1.13 — 2026-11-11
 
