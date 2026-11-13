@@ -1269,14 +1269,39 @@ namespace DOL.AI.Brain
                 }
                 return;
             }
-            AutonomousFormation.Offset formation = ambientWander
-                ? AutonomousFormation.ForIdleWander(BotBody.Name, tightInterior, (int)(GameLoop.GameLoopTime / IDLE_WANDER_CYCLE_MS))
-                : AutonomousFormation.For(BotBody.Name, tightInterior);
-            double radians = formation.AngleDegrees * Math.PI / 180d;
-            var destination = new Point3D(
-                leader.X + (int)Math.Round(Math.Cos(radians) * formation.Distance),
-                leader.Y + (int)Math.Round(Math.Sin(radians) * formation.Distance),
-                leader.Z);
+            var party = new List<GroupFormation.Member>();
+            if (Body.Group != null)
+            {
+                foreach (GameLiving member in Body.Group.GetMembersInTheGroup())
+                {
+                    if (member is GameBot grouped && grouped.CharacterClass != null)
+                        party.Add(new GroupFormation.Member(grouped.Name, (eCharacterClass)grouped.CharacterClass.ID));
+                }
+            }
+            if (party.Count == 0)
+                party.Add(new GroupFormation.Member(BotBody.Name ?? string.Empty,
+                    BotBody.CharacterClass == null ? eCharacterClass.Unknown : (eCharacterClass)BotBody.CharacterClass.ID));
+
+            bool fighting = Body.InCombat || HasAggro || leader.InCombat || leader.IsAttacking ||
+                (leader.IsCasting && leader.castingComponent?.SpellHandler?.Spell?.IsHarmful == true);
+            bool pulling = !fighting && ActiveOrderedPullTarget != null;
+            bool moving = !fighting && !pulling && leader.IsMoving;
+            GroupFormation.Situation situation = ambientWander
+                ? GroupFormation.Situation.Idle
+                : GroupFormation.Classify(fighting, moving, pulling);
+            double facing = situation == GroupFormation.Situation.Idle
+                ? GroupFormation.StableFacing(leader.Name)
+                : GroupFormation.HeadingRadians(leader.Heading);
+            GroupFormation.Slot slot = GroupFormation.ForMember(party, BotBody.Name, situation, tightInterior);
+            if (ambientWander)
+            {
+                // A small side step on the role slot. The old name-hash circle is not the position.
+                AutonomousFormation.Offset drift = AutonomousFormation.ForIdleWander(
+                    BotBody.Name, tightInterior, (int)(GameLoop.GameLoopTime / IDLE_WANDER_CYCLE_MS));
+                slot = slot with { Lateral = slot.Lateral + (drift.AngleDegrees % 21 - 10) };
+            }
+            Vector3 formed = GroupFormation.Place(new(leader.X, leader.Y, leader.Z), facing, slot);
+            var destination = new Point3D((int)Math.Round(formed.X), (int)Math.Round(formed.Y), leader.Z);
             if (companionTravel && !ambientWander && leader.CurrentZone != null)
             {
                 Vector3 floor = CompanionFollowPolicy.FormationDestination(BotBody, new(destination.X, destination.Y, destination.Z));

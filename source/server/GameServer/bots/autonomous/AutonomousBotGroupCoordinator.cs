@@ -70,6 +70,7 @@ public static partial class AutonomousBotGroupCoordinator
         public bool LeaderReadyForAssembly { get; init; }
         public bool GroupCombatActive { get; init; }
         public bool RecoveringBetweenPulls { get; init; }
+        public bool CampAnchored { get; init; }
     }
 
     public sealed class StoredMetadata
@@ -130,6 +131,9 @@ public static partial class AutonomousBotGroupCoordinator
         public string DungeonBossReason { get; set; } = string.Empty;
         public string GrindingCampId { get; set; } = string.Empty;
         public long GrindingSinceTick { get; set; }
+        // The camp the party is huddled around, and when that rest ends.
+        public string AnchoredCampId { get; set; } = string.Empty;
+        public long AnchorUntilTick { get; set; }
         public long NextDungeonBossCheckTick { get; set; }
         public HashSet<string> DungeonBossesTried { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, long> RejectedDungeonCamps { get; } = new(StringComparer.Ordinal);
@@ -616,6 +620,7 @@ public static partial class AutonomousBotGroupCoordinator
                          $"level={(party.Length == 0 ? 0 : (int)party.Average(member => member.Level))} camp=\"{session.Camp.Id}\" " +
                          $"target=\"{session.Camp.MonsterName}\" zone=\"{session.Camp.ZoneName}\" region={session.Camp.RegionId} " +
                          $"travelMinutes={(session.CampAssignedTick == 0 ? -1 : (GameLoop.GameLoopTime - session.CampAssignedTick) / 60_000.0):0.0}");
+                TryOpenCampAnchor(session, GameLoop.GameLoopTime);
             }
             WriteSessionMetadata(session, BotMembers(bot.Group));
         }
@@ -1207,6 +1212,11 @@ public static partial class AutonomousBotGroupCoordinator
             GameBot leader = ChooseLeader(session, members);
             GameBot puller = ChoosePuller(session, members);
             if (leader == null) return false;
+            // A camp rest blocks the next elective pull. A corridor monster can still be cleared.
+            if (!corridorBlocker && !raidDungeonTrash &&
+                CampAnchorPolicy.BlocksNewPull(GameLoop.GameLoopTime, session.AnchorUntilTick,
+                    session.AnchoredCampId, session.Camp?.Id, inCombat: false))
+                return false;
             bool combatActor = AutonomousRvrStaging.UsesIndependentCombatActors(session.ObjectiveKind) || bot == puller;
             return !IsAssemblyPhase(session.Phase) && !session.Recovery.IsRegrouping && combatActor &&
                 !session.Recovery.HasCasualty(RecoveryMembers(session, members, false)) &&
@@ -1260,12 +1270,49 @@ public static partial class AutonomousBotGroupCoordinator
 
     public static Vector3 FormationPoint(GameBot bot, Vector3 center, bool tight)
     {
-        Vector3 desired = DesiredFormationPoint(bot, center, tight);
+        GameBot leader = bot?.Group == null ? bot : BotMembers(bot.Group)
+            .FirstOrDefault(member => member == bot.Group.LivingLeader) ?? bot;
+        bool combat = bot?.InCombat == true || bot?.IsAttacking == true ||
+            leader?.InCombat == true || leader?.IsAttacking == true;
+        bool moving = (leader ?? bot)?.IsMoving == true;
+        GroupFormation.Situation situation = GroupFormation.Classify(combat, moving, pulling: false);
+        double facing = situation == GroupFormation.Situation.Idle
+            ? GroupFormation.StableFacing((leader ?? bot)?.Name)
+            : GroupFormation.HeadingRadians((leader ?? bot)?.Heading ?? 0);
+        return RoleFormationPoint(bot, center, tight, situation, facing);
+    }
+
+    public static Vector3 RoleFormationPoint(GameBot bot, Vector3 center, bool tight,
+        GroupFormation.Situation situation, double facingRadians)
+    {
+        GameBot[] members = BotMembers(bot?.Group);
+        var party = new List<GroupFormation.Member>(members.Length + 1);
+        foreach (GameBot member in members)
+            party.Add(new GroupFormation.Member(member.Name, ClassOf(member)));
+        if (bot != null && party.All(member =>
+                !string.Equals(member.Name, bot.Name, StringComparison.OrdinalIgnoreCase)))
+            party.Add(new GroupFormation.Member(bot.Name, ClassOf(bot)));
+
+        GroupFormation.Slot slot = GroupFormation.ForMember(party, bot?.Name, situation, tight);
+        Vector3 desired = GroupFormation.Place(center, facingRadians, slot);
         Zone zone = bot?.CurrentRegion?.GetZone((int)center.X, (int)center.Y);
-        return zone != null && PathfindingProvider.Instance.IsAvailable
-            ? AutonomousNavigationSurface.MoveAlongGround(PathfindingProvider.Instance,
-                  zone, center, desired) ?? center
-            : desired;
+        if (zone == null || !PathfindingProvider.Instance.IsAvailable)
+            return desired;
+        Vector3 projected = AutonomousNavigationSurface.MoveAlongGround(PathfindingProvider.Instance,
+            zone, center, desired) ?? desired;
+        return GroupFormation.KeepSpread(center, desired, projected);
+    }
+
+    private static eCharacterClass ClassOf(GameBot bot) =>
+        bot?.CharacterClass == null ? eCharacterClass.Unknown : (eCharacterClass)bot.CharacterClass.ID;
+
+    private static void TryOpenCampAnchor(Session session, long now)
+    {
+        if (session?.ObjectiveKind != eAutonomousObjectiveKind.GroupPve || session.Camp == null ||
+            session.Phase != "Grinding" || session.Recovery.IsRegrouping)
+            return;
+        session.AnchoredCampId = session.Camp.Id;
+        session.AnchorUntilTick = CampAnchorPolicy.OpenUntil(now);
     }
 
     private static long MemberKey(GameBot bot) => bot.DatabaseID > 0 ? bot.DatabaseID : bot.ObjectID;
@@ -2060,6 +2107,8 @@ public static partial class AutonomousBotGroupCoordinator
         {
             session.CombatObserved = true;
             session.RecoveringBetweenPulls = false;
+            // A fight ends the huddle. The next rest opens once the party is ready to pull again.
+            session.AnchorUntilTick = 0;
         }
         else if (session.CombatObserved && !session.Recovery.IsRegrouping)
         {
@@ -2071,7 +2120,10 @@ public static partial class AutonomousBotGroupCoordinator
                 session.RecoveringBetweenPulls, member.HealthPercent, member.ManaPercent,
                 member.EndurancePercent, member.MaxMana > 0));
             if (!session.RecoveringBetweenPulls)
+            {
                 session.CombatObserved = false;
+                TryOpenCampAnchor(session, GameLoop.GameLoopTime);
+            }
         }
 
         if (session.Phase == "Meeting up" && !(session.ObjectiveKind == eAutonomousObjectiveKind.RvR &&
@@ -2944,7 +2996,9 @@ public static partial class AutonomousBotGroupCoordinator
             Puller = puller,
             LeaderReadyForAssembly = session.LeaderReadyForAssembly,
             GroupCombatActive = groupCombatActive,
-            RecoveringBetweenPulls = session.RecoveringBetweenPulls
+            RecoveringBetweenPulls = session.RecoveringBetweenPulls,
+            CampAnchored = CampAnchorPolicy.IsOpen(GameLoop.GameLoopTime, session.AnchorUntilTick,
+                session.AnchoredCampId, session.Camp?.Id)
         };
     }
 
