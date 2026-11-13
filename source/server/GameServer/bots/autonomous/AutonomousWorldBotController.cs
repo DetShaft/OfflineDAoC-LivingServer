@@ -1591,6 +1591,39 @@ namespace DOL.GS
             return true;
         }
 
+        private bool GatherAtCampAnchor(GameBot bot, AutonomousBotGroupCoordinator.Directive directive)
+        {
+            bool tight = bot.CurrentRegion?.IsDungeon == true || bot.CurrentZone?.IsDungeon == true;
+            Vector3 center = new(directive.Camp.X, directive.Camp.Y, directive.Camp.Z);
+            double facing = GroupFormation.StableFacing(directive.Camp.Id);
+            Vector3 slot = AutonomousBotGroupCoordinator.RoleFormationPoint(
+                bot, center, tight, GroupFormation.Situation.Idle, facing);
+            bool arrived = Vector3.DistanceSquared(new(bot.X, bot.Y, bot.Z), slot) <= 56f * 56f;
+            if (!arrived)
+            {
+                bot.WakeRecoveryRest();
+                IssuePath(bot, slot, retargetWhileMoving: true);
+                SetStatus(bot, "Gathering at the camp", directive.SharedGoal,
+                    "Walking to a spread spot around the camp before the next pull",
+                    directive.Camp.MonsterName, directive.Camp.ZoneName);
+                return true;
+            }
+
+            bot.StopMovingOnPath();
+            bot.StopMoving();
+            bool usesPower = bot.MaxMana > 0;
+            if (AutonomousRestPolicy.ShouldRest(true, false, BotRestRecovery.BlocksRest(bot), bot.IsRecoveryResting,
+                    bot.HealthPercent, bot.ManaPercent, bot.EndurancePercent, usesPower))
+                bot.BeginRecoveryRest();
+            else
+                bot.WakeRecoveryRest();
+            SetStatus(bot, "Resting at the camp", directive.SharedGoal,
+                "The party is spread around its camp. Selling still waits for a natural task break.",
+                directive.Camp.MonsterName, directive.Camp.ZoneName);
+            AutonomousBotBodyLanguage.Idle(bot, BodySpot.Resting, default);
+            return true;
+        }
+
         private bool HoldBeforeNewGroupPull(BotBrain brain, GameBot bot)
         {
             if (AutonomousBotGroupCoordinator.CanInitiateNewPull(bot)) return false;
@@ -1600,6 +1633,11 @@ namespace DOL.GS
                 return HandleRecoveryRegroup(brain, bot);
             if (AutonomousBotGroupCoordinator.IsAssemblyPhase(_groupDirective.Phase))
                 return HandleGroupRendezvous(bot, _groupDirective);
+            if (_groupDirective.CampAnchored && _groupDirective.Camp != null &&
+                bot.CurrentRegionID == _groupDirective.Camp.RegionId &&
+                CampAnchorPolicy.ShouldGather(_groupDirective.BotMemberCount, _groupDirective.GroupCombatActive,
+                    serviceDue: false, hasCamp: true, sameRegion: true))
+                return GatherAtCampAnchor(bot, _groupDirective);
             if (_groupDirective.Leader != bot)
                 return FollowDynamicGroupLeader(bot, _groupDirective);
             bot.StopMovingOnPath();
@@ -1760,10 +1798,19 @@ namespace DOL.GS
                 return true;
 
             bool tight = leader.CurrentRegion?.IsDungeon == true || leader.CurrentZone?.IsDungeon == true;
+            bool combat = directive.GroupCombatActive || leader.InCombat || leader.IsAttacking;
+            bool pulling = !combat && directive.Puller != null && directive.Puller.IsMoving &&
+                directive.Puller.TargetObject != null;
+            bool moving = !combat && !pulling && leader.IsMoving;
+            GroupFormation.Situation situation = GroupFormation.Classify(combat, moving, pulling);
+            double facing = situation == GroupFormation.Situation.Idle
+                ? GroupFormation.StableFacing(leader.Name)
+                : GroupFormation.FacingFromHeading(leader.Heading);
             // Aim around where the leader is about to be, not where it was
             // (smooth group travel from the stefanrows/OfflineDAoC fork).
             Vector3 formationCenter = leader.IsMoving && !tight ? AutonomousGroupMotion.PredictLeader(leader) : new(leader.X, leader.Y, leader.Z);
-            Vector3 formation = AutonomousBotGroupCoordinator.FormationPoint(bot, formationCenter, tight);
+            Vector3 formation = AutonomousBotGroupCoordinator.RoleFormationPoint(
+                bot, formationCenter, tight, situation, facing);
             // Close the gap on the move so the party travels as one unit instead of the
             // leader stopping for formation (the follower runs up to 25% faster while behind).
             if (bot.CurrentRegionID == leader.CurrentRegionID)

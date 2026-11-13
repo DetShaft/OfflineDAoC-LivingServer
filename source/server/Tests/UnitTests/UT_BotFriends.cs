@@ -223,6 +223,56 @@ namespace DOL.UnitTests
         }
 
         [Test]
+        public void AddTarget_HelperSignupFailure_StillSaysTheyWereAdded()
+        {
+            // Issue #50: ADD TARGET must add the name like /friend, and the gamebot signup is the extra.
+            const string failure = "A character or gamebot named Kettleboil already exists, so Kettleboil can't stay on as a gamebot.";
+            string added = BotFriends.AddedAsFriendMessage("Kettleboil", signedUpHelper: false, signUpFailure: failure);
+            Assert.That(added, Does.StartWith("Kettleboil was added to your friend list!"));
+            Assert.That(added, Does.Contain(failure));
+
+            string both = BotFriends.AddedAsFriendMessage("Kettleboil", signedUpHelper: true, signUpFailure: failure);
+            Assert.That(both, Does.Contain("was added to your friend list"));
+            Assert.That(both, Does.Contain("gamebot"));
+            Assert.That(both, Does.Not.Contain(failure));
+
+            Assert.That(BotFriends.AddedAsFriendMessage("Haralhelm", signedUpHelper: false, signUpFailure: null),
+                Is.EqualTo("Haralhelm was added to your friend list!"));
+        }
+
+        [Test]
+        public void AddTarget_WhenTheListWriteFails_SaysWhetherTheHelperWasSignedUp()
+        {
+            Assert.That(BotFriends.CouldNotAddFriendMessage("Kettleboil", signedUpHelper: true, signUpFailure: "no"),
+                Does.Contain("could not be added to your friend list"));
+            Assert.That(BotFriends.CouldNotAddFriendMessage("Kettleboil", signedUpHelper: false, signUpFailure: "The row was not saved."),
+                Is.EqualTo("The row was not saved."));
+            Assert.That(BotFriends.CouldNotAddFriendMessage("Kettleboil", signedUpHelper: false, signUpFailure: null),
+                Does.Contain("could not be added"));
+        }
+
+        [TestCase(true, true, false, false, true, true, true, true)]
+        [TestCase(false, true, false, false, true, true, true, false)]
+        [TestCase(true, true, false, false, false, true, true, false)]
+        [TestCase(true, false, false, true, true, true, true, false)]
+        [TestCase(true, true, true, false, true, true, true, false)]
+        public void OwnHelperStillInTheGroup_CountsAsOnlineOnTheFriendsList(bool active, bool helper, bool epic,
+            bool autonomous, bool owned, bool sameRealm, bool nameMatches, bool expected)
+        {
+            Assert.That(BotFriends.IsOwnHelperInGroup(active, helper, epic, autonomous, owned, sameRealm, nameMatches),
+                Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void FriendWindow_ListsANameThatHasNoSavedStatus()
+        {
+            // A helper added when the gamebot row could not be written has no offline status. The window still names them.
+            Assert.That(BotFriends.UnlistedFriends(["Kettleboil", "Haralhelm"], ["haralhelm"]), Is.EqualTo(new[] { "Kettleboil" }));
+            Assert.That(BotFriends.UnlistedFriends(["Kettleboil"], ["Kettleboil"]), Is.Empty);
+            Assert.That(BotFriends.UnlistedFriends(["  "], []), Is.Empty);
+        }
+
+        [Test]
         public void AddTarget_NeverTakesAFriendOff()
         {
             // Typing /friend name toggles; the button must not: a friend already listed only gets a message.
@@ -336,6 +386,8 @@ namespace DOL.UnitTests
             Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [40, 41]), Is.True);                       // backpack only
             Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [(int)eInventorySlot.TorsoArmor]), Is.False);
             Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [(int)eInventorySlot.RightHandWeapon]), Is.False);
+            // The kit's SetJewelryROG replaces occupied jewelry slots (issue #53); worn jewelry means no kit.
+            Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [(int)eInventorySlot.Neck]), Is.False);
             Assert.That(BefriendedHelpers.NeedsStarterKitFor("Entered world through staggered login queue", []), Is.False);
             Assert.That(BefriendedHelpers.NeedsStarterKitFor((string)null, []), Is.False);
         }

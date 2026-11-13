@@ -256,10 +256,12 @@ namespace DOL.GS.Friends
 			// Query Offline Characters
 			FriendStatus[] offline;
 
+			var described = new List<string>();
 			if (PlayersFriendsStatusCache.TryGetValue(player, out offline))
 			{
 				foreach (var friend in offline.Where(frd => offlineFriends.Contains(frd.Name)))
 				{
+					described.Add(friend.Name);
 					player.Out.SendMessage(string.Format("F,{0},{1},{2},{3},\"{4}\"",
 						index++,
 						friend.Name,
@@ -268,6 +270,13 @@ namespace DOL.GS.Friends
 						friend.LastPlayed),
 						eChatType.CT_SocialInterface, eChatLoc.CL_SystemWindow);
 				}
+			}
+
+			// A name on the list with no player, bot or saved status still has to appear (issue #50).
+			foreach (string name in BotFriends.UnlistedFriends(offlineFriends, described))
+			{
+				player.Out.SendMessage(BotFriends.SocialLine(index++, name, 0, 0, string.Empty),
+					eChatType.CT_SocialInterface, eChatLoc.CL_SystemWindow);
 			}
 		}
 

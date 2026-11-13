@@ -124,6 +124,13 @@ public static class AutonomousBotDecisionEngine
         if (state.CanCraft && state.CraftingMaterialStacks >= 3 && random.NextDouble() < 0.16 && Find(services, eWorldServiceKind.CraftStation) is Service craft)
             return new(eAutonomousActivity.Craft, craft.Name, "Use owned materials at a reachable craft station.");
 
+        // A group that just reached its camp rests there before the next grind.
+        // Vendor, bank, exchange, trainer and craft already returned above, so
+        // this hold never starts a sale and never replaces a natural task break.
+        if (CampAnchorPolicy.PlannerHolds(state.GroupSize, state.InPlayerLedGroup, state.CurrentCampId, state.MinutesAtCurrentCamp))
+            return new(eAutonomousActivity.Rest, state.CurrentCampId,
+                "The group is resting at its camp. Selling still waits for a natural task break.");
+
         // Leisure is intentionally a very low-weight choice. Recovery, a nearly
         // full backpack, training and crafting are all considered first, and the
         // remaining 96.5% of ordinary decisions continue into grinding/RvR.

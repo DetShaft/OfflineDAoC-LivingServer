@@ -43,6 +43,7 @@ namespace DOL.GS.Commands
                     return;
                 }
                 // 1.1.14: a friend (on the player's /friend list) comes to the player instead, and joins on arrival.
+                // #55: so does a same-realm bot the find-group window is offering. That window sends this /invite.
                 if (BotFriendTravel.Travels(client.Player, worldBot))
                 {
                     BotFriendTravel.TryStart(client.Player, worldBot);

@@ -89,11 +89,12 @@ func show_window() -> void:
 
 
 func request() -> void:
-	_rebuild()
 	if not Server.active:
+		_rebuild()
 		return
+	# Leave the rows until the server's "TF" arrives. ADD TARGET asks again a moment later; clearing first wiped a
+	# friend the server had just listed when that second answer was late (issue #50).
 	_pending = []
-	friends = []
 	_asked_at = Time.get_ticks_msec()
 	Server.command("/friend window")
 	get_tree().create_timer(1.6).timeout.connect(_rebuild, CONNECT_ONE_SHOT)

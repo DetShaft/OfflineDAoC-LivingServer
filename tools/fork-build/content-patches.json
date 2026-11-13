@@ -492,8 +492,8 @@
   {
     "Path": "new-client/godot/game/ui/friends_window.gd",
     "Released": "",
-    "Fixed": "aca3bf883971447305e50afb493f0972870da8d4b51518fcfab6ef1848f35d0e",
-    "Size": 11424,
+    "Fixed": "9dbac8626bc670b5c4019ccc925e2482b54f5903a51b1ca14f509f43b0feb3cc",
+    "Size": 11606,
     "File": "content/godot/game/ui/friends_window.gd",
     "Create": true
   },
@@ -556,8 +556,8 @@
   {
     "Path": "new-client/godot/game/net/server.gd",
     "Released": "13a8a3bf7bcc42fce06888b3b4cfd2425b8ea1c5c16f46b1c9dbf50f524d1348",
-    "Fixed": "4ed83edbf369ed669e5fc5d9a934173aa03866890ac2641ab860f65aaea1e616",
-    "Size": 70996,
+    "Fixed": "5123f1829186b2bd67c24c6ab81379780fb6693479bb8c69e591f5c4f727155b",
+    "Size": 83524,
     "File": "content/godot/game/net/server.gd",
     "ReplaceAny": true
   },
@@ -575,6 +575,22 @@
     "Fixed": "ac9216eca208dc28be613a20478edea0982916042f2df5805e60964edad49d9a",
     "Size": 33432,
     "File": "content/godot/game/fig3_figure.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/player_data.gd",
+    "Released": "e6abd8958f4c4dd46531e8c900128373ac53bd6a7e0d1a0fcb1eafbd62668b82",
+    "Fixed": "8033bfa9b5195da11acf820c04f4ecab01062c3872f386ed73fb1dbff4a5606d",
+    "Size": 19309,
+    "File": "content/godot/game/ui/player_data.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/quickbar.gd",
+    "Released": "c2a5d63c166336405bc5582dc8c1b0beb7b4f3f8b272eb3d02bde03691a2ea0a",
+    "Fixed": "df4594d9aa23d2236a5dcd3818d74d38d1355924cb164cea086800b2c3cfcb25",
+    "Size": 12175,
+    "File": "content/godot/game/ui/quickbar.gd",
     "ReplaceAny": true
   }
 ]

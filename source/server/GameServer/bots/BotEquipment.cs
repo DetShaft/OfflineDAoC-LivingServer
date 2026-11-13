@@ -163,19 +163,46 @@ namespace DOL.GS
                 eInventorySlot slot = (eInventorySlot)i;
                 if (!ShouldEquipRegularSlot(living as IGamePlayer))
                     continue;
+
+                // Issue #53: AddItem refuses an occupied neck (slot 29). Build the replacement
+                // first, and put the old piece back if it cannot be added.
                 DbItemTemplate itemToCreate = living is GameBot { IsEndgameCompanion: true }
                     ? CreateCompanionItem(realm, charClass, level, objectType, slot)
                     : new GeneratedUniqueItem(false, realm, charClass, level, objectType, slot);
                 PrepareEndgameItem(living as IGamePlayer, itemToCreate);
                 GameInventoryItem item = GameInventoryItem.Create(itemToCreate);
+                eInventorySlot destination = OpenJewelrySlot(living, i, slot);
+                if (item == null || destination == eInventorySlot.Invalid)
+                    continue;
 
-                if (i == Slot.RIGHTRING || i == Slot.LEFTRING)
-                    living.Inventory.AddItem(living.Inventory.FindFirstEmptySlot(eInventorySlot.LeftRing, eInventorySlot.RightRing), item);
-                else if (i == Slot.LEFTWRIST || i == Slot.RIGHTWRIST)
-                    living.Inventory.AddItem(living.Inventory.FindFirstEmptySlot(eInventorySlot.LeftBracer, eInventorySlot.RightBracer), item);
-                else
-                    living.Inventory.AddItem(slot, item);
+                DbInventoryItem occupying = living.Inventory.GetItem(destination);
+                if (occupying != null && !living.Inventory.RemoveItem(occupying))
+                    continue;
+                if (!living.Inventory.AddItem(destination, item) && occupying != null)
+                    living.Inventory.AddItem(destination, occupying);
             }
+        }
+
+        // Rings share two slots, and so do bracers. The slot this pass is filling counts as open,
+        // so a piece already there is the one replaced and an earlier empty slot in the pair is used first.
+        private static eInventorySlot OpenJewelrySlot(GameLiving living, int slotIndex, eInventorySlot slot)
+        {
+            if (slotIndex is Slot.RIGHTRING or Slot.LEFTRING)
+                return FirstJewelrySlot(living, eInventorySlot.LeftRing, eInventorySlot.RightRing, slot);
+            if (slotIndex is Slot.LEFTWRIST or Slot.RIGHTWRIST)
+                return FirstJewelrySlot(living, eInventorySlot.LeftBracer, eInventorySlot.RightBracer, slot);
+            return slot;
+        }
+
+        private static eInventorySlot FirstJewelrySlot(GameLiving living, eInventorySlot first, eInventorySlot last, eInventorySlot open)
+        {
+            for (eInventorySlot candidate = first; candidate <= last; candidate++)
+            {
+                if (candidate == open || living.Inventory.GetItem(candidate) == null)
+                    return candidate;
+            }
+
+            return eInventorySlot.Invalid;
         }
 
         public static void SetInstrumentROG(GameLiving living, eRealm realm, eCharacterClass charClass, byte level, eObjectType objectType, eInventorySlot slot, eInstrumentType instrumentType)

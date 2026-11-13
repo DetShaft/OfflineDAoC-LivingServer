@@ -155,6 +155,7 @@ namespace DOL.GS
                 return false;
             if (bot.Group != null && bot.Group.MemberCount > 1)
                 return false;
+            // #55: a duty (stable route, realm raid, siege, relic, and the rest) cannot come to an invite, so it is not offered.
             if (BotGroupInvite.DutyOf(bot) != BotGroupInvite.Duty.None)
                 return false;
             if (BotLfgAds.IsAdvertising(bot))
