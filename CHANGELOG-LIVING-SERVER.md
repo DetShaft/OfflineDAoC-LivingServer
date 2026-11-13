@@ -8,6 +8,47 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.17 — 2026-11-13
+
+**LFG bots come to you (#55).** Inviting a bot from the find-group window when it was far away answered "too far away to
+join you. Meet up first." A same-realm gamebot with a fresh LFG ad, or waiting solo on group matchmaking, and not in a
+group of its own, now takes the same trip a friend does: 30 seconds in your zone, 30 more for each zone between you, the
+same "on the way" line, "omw" tell and arrival checks. A bot on a duty still says it is busy. The "ask again in a
+minute" rule stays friends-only. Tests only: not yet seen in game.
+
+**Helper jewelry replaces the old piece (#53).** Giving a helper jewelry could log `Destination slot is not empty (29)`
+and drop the new neck piece, on a befriended helper's starter kit (Kettleboil) and on each /spawn helper level-sync
+re-gear. The piece already in that jewelry slot is now taken out and the new one put in, and the old one goes back if
+the add fails. This applies wherever bot jewelry is handed out: /spawn helpers, their level sync, the Epic Special
+Forces kit and a befriended helper's starter kit. Tests only: not yet seen in game.
+
+**Bot groups stand by role and rest at camp (#56).** Idle bot groups stood on top of each other. Groups now stand by
+role, facing the way the leader faces: tanks in front, melee on the sides, archers behind them, casters and healers
+further back, with the shape changing between walking, idle, pulling and fighting. Bots that share a role get
+different spots. Your own helpers stand beside and behind you when you stand still, and keep their places until you
+turn more than 45 degrees. A PvE bot party that reaches its camp holds there for 90 seconds, each member at a spot
+around the camp, sitting if low on health, power or endurance. A fight ends the hold. Selling still happens only at
+natural task breaks. Tests only: not yet seen in game.
+
+**ADD TARGET always adds the friend.** Pressing ADD TARGET on a /spawn helper signed it up to become a gamebot, and if
+that signup failed the name never reached your friends list. The name is now added either way, as `/friend` does, and
+the gamebot signup still happens. A helper still in your group shows online, the list updates after an add, and the new
+client's Friends window no longer blanks its rows while it waits for the server. Tests only: not yet seen in game.
+
+**Quickbars keep the right icons after logout (#54).** A new-client quickbar button remembered only its place in a
+list, so after logout a new ability or a different item in that slot could make its icon, name and click three
+different things. Each button now also remembers which skill, spell or item it is and is pointed back at it once the
+lists arrive. A skill or spell that is gone is cleared. An item that is gone keeps its icon and says you don't have it.
+Bars are written safely (a crash mid-write keeps the old file) and are saved on logout and on a forced close. They are
+still stored only on this PC. New-client scripts `game/net/server.gd`, `game/ui/player_data.gd` and
+`game/ui/quickbar.gd`, installed by INSTALL. Tests only: checked headless, not yet seen in game.
+
+**Skills panel errors (#52).** Switching between the skills, magic and combat sheets left a redraw behind that later
+used freed lists, so "Trying to cast a freed object" piled up in the new client's log over a session. The redraw now
+goes away with its list. New-client script `game/ui/panel_sheets.gd`, installed by INSTALL. Tests only: checked
+headless, not yet seen in game.
+([docs/RELEASE-NOTES-1.1.17.md](docs/RELEASE-NOTES-1.1.17.md))
+
 ## Beta 1.1.16 — 2026-11-12
 
 **Healers stay idle when nobody needs healing.** Healer AI was still rough in play (Jay, 2026-11-12), so healer bots go
