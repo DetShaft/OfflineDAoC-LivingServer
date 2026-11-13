@@ -1780,6 +1780,7 @@ public static class AutonomousBotChatCoordinator
         if (LevelGapReply(bot.Level, player.Level, random) is { } gap)
             return gap;
         // 1.1.14: a friend invited from afar comes to the player (BotFriendTravel), so it says so instead of "meet up".
+        // #55: an LFG bot says the same, because /invite will send it on that trip.
         if (BotFriendTravel.Travels(player, bot))
             return random.Next(3) switch
             {

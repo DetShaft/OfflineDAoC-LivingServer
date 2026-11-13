@@ -190,6 +190,7 @@ public static partial class AutonomousLivingServer
                 return;
             }
             // 1.1.14: a friend that wandered off meanwhile comes back to the player instead (BotFriendTravel).
+            // #55: an LFG bot the player just accepted does too, on the same trip.
             if (IsSpeaker(bot) && BotFriendTravel.Travels(player, bot))
             {
                 bool started = BotFriendTravel.TryStart(player, bot);

@@ -74,8 +74,9 @@ public static class BotFriends
     /// <summary>
     /// /friend target: your current target on your friends list, never off it (typing /friend name takes a friend off).
     /// - Players and autonomous gamebots of your realm only; a gamebot whose name a player character has is that player.
-    /// - Your own /spawn helper goes on the list and becomes a gamebot when it leaves you (BefriendedHelpers, owner
-    ///   2026-11-11). Other companions (someone else's helper, the special forces) never go on the list.
+    /// - Your own /spawn helper goes on the list, like /friend, and is also signed up to become a gamebot when it
+    ///   leaves you (BefriendedHelpers). The signup failing still leaves the name on the list (issue #50).
+    ///   Other companions (someone else's helper, the special forces) never go on the list.
     /// </summary>
     public static void AddTarget(GamePlayer player)
     {
@@ -97,21 +98,19 @@ public static class BotFriends
         string shown = string.IsNullOrEmpty(name) ? target?.Name ?? string.Empty : name;
         if (result == TargetFriend.Add)
         {
-            if (player.AddFriend(name))
-                Say(player, $"{name} was added to your friend list!");
+            if (TryAddFriend(player, name))
+                Say(player, AddedAsFriendMessage(name, signedUpHelper: false, signUpFailure: null));
             return;
         }
         if (result == TargetFriend.AddHelper)
         {
-            // The gamebot row first: the friends list finds the new friend's level and class through it.
-            if (!BefriendedHelpers.TryBefriend(player, bot, out string why))
-            {
-                Say(player, why);
-                return;
-            }
-            if (player.AddFriend(name))
-                Say(player, $"{name} was added to your friend list! When {name} leaves your group, they carry on in the " +
-                            "world as a gamebot, with their level, specs and gear.");
+            // The gamebot row first, so the friends list can read the new friend's level and class. Signing them up
+            // must not be the only effect (issue #50): a failed signup still adds the name, the same as /friend.
+            bool signedUp = BefriendedHelpers.TryBefriend(player, bot, out string why);
+            if (TryAddFriend(player, name))
+                Say(player, AddedAsFriendMessage(name, signedUp, signedUp ? null : why));
+            else
+                Say(player, CouldNotAddFriendMessage(name, signedUp, why));
             return;
         }
 
@@ -135,6 +134,46 @@ public static class BotFriends
         return alreadyFriend ? TargetFriend.AlreadyFriend : TargetFriend.Add;
     }
 
+    /// <summary>
+    /// What the player is told after ADD TARGET writes the friends list. A /spawn helper that also stayed on as a
+    /// gamebot gets the longer sentence. A helper that could not be signed up is still a friend, and hears why.
+    /// </summary>
+    public static string AddedAsFriendMessage(string name, bool signedUpHelper, string signUpFailure)
+    {
+        string added = $"{name} was added to your friend list!";
+        if (signedUpHelper)
+            return $"{added} When {name} leaves your group, they carry on in the world as a gamebot, with their level, specs and gear.";
+        if (!string.IsNullOrEmpty(signUpFailure))
+            return $"{added} {signUpFailure}";
+        return added;
+    }
+
+    /// <summary>ADD TARGET signed a helper up, or could not, and the friends-list write itself failed.</summary>
+    public static string CouldNotAddFriendMessage(string name, bool signedUpHelper, string signUpFailure)
+    {
+        if (signedUpHelper)
+            return $"{name} will carry on as a gamebot when they leave your group, but they could not be added to your friend list.";
+        if (!string.IsNullOrEmpty(signUpFailure))
+            return signUpFailure;
+        return $"{name} could not be added to your friend list.";
+    }
+
+    /// <summary>
+    /// A /spawn helper still with you counts as online on the friends list. The gamebot row is not required: ADD TARGET
+    /// adds the name even when the signup fails (issue #50).
+    /// </summary>
+    public static bool IsOwnHelperInGroup(bool active, bool temporaryHelper, bool epicSpecialForce, bool autonomous,
+        bool ownedByPlayer, bool sameRealm, bool nameMatches) =>
+        active && nameMatches &&
+        BefriendedHelpers.IsConvertible(temporaryHelper, epicSpecialForce, autonomous, ownedByPlayer, sameRealm);
+
+    /// <summary>Friend names the /friend window has not described yet, so a name on the list is never left off it.</summary>
+    public static string[] UnlistedFriends(IEnumerable<string> friends, IEnumerable<string> alreadyListed)
+    {
+        HashSet<string> listed = new(alreadyListed ?? [], StringComparer.OrdinalIgnoreCase);
+        return (friends ?? []).Where(name => !string.IsNullOrWhiteSpace(name) && !listed.Contains(name.Trim())).ToArray();
+    }
+
     public static string TargetMessage(TargetFriend result, string name) => result switch
     {
         TargetFriend.NoTarget => "Target a player or a gamebot of your realm first, then press ADD TARGET.",
@@ -145,6 +184,25 @@ public static class BotFriends
         TargetFriend.AlreadyFriend => $"{name} is already on your friend list.",
         _ => string.Empty,
     };
+
+    private static bool TryAddFriend(GamePlayer player, string name)
+    {
+        if (!player.AddFriend(name))
+            return false;
+
+        // The open Friends window (new client and the original client's social tab) reads these lines. Both clients
+        // reach this through /friend target: the new client's ADD TARGET sends that command, and so does typing it.
+        try
+        {
+            player.SendFriendsListSocial();
+        }
+        catch (Exception exception)
+        {
+            Log.Warn($"BotFriends: could not refresh the friends window after adding {name}", exception);
+        }
+
+        return true;
+    }
 
     private static void Say(GamePlayer player, string text)
     {
@@ -272,11 +330,33 @@ public static class BotFriends
         return text.Length <= 28 ? text.ToLowerInvariant() : text[..28].Trim().ToLowerInvariant();
     }
 
+    /// <summary>Your own /spawn helper of this name, still in your group. Not the pending gamebot row.</summary>
+    private static GameBot OwnHelperInGroup(GamePlayer player, string name)
+    {
+        if (player?.Group == null || string.IsNullOrWhiteSpace(name))
+            return null;
+
+        foreach (GameLiving member in player.Group.GetMembersInTheGroup())
+        {
+            if (member is not GameBot helper)
+                continue;
+            if (IsOwnHelperInGroup(helper.ObjectState == GameObject.eObjectState.Active, helper.IsTemporaryGroupHelper,
+                    helper.IsEpicSpecialForce, helper.IsAutonomousWorldBot, helper.Owner == player, helper.Realm == player.Realm,
+                    string.Equals(helper.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
+                return helper;
+        }
+
+        return null;
+    }
+
     private static GameBot[] OnlineBots(GamePlayer player, IEnumerable<string> names)
     {
         GameBot[] bots = names
-            // A befriended /spawn helper still with its owner counts as online too (BefriendedHelpers).
-            .Select(name => AutonomousBotRegistry.TryGetOnline(name, player.Realm, out GameBot bot) ? bot : BefriendedHelpers.FindLive(name, player.Realm))
+            // A befriended /spawn helper still with its owner counts as online too: the pending gamebot row, or the
+            // helper still in the group when that row was never written (issue #50).
+            .Select(name => AutonomousBotRegistry.TryGetOnline(name, player.Realm, out GameBot bot)
+                ? bot
+                : BefriendedHelpers.FindLive(name, player.Realm) ?? OwnHelperInGroup(player, name))
             .Where(bot => bot != null)
             .ToArray();
         if (bots.Length == 0)

@@ -68,6 +68,7 @@ func add_macro(name: String, text: String) -> bool:
 		for i in slots.size():
 			if (slots[i] as Dictionary).is_empty():
 				slots[i] = {"kind": "macro", "id": text, "icon": -1, "name": name.substr(0, MACRO_NAME_MAX)}
+				note_quickbar_edit()
 				save_character()
 				changed.emit()                                 # the quickbars redraw
 				return true
@@ -89,16 +90,30 @@ func _empty_quickbars() -> Array:
 
 func load_character(c: Dictionary) -> void:
 	_vault_loaded = false                                  # never write the shared vault before it's read (starter gear saves)
+	_quickbars_protect = false
 	var saved = c.get("quickbars")
 	if Server.active:                                      # this PC's quickbars for a server character
-		var path: String = Server.quickbars_path(String(c.get("name", "")))
-		var q = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
-		saved = q.get("quickbars") if q is Dictionary else null
-		c["quickbar_bank"] = q.get("bank") if q is Dictionary else null
+		var read := _read_server_quickbars(Server.quickbars_path(String(c.get("name", ""))))
+		if bool(read.get("missing", false)):
+			saved = null
+		elif bool(read.get("bad", false)):
+			saved = null                                   # show empty bars, but do not write that over the file
+			_quickbars_protect = true
+		else:
+			var q: Dictionary = read.data
+			var bars = q.get("quickbars")
+			if bars is Array and bars.size() == 3:
+				saved = bars
+				c["quickbar_bank"] = q.get("bank")
+			else:
+				saved = null
+				_quickbars_protect = true
 	quickbars = saved if saved is Array and saved.size() == 3 else _empty_quickbars()
 	var banks = c.get("quickbar_bank")                     # patch 1.54: the quickbar page persists across quitting
 	quickbar_bank = (banks as Array).map(func(x): return int(x)) if banks is Array and banks.size() == 3 else [0, 0, 0]
 	load_sheet(c)
+	if Server.active:
+		Server.rebind_quickbars()                          # the skill list may already be in; a later list rebinds again
 	_load_vault()
 	changed.emit()
 	inventory_changed.emit()
@@ -273,14 +288,46 @@ func wear_item(slot: int) -> void:
 		_changed()
 
 
-## Quickbar "use" of an item: equipment in the backpack is worn; worn equipment does nothing (as in the client).
+## A quickbar file that did not parse. Later automatic saves (the vault, quitting) must not replace it with the
+## empty bars load fell back to. A drag or a bank change clears this: that edit is the layout the player wants kept.
+var _quickbars_protect := false
+
+
+func note_quickbar_edit() -> void:
+	_quickbars_protect = false
+
+
+## {missing} there is no file, {bad} it is not a quickbar file, {data} the parsed object.
+func _read_server_quickbars(path: String) -> Dictionary:
+	var which := path
+	if not FileAccess.file_exists(path):
+		which = path + ".tmp"                             # a quit that died between the write and the rename
+		if not FileAccess.file_exists(which):
+			return {"missing": true}
+	var q = JSON.parse_string(FileAccess.get_file_as_string(which))
+	if q is Dictionary and q.get("quickbars") is Array:
+		return {"data": q}
+	return {"bad": true}
+
+
+## The bars are written to a temporary file and then renamed, so a quit in the middle of the write leaves the
+## previous file intact.
 func _save_server_quickbars() -> void:
-	if character.is_empty():
+	if character.is_empty() or _quickbars_protect:
+		return
+	var path := Server.quickbars_path(String(character.get("name", "")))
+	if path.ends_with("/.json"):
 		return
 	DirAccess.make_dir_recursive_absolute("user://server_quickbars")
-	var f := FileAccess.open(Server.quickbars_path(String(character.get("name", ""))), FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify({"quickbars": quickbars, "bank": quickbar_bank}))
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify({"quickbars": quickbars, "bank": quickbar_bank}))
+	f.close()
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+	DirAccess.rename_absolute(tmp, path)
 
 
 # --- the server's game: item actions go to the server (its inventory packets bring the result back) -----------------
@@ -353,8 +400,12 @@ func spec_points() -> int:
 	return super.spec_points()
 
 
+## Quickbar "use" of an item: equipment in the backpack is worn; worn equipment does nothing (as in the client).
 func use_item(id: String) -> void:
 	if Server.active:
+		if Server.entry_action(id) == "" and id.begins_with("srv:"):
+			message.emit("You don't have that item.", "error")
+			return
 		Server.use(id)
 		return
 	for s in inventory:
