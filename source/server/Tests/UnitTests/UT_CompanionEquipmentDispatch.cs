@@ -302,4 +302,40 @@ public class UT_CompanionEquipmentDispatch
         }
         Assert.That(bot.Inventory.GetItem(eInventorySlot.RightHandWeapon), Is.SameAs(weapon));
     }
+
+    [Test]
+    public void FailedJewelryAddPutsTheOldNeckBack()
+    {
+        var bot = Make(eRealm.Albion, eCharacterClass.Minstrel, 5, true);
+        var inventory = new FailOnceInventory();
+        bot.Inventory = inventory;
+        var old = GameInventoryItem.Create(new DbItemTemplate
+        {
+            Id_nb = "worn-neck", Name = "worn neck", MaxCount = 1, Level = 1,
+            Object_Type = (int)eObjectType.Magical, Item_Type = (int)eInventorySlot.Neck
+        });
+        Assert.That(inventory.AddItem(eInventorySlot.Neck, old), Is.True);
+        inventory.Failures = 1;
+
+        BotEquipment.SetJewelryROG(bot, bot.Realm, eCharacterClass.Minstrel, bot.Level, eObjectType.Magical);
+
+        Assert.That(bot.Inventory.GetItem(eInventorySlot.Neck), Is.SameAs(old));
+        Assert.That(bot.Inventory.GetItem(eInventorySlot.Jewelry), Is.Not.Null);
+        Assert.That(bot.Inventory.GetItem(eInventorySlot.Cloak), Is.Not.Null);
+        Assert.That(inventory.Failures, Is.EqualTo(0));
+    }
+
+    private sealed class FailOnceInventory : BotInventory
+    {
+        public int Failures;
+        public override bool AddItem(eInventorySlot slot, DbInventoryItem item)
+        {
+            if (Failures > 0 && slot == eInventorySlot.Neck)
+            {
+                Failures--;
+                return false;
+            }
+            return base.AddItem(slot, item);
+        }
+    }
 }
