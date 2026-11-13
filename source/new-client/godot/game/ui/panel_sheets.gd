@@ -36,6 +36,11 @@ static func build(parent: Control, tab: String) -> void:
 		scroll.add_child(list)
 		lists.append(list)
 	var fill := func():
+		# A rebuilt tab frees these lists while this lambda can still be called.
+		# Casting a freed list logs "Trying to cast a freed object", so do not refresh them.
+		for l in lists:
+			if not is_instance_valid(l):
+				return
 		for l in lists:
 			for c in (l as Node).get_children():
 				c.queue_free()
@@ -50,13 +55,15 @@ static func build(parent: Control, tab: String) -> void:
 			"magic": _magic(lists[0])
 			"combat": _combat(lists[0])
 	fill.call()
-	PlayerData.hook(parent, PlayerData.skills_changed, func():
+	# The sheet body stays when the tab is rebuilt, so a hook on it outlives the lists and
+	# every rebuild leaves another one. Hook the list: it disconnects when the list is freed.
+	var hook_owner: Node = lists[0] if not lists.is_empty() else parent
+	var refresh := func():
 		if is_instance_valid(parent) and parent.is_inside_tree():
-			fill.call())
+			fill.call()
+	PlayerData.hook(hook_owner, PlayerData.skills_changed, refresh)
 	if Server.active:
-		PlayerData.hook(parent, Server.skills_changed, func():
-			if is_instance_valid(parent) and parent.is_inside_tree():
-				fill.call())
+		PlayerData.hook(hook_owner, Server.skills_changed, refresh)
 
 
 static func _skills(lists: Array) -> void:
