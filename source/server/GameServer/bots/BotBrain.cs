@@ -631,6 +631,8 @@ namespace DOL.AI.Brain
         private long _leaderLastActiveTick;
         private long _temporaryCompanionLastActionTick;
         private bool _ambientWanderMovement;
+        private ushort _idleFormationHeading;
+        private bool _hasIdleFormationHeading;
         private DateTime _lastIdleRoleplayUtc = DateTime.MinValue;
         private long _nextAmbientChatCheckTick;
         private long _nextExchangeCheckTick;
@@ -1289,10 +1291,17 @@ namespace DOL.AI.Brain
             GroupFormation.Situation situation = ambientWander
                 ? GroupFormation.Situation.Idle
                 : GroupFormation.Classify(fighting, moving, pulling);
-            double facing = situation == GroupFormation.Situation.Idle
-                ? GroupFormation.StableFacing(leader.Name)
-                : GroupFormation.HeadingRadians(leader.Heading);
-            GroupFormation.Slot slot = GroupFormation.ForMember(party, BotBody.Name, situation, tightInterior);
+            ushort formationHeading = leader.Heading;
+            if (situation == GroupFormation.Situation.Idle)
+            {
+                formationHeading = _hasIdleFormationHeading
+                    ? GroupFormation.HoldHeading(_idleFormationHeading, leader.Heading, GroupFormation.PlayerIdleHeadingTolerance)
+                    : leader.Heading;
+                _idleFormationHeading = formationHeading;
+            }
+            _hasIdleFormationHeading = situation == GroupFormation.Situation.Idle;
+            double facing = GroupFormation.FacingFromHeading(formationHeading);
+            GroupFormation.Slot slot = GroupFormation.ForMember(party, BotBody.Name, situation, tightInterior, playerLed: true);
             if (ambientWander)
             {
                 // A small side step on the role slot. The old name-hash circle is not the position.

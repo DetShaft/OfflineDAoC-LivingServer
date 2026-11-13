@@ -44,14 +44,85 @@ public class UT_GroupFormationAndCampAnchor
     [Test]
     public void FightingOrderIsTankThenRangedThenHealer()
     {
+        foreach (bool playerLed in new[] { false, true })
         foreach (GroupFormation.Situation situation in Enum.GetValues<GroupFormation.Situation>())
         {
-            GroupFormation.Slot tank = GroupFormation.ForMember(Party, "Aldric", situation, tight: false);
-            GroupFormation.Slot bow = GroupFormation.ForMember(Party, "Eira", situation, tight: false);
-            GroupFormation.Slot healer = GroupFormation.ForMember(Party, "Gwen", situation, tight: false);
-            Assert.That(tank.Forward, Is.GreaterThan(bow.Forward), situation.ToString());
-            Assert.That(bow.Forward, Is.GreaterThan(healer.Forward), situation.ToString());
+            GroupFormation.Slot tank = GroupFormation.ForMember(Party, "Aldric", situation, false, playerLed);
+            GroupFormation.Slot bow = GroupFormation.ForMember(Party, "Eira", situation, false, playerLed);
+            GroupFormation.Slot healer = GroupFormation.ForMember(Party, "Gwen", situation, false, playerLed);
+            Assert.That(tank.Forward, Is.GreaterThan(bow.Forward), $"{situation} playerLed={playerLed}");
+            Assert.That(bow.Forward, Is.GreaterThan(healer.Forward), $"{situation} playerLed={playerLed}");
         }
+    }
+
+    [TestCase((ushort)0, 1000f, 1100f)]
+    [TestCase((ushort)1024, 900f, 1000f)]
+    [TestCase((ushort)2048, 1000f, 900f)]
+    [TestCase((ushort)3072, 1100f, 1000f)]
+    public void HeadingPutsTheForwardSlotWhereTheGameLooks(ushort heading, float expectedX, float expectedY)
+    {
+        Vector3 leader = new(1000, 1000, 0);
+        double facing = GroupFormation.FacingFromHeading(heading);
+        Vector3 ahead = GroupFormation.Place(leader, facing, new GroupFormation.Slot(100, 0));
+        Vector3 behind = GroupFormation.Place(leader, facing, new GroupFormation.Slot(-100, 0));
+        Point2D gameAhead = new Point2D(1000, 1000).GetPointFromHeading(heading, 100);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ahead.X, Is.EqualTo(expectedX).Within(0.01f));
+            Assert.That(ahead.Y, Is.EqualTo(expectedY).Within(0.01f));
+            Assert.That(ahead.X, Is.EqualTo((float)gameAhead.X).Within(1f));
+            Assert.That(ahead.Y, Is.EqualTo((float)gameAhead.Y).Within(1f));
+            Assert.That(behind.X, Is.EqualTo(2000f - expectedX).Within(0.01f));
+            Assert.That(behind.Y, Is.EqualTo(2000f - expectedY).Within(0.01f));
+            ushort back = new Point2D(1000, 1000).GetHeading((int)Math.Round(ahead.X), (int)Math.Round(ahead.Y));
+            Assert.That(Turn(back, heading), Is.LessThanOrEqualTo(1));
+        });
+    }
+
+    [Test]
+    public void PlayerHelpersStandBesideAndBehindThePlayerWhileIdle()
+    {
+        Vector3 player = new(5000, 5000, 0);
+        foreach (bool tight in new[] { false, true })
+        foreach (GroupFormation.Member member in Party)
+        {
+            GroupFormation.Slot slot = GroupFormation.ForMember(Party, member.Name, GroupFormation.Situation.Idle, tight,
+                playerLed: true);
+            Assert.That(slot.Forward, Is.LessThan(0), $"{member.Name} tight={tight}");
+
+            foreach (ushort held in new ushort[] { 0, 1024, 3000 })
+            foreach (int turn in new[] { -GroupFormation.PlayerIdleHeadingTolerance, 0, GroupFormation.PlayerIdleHeadingTolerance })
+            {
+                ushort looking = (ushort)((held + turn + 4096) % 4096);
+                Assert.That(GroupFormation.HoldHeading(held, looking, GroupFormation.PlayerIdleHeadingTolerance),
+                    Is.EqualTo(held));
+                Vector3 spot = GroupFormation.Place(player, GroupFormation.FacingFromHeading(held), slot);
+                Point2D sight = new Point2D(5000, 5000).GetPointFromHeading(looking, 100);
+                Vector2 toSpot = Vector2.Normalize(new Vector2(spot.X - player.X, spot.Y - player.Y));
+                Vector2 toSight = Vector2.Normalize(new Vector2(sight.X - player.X, sight.Y - player.Y));
+                double degrees = Math.Acos(Math.Clamp(Vector2.Dot(toSpot, toSight), -1f, 1f)) * 180d / Math.PI;
+                Assert.That(degrees, Is.GreaterThanOrEqualTo(60d),
+                    $"{member.Name} tight={tight} held={held} looking={looking}");
+            }
+        }
+
+        GroupFormation.Slot botLedTank = GroupFormation.ForMember(Party, "Aldric", GroupFormation.Situation.Idle, false);
+        Assert.That(botLedTank.Forward, Is.GreaterThan(0), "a bot-led camp huddle still puts its tank forward");
+    }
+
+    [Test]
+    public void IdleHeadingHoldsThroughSmallTurnsAndAcrossNorth()
+    {
+        const int tolerance = GroupFormation.PlayerIdleHeadingTolerance;
+        Assert.Multiple(() =>
+        {
+            Assert.That(GroupFormation.HoldHeading(1000, 1300, tolerance), Is.EqualTo((ushort)1000));
+            Assert.That(GroupFormation.HoldHeading(1000, 1600, tolerance), Is.EqualTo((ushort)1600));
+            Assert.That(GroupFormation.HoldHeading(4000, 100, tolerance), Is.EqualTo((ushort)4000));
+            Assert.That(GroupFormation.HoldHeading(4000, 700, tolerance), Is.EqualTo((ushort)700));
+            Assert.That(GroupFormation.HoldHeading(100, 4000, tolerance), Is.EqualTo((ushort)100));
+        });
     }
 
     [Test]
@@ -98,18 +169,19 @@ public class UT_GroupFormationAndCampAnchor
     [Test]
     public void OutdoorPartyStaysSpreadAndInsideGroupCohesion()
     {
+        foreach (bool playerLed in new[] { false, true })
         foreach (GroupFormation.Situation situation in Enum.GetValues<GroupFormation.Situation>())
         {
             GroupFormation.Slot[] slots = Party
-                .Select(member => GroupFormation.ForMember(Party, member.Name, situation, tight: false))
+                .Select(member => GroupFormation.ForMember(Party, member.Name, situation, false, playerLed))
                 .ToArray();
             for (int i = 0; i < slots.Length; i++)
             {
                 Assert.That(MathF.Sqrt(slots[i].Forward * slots[i].Forward + slots[i].Lateral * slots[i].Lateral),
-                    Is.LessThan(360), $"{situation} {Party[i].Name} stays near the anchor");
+                    Is.LessThan(360), $"{situation} playerLed={playerLed} {Party[i].Name} stays near the anchor");
                 for (int j = i + 1; j < slots.Length; j++)
                     Assert.That(Apart(slots[i], slots[j]), Is.GreaterThanOrEqualTo(60),
-                        $"{situation} {Party[i].Name} and {Party[j].Name}");
+                        $"{situation} playerLed={playerLed} {Party[i].Name} and {Party[j].Name}");
             }
         }
     }
@@ -214,6 +286,8 @@ public class UT_GroupFormationAndCampAnchor
             Assert.That(vendor.Activity, Is.EqualTo(eAutonomousActivity.Vendor));
         });
     }
+
+    private static int Turn(ushort a, ushort b) => Math.Abs(((a - b) % 4096 + 6144) % 4096 - 2048);
 
     private static float Apart(GroupFormation.Slot a, GroupFormation.Slot b)
     {

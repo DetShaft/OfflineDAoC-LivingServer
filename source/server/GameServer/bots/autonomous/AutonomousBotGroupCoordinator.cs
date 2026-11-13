@@ -1278,7 +1278,7 @@ public static partial class AutonomousBotGroupCoordinator
         GroupFormation.Situation situation = GroupFormation.Classify(combat, moving, pulling: false);
         double facing = situation == GroupFormation.Situation.Idle
             ? GroupFormation.StableFacing((leader ?? bot)?.Name)
-            : GroupFormation.HeadingRadians((leader ?? bot)?.Heading ?? 0);
+            : GroupFormation.FacingFromHeading((leader ?? bot)?.Heading ?? 0);
         return RoleFormationPoint(bot, center, tight, situation, facing);
     }
 

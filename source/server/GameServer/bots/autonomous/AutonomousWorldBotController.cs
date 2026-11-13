@@ -1805,7 +1805,7 @@ namespace DOL.GS
             GroupFormation.Situation situation = GroupFormation.Classify(combat, moving, pulling);
             double facing = situation == GroupFormation.Situation.Idle
                 ? GroupFormation.StableFacing(leader.Name)
-                : GroupFormation.HeadingRadians(leader.Heading);
+                : GroupFormation.FacingFromHeading(leader.Heading);
             // Aim around where the leader is about to be, not where it was
             // (smooth group travel from the stefanrows/OfflineDAoC fork).
             Vector3 formationCenter = leader.IsMoving && !tight ? AutonomousGroupMotion.PredictLeader(leader) : new(leader.X, leader.Y, leader.Z);

@@ -10,10 +10,18 @@ namespace DOL.GS
     /// Tanks take the front, ranged stand behind that line, and casters and
     /// healers stand further back. The shape changes with what the group is
     /// doing, and peers in the same lane get distinct side offsets so they
-    /// cannot occupy one point.
+    /// cannot occupy one point. A player's own helpers do not use the forward
+    /// idle huddle; they stand beside and behind the player instead.
     /// </summary>
     public static class GroupFormation
     {
+        /// <summary>
+        /// How far a player may turn before idle helpers re-form around the new
+        /// facing. With the player-led idle shape no helper comes within 60
+        /// degrees of the player's line of sight inside this tolerance.
+        /// </summary>
+        public const int PlayerIdleHeadingTolerance = 512;
+
         public enum Situation
         {
             Moving,
@@ -55,7 +63,8 @@ namespace DOL.GS
             return Lane.Flank;
         }
 
-        public static Slot ForMember(IReadOnlyList<Member> party, string name, Situation situation, bool tight)
+        public static Slot ForMember(IReadOnlyList<Member> party, string name, Situation situation, bool tight,
+            bool playerLed = false)
         {
             Member[] members = party?
                 .Where(member => !string.IsNullOrWhiteSpace(member.Name))
@@ -64,7 +73,7 @@ namespace DOL.GS
             Member self = members.FirstOrDefault(member =>
                 string.Equals(member.Name, name, StringComparison.OrdinalIgnoreCase));
             if (string.IsNullOrWhiteSpace(self.Name))
-                return SlotFor(Lane.Flank, 0, 1, situation, tight);
+                return SlotFor(Lane.Flank, 0, 1, situation, tight, playerLed);
 
             Lane lane = LaneFor(self.Class);
             Member[] mates = members.Where(member => LaneFor(member.Class) == lane).ToArray();
@@ -72,12 +81,13 @@ namespace DOL.GS
                 string.Equals(member.Name, name, StringComparison.OrdinalIgnoreCase));
             if (index < 0)
                 index = 0;
-            return SlotFor(lane, index, Math.Max(1, mates.Length), situation, tight);
+            return SlotFor(lane, index, Math.Max(1, mates.Length), situation, tight, playerLed);
         }
 
-        public static Slot SlotFor(Lane lane, int indexInLane, int laneCount, Situation situation, bool tight)
+        public static Slot SlotFor(Lane lane, int indexInLane, int laneCount, Situation situation, bool tight,
+            bool playerLed = false)
         {
-            (int forward, int width) = Shape(lane, situation, tight);
+            (int forward, int width) = Shape(lane, situation, tight, playerLed);
             int count = Math.Max(1, laneCount);
             int index = Math.Clamp(indexInLane, 0, count - 1);
             return new Slot(forward, LateralOffset(index, count, width));
@@ -90,9 +100,31 @@ namespace DOL.GS
             return (hash % 360) * (Math.PI / 180d);
         }
 
-        public static double HeadingRadians(ushort heading) => heading * Math.PI * 2d / 4096d;
+        /// <summary>
+        /// The facing angle Place expects for a game heading. Heading 0 faces +Y
+        /// and heading 1024 faces -X, the same way Point2D.GetPointFromHeading
+        /// and NPC movement read a heading.
+        /// </summary>
+        public static double FacingFromHeading(ushort heading)
+        {
+            double angle = heading * Point2D.HEADING_TO_RADIAN;
+            return Math.Atan2(Math.Cos(angle), -Math.Sin(angle));
+        }
 
-        /// <summary>Positive forward follows the facing. Positive lateral is to its left.</summary>
+        /// <summary>
+        /// Keeps the held heading until the current one turns further than the
+        /// tolerance, so a player looking around does not reshuffle the helpers.
+        /// </summary>
+        public static ushort HoldHeading(ushort held, ushort current, int tolerance)
+        {
+            int turn = Math.Abs(((current - held) % 4096 + 6144) % 4096 - 2048);
+            return turn <= tolerance ? held : current;
+        }
+
+        /// <summary>
+        /// Positive forward follows the facing. Lateral is a quarter turn from it;
+        /// lanes are centred on zero, so the side does not change the shape.
+        /// </summary>
         public static Vector3 Place(Vector3 center, double facingRadians, Slot slot)
         {
             double fx = Math.Cos(facingRadians);
@@ -122,9 +154,32 @@ namespace DOL.GS
             return (int)Math.Round(-width / 2d + width * (double)index / (count - 1));
         }
 
-        private static (int Forward, int Width) Shape(Lane lane, Situation situation, bool tight)
+        private static (int Forward, int Width) Shape(Lane lane, Situation situation, bool tight, bool playerLed)
         {
-            (int forward, int width) = (situation, lane) switch
+            (int forward, int width) = playerLed && situation == Situation.Idle
+                ? PlayerIdleShape(lane)
+                : BaseShape(lane, situation);
+            if (!tight)
+                return (forward, width);
+
+            int scaledForward = (int)Math.Round(forward * 0.42);
+            if (scaledForward == 0 && forward != 0)
+                scaledForward = forward > 0 ? 24 : -24;
+            int scaledWidth = Math.Min(70, Math.Max(width <= 0 ? 0 : 36, (int)Math.Round(width * 0.35)));
+            return (scaledForward, scaledWidth);
+        }
+
+        private static (int Forward, int Width) PlayerIdleShape(Lane lane) => lane switch
+        {
+            Lane.Front => (-60, 220),
+            Lane.Flank => (-130, 300),
+            Lane.Ranged => (-190, 140),
+            Lane.Back => (-250, 240),
+            _ => (-130, 160),
+        };
+
+        private static (int Forward, int Width) BaseShape(Lane lane, Situation situation) =>
+            (situation, lane) switch
             {
                 (Situation.Moving, Lane.Front) => (-90, 110),
                 (Situation.Moving, Lane.Flank) => (-160, 150),
@@ -148,15 +203,6 @@ namespace DOL.GS
 
                 _ => (80, 80),
             };
-            if (!tight)
-                return (forward, width);
-
-            int scaledForward = (int)Math.Round(forward * 0.42);
-            if (scaledForward == 0 && forward != 0)
-                scaledForward = forward > 0 ? 24 : -24;
-            int scaledWidth = Math.Min(70, Math.Max(width <= 0 ? 0 : 36, (int)Math.Round(width * 0.35)));
-            return (scaledForward, scaledWidth);
-        }
     }
 
     /// <summary>
