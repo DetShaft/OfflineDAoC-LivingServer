@@ -92,6 +92,7 @@ func _layout() -> void:
 
 func set_bank(b: int) -> void:
 	PlayerData.quickbar_bank[bar] = posmod(b, PlayerData.BANKS)
+	PlayerData.note_quickbar_edit()
 	PlayerData.save_character()
 	_refresh()
 
@@ -264,6 +265,8 @@ class QuickSlot extends Control:
 		var e: Dictionary = data.get("entry", {}) if data.kind == "quickslot" else \
 				{"kind": data.kind, "id": data.get("id", ""), "icon": data.get("icon", -1), "name": data.get("name", ""),
 				"border": data.get("border", -1)}
+		if Server.active:
+			e = Server.stamp_quickbar(e)
 		var old := entry()
 		_assign(e)
 		# what was in the slot goes onto the mouse pointer, as the old client did (owner 2026-10-14: a replaced spell
@@ -295,5 +298,6 @@ class QuickSlot extends Control:
 
 	func _assign(e: Dictionary) -> void:
 		PlayerData.quickbars[bar][PlayerData.quickbar_bank[bar]][slot] = e
+		PlayerData.note_quickbar_edit()
 		PlayerData.save_character()
 		refresh()
