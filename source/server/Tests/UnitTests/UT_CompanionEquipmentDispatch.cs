@@ -247,4 +247,59 @@ public class UT_CompanionEquipmentDispatch
             eObjectType.Instrument, eInventorySlot.TwoHandWeapon, type);
         Assert.That(bot.Inventory.GetItem(eInventorySlot.TwoHandWeapon).Model, Is.EqualTo(BotStarterInstruments.ModelFor(type)));
     }
+
+    [Test]
+    public void OccupiedJewelrySlotsAreReplacedSoTheNeckCanTakeANewPiece()
+    {
+        // Issue #53: SetJewelryROG logged "Destination slot is not empty (29)" and
+        // left the old neck piece in place, on the starter kit and on each re-gear.
+        var bot = Make(eRealm.Albion, eCharacterClass.Minstrel, 5, true);
+        var weapon = GameInventoryItem.Create(new DbItemTemplate
+        {
+            Id_nb = "kept-weapon", Name = "kept weapon", MaxCount = 1,
+            Object_Type = (int)eObjectType.SlashingWeapon, Item_Type = (int)eInventorySlot.RightHandWeapon
+        });
+        Assert.That(bot.Inventory.AddItem(eInventorySlot.RightHandWeapon, weapon), Is.True);
+
+        eInventorySlot[] jewelry = new[]
+        {
+            eInventorySlot.Jewelry, eInventorySlot.Cloak, eInventorySlot.Neck, eInventorySlot.Waist,
+            eInventorySlot.LeftBracer, eInventorySlot.RightBracer, eInventorySlot.LeftRing, eInventorySlot.RightRing
+        };
+        var worn = new Dictionary<eInventorySlot, DbInventoryItem>();
+        foreach (eInventorySlot slot in jewelry)
+        {
+            var old = GameInventoryItem.Create(new DbItemTemplate
+            {
+                Id_nb = "worn-" + (int)slot, Name = "worn " + slot, MaxCount = 1, Level = 1,
+                Object_Type = (int)eObjectType.Magical, Item_Type = (int)slot
+            });
+            Assert.That(bot.Inventory.AddItem(slot, old), Is.True, slot.ToString());
+            worn[slot] = old;
+        }
+
+        BotEquipment.SetJewelryROG(bot, bot.Realm, eCharacterClass.Minstrel, bot.Level, eObjectType.Magical);
+
+        Assert.That(bot.Inventory.GetItem(eInventorySlot.RightHandWeapon), Is.SameAs(weapon));
+        foreach (eInventorySlot slot in jewelry)
+        {
+            DbInventoryItem item = bot.Inventory.GetItem(slot);
+            Assert.That(item, Is.Not.Null, slot.ToString());
+            Assert.That(item, Is.Not.SameAs(worn[slot]), slot.ToString());
+            Assert.That(item.Object_Type, Is.EqualTo((int)eObjectType.Magical), slot.ToString());
+            Assert.That(item.Level, Is.EqualTo(5), slot.ToString());
+            Assert.That(bot.Inventory.AllItems.Count(piece => piece == worn[slot]), Is.EqualTo(0), slot.ToString());
+        }
+
+        bot.Level = 9;
+        BotEquipment.SetJewelryROG(bot, bot.Realm, eCharacterClass.Minstrel, bot.Level, eObjectType.Magical);
+        foreach (eInventorySlot slot in jewelry)
+        {
+            DbInventoryItem item = bot.Inventory.GetItem(slot);
+            Assert.That(item, Is.Not.Null, "re-gear " + slot);
+            Assert.That(item.Level, Is.EqualTo(9), "re-gear " + slot);
+            Assert.That(item.Object_Type, Is.EqualTo((int)eObjectType.Magical), "re-gear " + slot);
+        }
+        Assert.That(bot.Inventory.GetItem(eInventorySlot.RightHandWeapon), Is.SameAs(weapon));
+    }
 }

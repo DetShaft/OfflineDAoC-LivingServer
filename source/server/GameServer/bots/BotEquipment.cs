@@ -163,6 +163,10 @@ namespace DOL.GS
                 eInventorySlot slot = (eInventorySlot)i;
                 if (!ShouldEquipRegularSlot(living as IGamePlayer))
                     continue;
+                // AddItem rejects an occupied slot, so a re-gear kept the old neck piece (slot 29, issue #53).
+                DbInventoryItem occupying = living.Inventory.GetItem(slot);
+                if (occupying != null)
+                    living.Inventory.RemoveItem(occupying);
                 DbItemTemplate itemToCreate = living is GameBot { IsEndgameCompanion: true }
                     ? CreateCompanionItem(realm, charClass, level, objectType, slot)
                     : new GeneratedUniqueItem(false, realm, charClass, level, objectType, slot);
