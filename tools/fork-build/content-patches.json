@@ -592,5 +592,13 @@
     "Size": 12175,
     "File": "content/godot/game/ui/quickbar.gd",
     "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/panel_sheets.gd",
+    "Released": "83ccc3ed912ee94c0d3d4f640e2336aadf4ed4b0162ac9422935e231edf4afbd",
+    "Fixed": "830cbd6b51d4d0e7143d753a7d86fb49e0f51053b4e4c86b1bd0a8c5f80fb177",
+    "Size": 19512,
+    "File": "content/godot/game/ui/panel_sheets.gd",
+    "ReplaceAny": true
   }
 ]
