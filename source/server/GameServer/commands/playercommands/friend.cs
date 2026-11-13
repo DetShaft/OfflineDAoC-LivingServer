@@ -24,7 +24,8 @@ namespace DOL.GS.Commands
                 client.Player.SendFriendsListSocial();
                 return;
             }
-            // Fork: the Friends window's ADD TARGET button. A friend really named Target is still removed by typing it.
+            // Fork: ADD TARGET. The new client's button sends this command, and typing it on either client does too.
+            // A friend really named Target is still removed by typing the name.
             else if (args.Length == 2 && args[1].Equals("target", StringComparison.OrdinalIgnoreCase) &&
                      !IsNameInFriendsList(args[1], client, StringComparer.OrdinalIgnoreCase))
             {
