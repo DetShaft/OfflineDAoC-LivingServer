@@ -163,6 +163,7 @@ public static class PlayerStaticParty
             }
 
             // 1.1.14: a friend on the way counts as invited; it joins on arrival (BotFriendTravel).
+            // #55: a bot the find-group window is offering takes the same trip.
             if (BotFriendTravel.IsOnTheWay(bot, player))
                 continue;
             if (BotFriendTravel.Travels(player, bot))

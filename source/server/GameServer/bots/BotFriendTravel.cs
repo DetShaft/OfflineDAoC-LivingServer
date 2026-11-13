@@ -9,19 +9,25 @@ namespace DOL.GS;
 
 /// <summary>
 /// A friend comes to you (Beta 1.1.14, the owner's request: "inviting friends that aren't in the same area as you will have them
-/// move to your location to join your group after a delay").
-/// - Only an autonomous gamebot on the player's friends list (/friend) does this. Anyone else invited from too far away still
-///   answers "meet up first", as before (BotGroupInvite.CloseEnoughToInviteByName).
+/// move to your location to join your group after a delay"). Issue #55: a bot the find-group window is offering does this too.
+/// The window's invite is the same /invite, so the trip starts from the bot's LFG state, not from a separate button.
+/// - An autonomous gamebot does this when it is on the player's friends list (/friend), or when it is looking for a group
+///   in the player's realm and is not already in a group of its own. Looking for a group means a fresh LFG ad
+///   (<see cref="BotLfgAds"/>) or a solo waiting on matchmaking, which is the other row the find-group window lists
+///   (<see cref="LfgBrowser.ShouldListBot"/>). Anyone else invited from too far away still answers "meet up first"
+///   (BotGroupInvite.CloseEnoughToInviteByName).
 /// - The invite is checked as a normal one first (realm, leader, full group, the bot's duties). If it would be refused, it is
-///   refused now, with the same words.
-/// - The player is told the friend is on the way, and the friend says so by tell. After <see cref="TravelDelayMs"/> (30 seconds,
-///   and 30 more for each zone between them) the friend arrives beside the player and joins the group, and the player is told it
-///   arrived.
+///   refused now, with the same words. A stable-route or raid bot never starts this trip: the invite says it is busy, and the
+///   find-group window does not list it.
+/// - The player is told the bot is on the way, and the bot says so by tell. After <see cref="TravelDelayMs"/> (30 seconds,
+///   and 30 more for each zone between them) it arrives beside the player and joins the group, and the player is told it
+///   arrived. An LFG bot takes the same journey and the same arrival checks as a friend.
 /// - A friend in a group of its own turns the first invite down and asks to be asked again; an invite a minute or more later
-///   takes it out of that group (<see cref="PassesRegroup"/>). This holds for a friend nearby too.
+///   takes it out of that group (<see cref="PassesRegroup"/>). This holds for a friend nearby too. It stays friends-only:
+///   an LFG bot that is not a friend, and is already in a group of its own, is not sent on this trip.
 /// - The wait stands in for the journey, as the wait of a released groupmate in another region does
 ///   (BotGroupRelease.ReturnToLeaderDelayMilliseconds): the bot is moved, it does not walk the realm.
-/// - On arrival everything is checked again. A friend in a fight waits for it to end (up to <see cref="CombatWaits"/> more
+/// - On arrival everything is checked again. A bot in a fight waits for it to end (up to <see cref="CombatWaits"/> more
 ///   checks); one that got a duty, died, logged off or joined another player says so, and nobody is moved.
 /// </summary>
 public static class BotFriendTravel
@@ -198,9 +204,13 @@ public static class BotFriendTravel
     /// <summary>Whole seconds as the player is told them ("about 30 seconds"), at least one. Pure.</summary>
     public static int Seconds(long ms) => (int)Math.Max(1, (ms + 999) / 1000);
 
-    /// <summary>Whether an invite from too far away sends the bot on its way rather than "meet up first". Pure.</summary>
-    public static bool Travels(bool autonomous, bool helper, bool friend, bool closeEnough) =>
-        autonomous && !helper && friend && !closeEnough;
+    /// <summary>
+    /// Whether an invite from too far away sends the bot on its way rather than "meet up first". A friend does. So does a
+    /// same-realm bot that is looking for a group and is not already in a group of its own (issue #55). Pure.
+    /// </summary>
+    public static bool Travels(bool autonomous, bool helper, bool friend, bool closeEnough,
+        bool lfg = false, bool sameRealm = true, bool inOwnGroup = false) =>
+        autonomous && !helper && !closeEnough && (friend || (lfg && sameRealm && !inOwnGroup));
 
     /// <summary>Whether a trip started at <paramref name="startedTick"/> still holds the bot at <paramref name="now"/>. Pure.</summary>
     public static bool StillUnderway(long startedTick, long now) => now - startedTick < StaleTripMs;
@@ -277,10 +287,21 @@ public static class BotFriendTravel
         return friends?.Any(name => string.Equals(name?.Trim(), bot.Name, StringComparison.OrdinalIgnoreCase)) == true;
     }
 
-    /// <summary>Whether this invite from too far away sends the bot to the player (a friend), rather than "meet up first".</summary>
+    /// <summary>
+    /// Whether this invite from too far away sends the bot to the player (a friend, or a same-realm bot the find-group
+    /// window is offering), rather than "meet up first".
+    /// </summary>
     public static bool Travels(GamePlayer player, GameBot bot) =>
         player != null && bot != null &&
-        Travels(bot.IsAutonomousWorldBot, bot.IsTemporaryGroupHelper, IsFriend(player, bot), BotGroupInvite.CloseEnoughToInviteByName(player, bot));
+        Travels(bot.IsAutonomousWorldBot, bot.IsTemporaryGroupHelper, IsFriend(player, bot),
+            BotGroupInvite.CloseEnoughToInviteByName(player, bot), LookingForGroup(bot), player.Realm == bot.Realm, InOwnGroup(player, bot));
+
+    /// <summary>
+    /// The find-group window is offering this bot: a fresh LFG chat ad, or a solo waiting on group matchmaking.
+    /// Realm and "already in a group" are checked by the pure <c>Travels</c> rule.
+    /// </summary>
+    public static bool LookingForGroup(GameBot bot) =>
+        bot != null && (BotLfgAds.IsAdvertising(bot) || AutonomousObjectiveAssignments.IsAwaitingGroupMatchmaking(bot));
 
     /// <summary>Whether the bot is on its way to this player now.</summary>
     public static bool IsOnTheWay(GameBot bot, GamePlayer player = null) =>

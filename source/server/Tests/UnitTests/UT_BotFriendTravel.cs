@@ -6,8 +6,9 @@ namespace DOL.GS.Tests;
 
 /// <summary>
 /// 1.1.14, friends come to you (BotFriendTravel): a bot friend invited from too far away sets out, says so, and joins on arrival.
-/// These are the pure rules; the move and the group join use the same calls as a released groupmate joining its leader. Tests
-/// only: nothing here was seen on the owner's PC yet.
+/// Issue #55: a same-realm bot the find-group window is offering takes that same trip. These are the pure rules; the move
+/// and the group join use the same calls as a released groupmate joining its leader. Tests only: nothing here was seen on
+/// the owner's PC yet.
 /// </summary>
 [TestFixture]
 public class UT_BotFriendTravel
@@ -23,6 +24,28 @@ public class UT_BotFriendTravel
         // A companion bot or a temporary helper is never sent across the realm by this.
         Assert.That(BotFriendTravel.Travels(false, false, true, false), Is.False);
         Assert.That(BotFriendTravel.Travels(true, true, true, false), Is.False);
+    }
+
+    [Test]
+    public void AnLfgBotTooFarAwayTravelsWithoutBeingAFriend()
+    {
+        // Issue #55: the find-group window's invite is /invite. A same-realm bot that is looking for a group
+        // comes to the player. It does not also have to be on the friends list. The journey is the friend's
+        // (TravelDelayMs): 30 seconds, and 30 more per zone.
+        Assert.That(BotFriendTravel.Travels(autonomous: true, helper: false, friend: false, closeEnough: false, lfg: true), Is.True);
+        // Close enough: the ordinary invite. It walks over, it is not sent on the timed trip.
+        Assert.That(BotFriendTravel.Travels(true, false, false, true, lfg: true), Is.False);
+        // Not looking for a group, and not a friend: still "meet up first".
+        Assert.That(BotFriendTravel.Travels(true, false, false, false, lfg: false), Is.False);
+        // Another realm's LFG ad does not cross over. A friend still does (the invite itself refuses the realm).
+        Assert.That(BotFriendTravel.Travels(true, false, false, false, lfg: true, sameRealm: false), Is.False);
+        Assert.That(BotFriendTravel.Travels(true, false, true, false, lfg: false, sameRealm: false), Is.True);
+        // Already in a group of its own: the regroup rule stays friends-only, and this trip does not pull an LFG bot out.
+        Assert.That(BotFriendTravel.Travels(true, false, false, false, lfg: true, sameRealm: true, inOwnGroup: true), Is.False);
+        Assert.That(BotFriendTravel.Travels(true, false, true, false, lfg: false, inOwnGroup: true), Is.True);
+        // A companion or a helper never crosses the realm this way, even while advertising.
+        Assert.That(BotFriendTravel.Travels(false, false, false, false, lfg: true), Is.False);
+        Assert.That(BotFriendTravel.Travels(true, true, false, false, lfg: true), Is.False);
     }
 
     [Test]
