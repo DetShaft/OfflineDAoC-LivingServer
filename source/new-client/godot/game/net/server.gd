@@ -496,6 +496,10 @@ func enter_world(c: Dictionary) -> void:
 	weapon_stats = {}
 	skills = []
 	spell_lines = []
+	_skills_ready = false                             # the next character's lists are not in yet: don't rebind against these
+	_lines_ready = false
+	_inv_equip = false
+	_inv_pack = false
 	quests = {}
 	_entering = true
 	playing = false
@@ -715,6 +719,7 @@ func _on_world_inner(kind: String, d: Dictionary) -> void:
 					PlayerData.message.emit("Flying: Space up, Ctrl down, Shift faster.", "system")
 			return
 		"quit":
+			PlayerData.save_character()                   # edits during the countdown are the last ones
 			playing = false
 			if int(d.mode) == 1:
 				get_tree().quit()
@@ -814,6 +819,8 @@ var _quit_asked_at := -1000000
 
 
 func quit_world(exit: bool) -> void:
+	if playing:
+		PlayerData.save_character()                    # the bars live on this PC; write them before the server's countdown
 	if not playing or client == null:
 		if exit:
 			get_tree().quit()
@@ -842,6 +849,7 @@ func _notification(what: int) -> void:
 		return
 	_closes = _closes + 1 if Time.get_ticks_msec() - _quit_asked_at < 15000 else 1
 	if _closes >= FORCE_CLOSES:
+		PlayerData.save_character()
 		get_tree().quit()
 		return
 	PlayerData.message.emit("Logging out: sit still while the server saves your character - the game closes by itself. "
@@ -879,6 +887,10 @@ signal trainer_changed
 var disabled := {}                       # quickbar id ("srv:skill:<n>" / "srv:spell:<line>:<level>") -> ready at (ms)
 var spell_lines: Array = []              # VariousUpdate 2: [{name, spells: [{level, id, icon, name, kind}]}]
 var _lines_building: Array = []
+var _skills_ready := false               # the usable-skill list has finished arriving (empty still counts as finished)
+var _lines_ready := false                # the spell-line footer has arrived (an empty list is still a finished list)
+var _inv_equip := false                  # the login's equipment list (window 1) has arrived
+var _inv_pack := false                   # ...and the backpack list (window 2): together they are the whole inventory
 var _skill_icons := {}                   # content/rules/skill_icons.json (pipeline/build_skill_icons.py)
 var _model_icons := {}                   # content/items/model_icons.json (pipeline/build_model_icons.py)
 signal skills_changed
@@ -887,42 +899,376 @@ signal skills_changed
 func on_skills(d: Dictionary) -> void:
 	if int(d.first) == 0:
 		skills = []
+		_skills_ready = false
 	skills.append_array(d.list)
 	if not bool(d.more):
+		_skills_ready = true
 		_refresh_bar_icons()
 		_forget_details("sk:")
 		skills_changed.emit()
 
 
-## Abilities, styles and hybrid spells already on your quickbars take their icons again from the list (a bar saved
-## before 2026-10-13 held an ability's raw icons.csv number - another picture).
+## Quickbar buttons remember who they are, then the live lists say where that is now.
+## A bar used to store only a position: "srv:skill:<n>" (the nth skill after the specs), "srv:spell:<line>:<level>"
+## or "srv:<slot>". A new ability, a respec or an item moving into that slot made the same id a different button,
+## and only skill icons were painted again - so the picture, the name and the click could be three different things
+## (issue 54). Each entry also keeps a "bind": a skill's page and internal id (its name, for a bar saved before
+## this), a list spell's internal id, or an item's model and name. The position is filled in again when the list
+## arrives. Trainer shots still call _refresh_bar_icons.
 func _refresh_bar_icons() -> void:
+	if not skills.is_empty():
+		_skills_ready = true                           # a probe that fills `skills` itself and then repaints
+	rebind_quickbars()
+
+
+## The bars on screen belong to the character whose sheet is loaded. Skill packets arrive before the zone does,
+## while the sheet can still be the previous character: those must not rewrite that character's bars.
+func _quickbars_belong_here() -> bool:
+	var mine := String(PlayerData.character.get("name", ""))
+	if mine == "":
+		return false
+	if selected.is_empty():
+		return true
+	return mine.to_lower() == String(selected.get("name", "")).to_lower()
+
+
+func _first_nonspec() -> int:
 	var first := 0
-	while first < skills.size() and int(skills[first].page) == 0:
+	while first < skills.size() and int(skills[first].get("page", 0)) == 0:
 		first += 1
+	return first
+
+
+## Where "srv:skill:<n>" sits in `skills`, or -1.
+func _nonspec_at(n: int) -> int:
+	var at := _first_nonspec() + n
+	if n < 0 or at >= skills.size() or int(skills[at].get("page", 0)) == 0:
+		return -1
+	return at
+
+
+func rebind_quickbars() -> void:
+	if not _quickbars_belong_here():
+		return
+	var moves := {}
 	for bar in PlayerData.quickbars:
+		if not (bar is Array):
+			continue
 		for bank in bar:
-			for e in bank:
-				if not (e is Dictionary) or not String(e.get("id", "")).begins_with("srv:skill:"):
+			if not (bank is Array):
+				continue
+			for s in bank.size():
+				var e = bank[s]
+				if not (e is Dictionary) or (e as Dictionary).is_empty():
 					continue
-				var i := first + int(String(e.id).get_slice(":", 2))
-				if i >= skills.size():
+				var next := _resolve_quickbar(e)
+				if next.is_empty():
 					continue
-				var page := int(skills[i].page)
-				var ic := skill_icon("icon" if page in [1, 5, 6] else ("style" if page == 2 else "spell"), int(skills[i].icon))
-				e["icon"] = int(ic[0])
-				e["border"] = int(ic[1])
+				var old_id := String(e.get("id", ""))
+				if bool(next.get("clear", false)):
+					bank[s] = {}
+					if old_id.begins_with("srv:"):
+						moves[old_id] = ""
+					continue
+				var new_id := String(next.get("id", old_id))
+				if old_id != new_id and old_id.begins_with("srv:"):
+					moves[old_id] = new_id
+				for key in ["kind", "id", "icon", "border", "name", "bind"]:
+					if next.has(key):
+						e[key] = next[key]
+	_retarget_cooldowns(moves)
+
+
+## A cooldown was stored under the old position. Follow the button to its new one.
+func _retarget_cooldowns(moves: Dictionary) -> void:
+	if moves.is_empty() or disabled.is_empty():
+		return
+	var taken := {}
+	for id in moves:
+		taken[String(moves[id])] = true
+	var next := {}
+	for id in disabled:
+		if moves.has(id):
+			var to := String(moves[id])
+			if to == "":
+				continue
+			var at := int(disabled[id])
+			if not next.has(to) or int(next[to]) < at:
+				next[to] = at
+		elif not taken.has(String(id)):
+			next[id] = disabled[id]                   # a timer whose button did not move, and whose slot nobody took
+	disabled = next
+
+
+## What a quickbar id asks the server to do: "skill", "spell", "item", or "" when it is not one of those.
+func entry_action(id: String) -> String:
+	var parts := id.split(":")
+	if parts.size() < 2 or parts[0] != "srv":
+		return ""
+	if parts.size() >= 3 and parts[1] == "skill" and parts[2].is_valid_int():
+		return "skill"
+	if parts.size() >= 4 and parts[1] == "spell" and parts[2].is_valid_int() and parts[3].is_valid_int():
+		return "spell"
+	if parts.size() == 2 and parts[1].is_valid_int():
+		return "item"
+	return ""
+
+
+## Record who a button is, at the moment it is dragged on. A position is only trusted when the skill or item
+## sitting there still has this button's name - a stale index must not be written down as the identity.
+func stamp_quickbar(e: Dictionary) -> Dictionary:
+	if e.is_empty() or e.get("bind") is Dictionary:
+		return e
+	var id := String(e.get("id", ""))
+	var nm := String(e.get("name", ""))
+	if id.begins_with("srv:skill:"):
+		var at := _nonspec_at(int(id.get_slice(":", 2)))
+		if at < 0:
+			return e
+		var sk: Dictionary = skills[at]
+		if nm != "" and String(sk.get("name", "")) != nm:
+			return e
+		e = e.duplicate(true)
+		e["bind"] = _skill_bind(sk)
+		return e
+	if id.begins_with("srv:spell:"):
+		var parts := id.split(":")
+		if parts.size() < 4 or not _lines_ready:
+			return e
+		var li := int(parts[2])
+		if li < 0 or li >= spell_lines.size():
+			return e
+		for sp in spell_lines[li].get("spells", []):
+			if int(sp.get("level", -1)) != int(parts[3]):
+				continue
+			if nm != "" and String(sp.get("name", "")) != nm:
+				return e
+			e = e.duplicate(true)
+			var b := {"t": "spell"}
+			if sp.has("id"):
+				b["id"] = int(sp.id)
+			e["bind"] = b
+			return e
+		return e
+	if String(e.get("kind", "")) == "item" and entry_action(id) == "item" and inv.has(int(id.get_slice(":", 1))):
+		var it := ItemDb.item(String(inv[int(id.get_slice(":", 1))].get("id", "")))
+		if it.is_empty() or (nm != "" and String(it.get("name", "")) != nm):
+			return e
+		e = e.duplicate(true)
+		e["bind"] = {"t": "item", "model": int(it.get("model", 0)), "name": String(it.get("name", nm))}
+		return e
+	return e
+
+
+func _resolve_quickbar(e: Dictionary) -> Dictionary:
+	var id := String(e.get("id", ""))
+	var kind := String(e.get("kind", ""))
+	if kind in ["macro", "petcmd"]:
+		return {}
+	var bind: Dictionary = e.get("bind", {}) if e.get("bind") is Dictionary else {}
+	var t := String(bind.get("t", ""))
+	if t == "skill" or id.begins_with("srv:skill:"):
+		return _resolve_skill(e)
+	if t == "spell" or id.begins_with("srv:spell:"):
+		return _resolve_spell(e)
+	if t == "item" or kind == "item" or entry_action(id) == "item":
+		return _resolve_item(e)
+	return {}
+
+
+func _pages_for(kind: String) -> Array:
+	match kind:
+		"style":
+			return [2]
+		"spell":
+			return [3, 4]
+		"ability":
+			return [1, 5, 6]
+	return []
+
+
+func _skill_bind(sk: Dictionary) -> Dictionary:
+	var b := {"t": "skill", "page": int(sk.get("page", 0))}
+	if sk.has("id"):
+		b["id"] = int(sk.id)
+	return b
+
+
+func _resolve_skill(e: Dictionary) -> Dictionary:
+	if not _skills_ready:
+		return {}                                          # the list is not in yet: keep the saved button
+	var bind: Dictionary = e.get("bind", {}) if e.get("bind") is Dictionary else {}
+	var nm := String(e.get("name", ""))
+	var found := -1
+	if String(bind.get("t", "")) == "skill" and bind.has("id"):
+		var page := int(bind.get("page", -1))
+		var sid := int(bind.id)
+		for i in skills.size():
+			var sk: Dictionary = skills[i]
+			if int(sk.get("page", 0)) == 0:
+				continue
+			if int(sk.get("id", -1)) == sid and (page < 0 or int(sk.get("page", 0)) == page):
+				found = i
+				break
+	if found < 0 and nm != "":
+		found = _skill_by_name(nm, String(e.get("kind", "")), e)
+	if found < 0:
+		if nm == "" and not (bind.has("id") and String(bind.get("t", "")) == "skill"):
+			return {}
+		return {"clear": true}                            # the list is here and this skill is not on it
+	return _skill_entry(e, found)
+
+
+func _skill_by_name(nm: String, kind: String, e: Dictionary) -> int:
+	var pages := _pages_for(kind)
+	var saved := -1
+	var id := String(e.get("id", ""))
+	if id.begins_with("srv:skill:"):
+		saved = _nonspec_at(int(id.get_slice(":", 2)))
+	var fallback := -1
+	for i in skills.size():
+		var sk: Dictionary = skills[i]
+		if int(sk.get("page", 0)) == 0 or String(sk.get("name", "")) != nm:
+			continue
+		if not pages.is_empty() and int(sk.get("page", 0)) not in pages:
+			continue
+		if i == saved:
+			return i
+		if fallback < 0:
+			fallback = i
+	return fallback
+
+
+func _skill_entry(e: Dictionary, at: int) -> Dictionary:
+	var sk: Dictionary = skills[at]
+	var page := int(sk.get("page", 0))
+	var n := at - _first_nonspec()
+	var ic: Array = skill_icon("icon" if page in [1, 5, 6] else ("style" if page == 2 else "spell"), int(sk.get("icon", 0)))
+	return {"kind": String(e.get("kind", "ability")), "id": "srv:skill:%d" % n, "icon": int(ic[0]), "border": int(ic[1]),
+			"name": String(sk.get("name", "")), "bind": _skill_bind(sk)}
+
+
+func _resolve_spell(e: Dictionary) -> Dictionary:
+	if not _lines_ready:
+		return {}
+	var bind: Dictionary = e.get("bind", {}) if e.get("bind") is Dictionary else {}
+	var nm := String(e.get("name", ""))
+	var want := -1
+	if bind.has("id") and String(bind.get("t", "")) == "spell":
+		want = int(bind.id)
+	var saved_line := -1
+	var saved_level := -1
+	var parts := String(e.get("id", "")).split(":")
+	if parts.size() >= 4 and parts[0] == "srv" and parts[1] == "spell":
+		saved_line = int(parts[2])
+		saved_level = int(parts[3])
+	var hit := {}
+	var fallback := {}
+	for li in spell_lines.size():
+		for sp in spell_lines[li].get("spells", []):
+			var by_id := want >= 0 and int(sp.get("id", -2)) == want
+			var by_name := nm != "" and String(sp.get("name", "")) == nm
+			if not by_id and not by_name:
+				continue
+			if by_id or (li == saved_line and int(sp.get("level", -1)) == saved_level):
+				hit = {"li": li, "sp": sp}
+				break
+			if fallback.is_empty():
+				fallback = {"li": li, "sp": sp}
+		if not hit.is_empty():
+			break
+	if hit.is_empty():
+		hit = fallback
+	if hit.is_empty():
+		if nm == "" and want < 0:
+			return {}
+		return {"clear": true}
+	var sp: Dictionary = hit.sp
+	var skind := String(sp.get("kind", "spell"))
+	var ic: Array = skill_icon("style" if skind == "style" else "spell", int(sp.get("icon", 0)))
+	var b := {"t": "spell"}
+	if sp.has("id"):
+		b["id"] = int(sp.id)
+	return {"kind": String(e.get("kind", "style" if skind == "style" else "spell")),
+			"id": "srv:spell:%d:%d" % [int(hit.li), int(sp.get("level", 0))], "icon": int(ic[0]), "border": int(ic[1]),
+			"name": String(sp.get("name", nm)), "bind": b}
+
+
+func _items_known() -> bool:
+	return _inv_equip and _inv_pack
+
+
+func _resolve_item(e: Dictionary) -> Dictionary:
+	var bind: Dictionary = e.get("bind", {}) if e.get("bind") is Dictionary else {}
+	var nm := String(e.get("name", ""))
+	var has_model := false
+	var model := 0
+	if String(bind.get("t", "")) == "item":
+		nm = String(bind.get("name", nm))
+		if bind.has("model"):
+			has_model = true
+			model = int(bind.model)
+	if nm == "" and not has_model:
+		return {}
+	var saved := -1
+	var id := String(e.get("id", ""))
+	if entry_action(id) == "item":
+		saved = int(id.get_slice(":", 1))
+	var found := -1
+	if saved >= 0 and saved < 110 and _item_matches(saved, has_model, model, nm):
+		found = saved
+	else:
+		var best := 99
+		for slot in inv.keys():
+			var s := int(slot)
+			if s >= 110 or not _item_matches(s, has_model, model, nm):
+				continue                                   # a vault or chest slot is not the button's item
+			var rank := 0 if s >= 40 and s <= 79 else 1
+			if found < 0 or rank < best:
+				found = s
+				best = rank
+	if found < 0:
+		if not _items_known() or id == "srv:none":
+			return {}                                  # a partial inventory must not blank a button
+		var b := {"t": "item", "name": nm}
+		if has_model:
+			b["model"] = model
+		return {"kind": "item", "id": "srv:none", "icon": int(e.get("icon", -1)), "border": int(e.get("border", -1)),
+				"name": nm, "bind": b}
+	var it := ItemDb.item(String(inv[found].get("id", "")))
+	var icon := int(it.get("icon", 0))
+	if icon <= 0:
+		icon = item_icon(int(it.get("model", 0)))
+	return {"kind": "item", "id": "srv:%d" % found, "icon": icon, "border": int(e.get("border", -1)),
+			"name": String(it.get("name", nm)),
+			"bind": {"t": "item", "model": int(it.get("model", 0)), "name": String(it.get("name", nm))}}
+
+
+func _item_matches(slot: int, has_model: bool, model: int, nm: String) -> bool:
+	if not inv.has(slot):
+		return false
+	var it := ItemDb.item(String(inv[slot].get("id", "")))
+	if it.is_empty():
+		return false
+	if has_model and int(it.get("model", -1)) != model:
+		return false
+	if nm != "" and String(it.get("name", "")) != nm:
+		return false
+	return nm != "" or has_model
 
 
 func on_spell_line(d: Dictionary) -> void:
 	if bool(d.done):
 		spell_lines = _lines_building
 		_lines_building = []
+		_lines_ready = true
+		rebind_quickbars()
 		_forget_details("sk:")
 		skills_changed.emit()
 		return
 	if int(d.line) == 0:
 		_lines_building = []
+		_lines_ready = false
 	_lines_building.append({"name": String(d.get("name", "")), "spells": d.get("spells", [])})
 
 
@@ -1197,20 +1543,19 @@ func reuse_left(id: String) -> float:
 ## A quickbar / sheet entry used: "srv:skill:<n>" (n = place among the non-spec skills) -> UseSkill,
 ## "srv:spell:<line>:<level>" -> UseSpell, "srv:<slot>" (an item) -> UseSlot.
 func use_entry(id: String, player: Node3D, zone_id: int, target_in_view: bool) -> bool:
-	if client == null or not id.begins_with("srv:"):
-		return false
+	var action := entry_action(id)
+	if client == null or action == "":
+		return false                                       # "srv:none": the item is gone; do not use whatever sits in the old slot
 	var r := to_region(zone_id, player.global_position)
 	var heading := heading_of(fposmod(-rad_to_deg(player.facing()), 360.0))
 	var speed := Vector2(player.velocity.x, player.velocity.z).length() / 0.025
 	var parts := id.split(":")
-	if parts.size() >= 3 and parts[1] == "skill":
+	if action == "skill":
 		client.call("UseSkill", r.x, r.y, r.z, speed, heading, target_in_view, int(parts[2]), 1)
-	elif parts.size() >= 4 and parts[1] == "spell":
+	elif action == "spell":
 		client.call("UseSpell", r.x, r.y, r.z, speed, heading, target_in_view, int(parts[3]), int(parts[2]))
-	elif parts.size() == 2:
-		client.call("UseSlot", r.x, r.y, r.z, speed, heading, target_in_view, int(parts[1]), 1)
 	else:
-		return false
+		client.call("UseSlot", r.x, r.y, r.z, speed, heading, target_in_view, int(parts[1]), 1)
 	return true
 
 
@@ -1294,6 +1639,10 @@ func on_inventory(d: Dictionary) -> void:
 		_listings_packet({"items": chest}, false)
 		if mine.is_empty():
 			return
+	if int(d.window) == 1:                                # the login's full equipment list, then the backpack
+		_inv_equip = true
+	elif int(d.window) == 2:
+		_inv_pack = true
 	_on_inventory_items(d, mine)
 
 
@@ -1342,6 +1691,7 @@ func _on_inventory_items(d: Dictionary, mine: Array) -> void:
 	if set_now != weapon_set:
 		worn = true                                       # another weapon set in the hands: drawn again
 	weapon_set = set_now
+	rebind_quickbars()                                    # an item that moved keeps its button; a new item in the old slot does not
 	apply_to_player()
 	if worn:
 		gear_changed.emit()
