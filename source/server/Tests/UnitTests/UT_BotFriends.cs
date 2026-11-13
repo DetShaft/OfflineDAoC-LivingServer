@@ -336,6 +336,8 @@ namespace DOL.UnitTests
             Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [40, 41]), Is.True);                       // backpack only
             Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [(int)eInventorySlot.TorsoArmor]), Is.False);
             Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [(int)eInventorySlot.RightHandWeapon]), Is.False);
+            // The kit's SetJewelryROG replaces occupied jewelry slots (issue #53); worn jewelry means no kit.
+            Assert.That(BefriendedHelpers.NeedsStarterKitFor(origin, [(int)eInventorySlot.Neck]), Is.False);
             Assert.That(BefriendedHelpers.NeedsStarterKitFor("Entered world through staggered login queue", []), Is.False);
             Assert.That(BefriendedHelpers.NeedsStarterKitFor((string)null, []), Is.False);
         }
