@@ -1848,7 +1848,7 @@
   },
   "33": {
    "Level": 1,
-   "Name": "Dun Abermenai",
+   "Name": "Dun Killaloe",
    "Realm": 0
   },
   "35": {
@@ -2092,5 +2092,5 @@
    "Realm": 3
   }
  },
- "_source": "The default world: keep owners and levels and keep door health/state as in the original v0.32 world (the last release built before any test runs changed them); the two battleground keeps added later (Dun Abermenai, Dun Murdaigean) as shipped in 0.35. build_release_036.py resets the release world to these and verifies it."
+ "_source": "The default world: keep owners and levels and keep door health/state as in the original v0.32 world (the last release built before any test runs changed them); the two battleground keeps added later, as shipped in 0.35 (Dun Murdaigean, and the 15-19 central keep, now Dun Killaloe, then Dun Abermenai). build_release_036.py resets the release world to these and verifies realm and level, not the name. The server renames the live row at startup."
 }

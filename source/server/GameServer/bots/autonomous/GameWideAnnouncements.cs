@@ -66,7 +66,7 @@ namespace DOL.GS
                 ? $"{GlobalConstants.RealmToName(realm)}'s expedition has been driven off by {boss}!"
                 : $"{GlobalConstants.RealmToName(realm)}'s expedition has been driven out of {place} by {boss}!";
 
-        /// <summary>The line for a battleground keep siege starting ("Albion's forces have laid siege to Dun Abermenai in Abermenai!").</summary>
+        /// <summary>The line for a battleground keep siege starting ("Albion's forces have laid siege to Dun Killaloe in Killaloe!").</summary>
         public static string BattlegroundSiegeStarted(eRealm attacker, string keep, string battleground, eRealm holder) =>
             holder == eRealm.None
                 ? $"{GlobalConstants.RealmToName(attacker)}'s forces are assaulting the unclaimed {keep} in {battleground}!"

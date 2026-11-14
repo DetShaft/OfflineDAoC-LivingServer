@@ -120,10 +120,11 @@ func bind_here() -> void:
 		PlayerData.message.emit("You must wait %d seconds to bind again!" % (1 + int(every - (now - _bind_at))), "system")
 		return
 	var bind: Dictionary = PlayerData.character.get("bind", {}) if PlayerData.character.get("bind") is Dictionary else {}
-	var zname := String(npcs.zone.info.name)
+	var zname := ZoneLoader.place_name(int(npcs.zone.info.get("id", 0)), String(npcs.zone.info.name))
 	if not bind.is_empty():
 		var bz = JSON.parse_string(FileAccess.get_file_as_string("res://content/zones/zones_index.json"))
-		zname = String((bz as Dictionary).get(str(int(bind.zone)), {}).get("name", zname)) if bz is Dictionary else zname
+		var looked := String((bz as Dictionary).get(str(int(bind.zone)), {}).get("name", zname)) if bz is Dictionary else zname
+		zname = ZoneLoader.place_name(int(bind.zone), looked)
 	PlayerData.message.emit("Last Bind Point: in %s." % zname, "system")
 	var idx = JSON.parse_string(FileAccess.get_file_as_string("res://content/zones/zones_index.json"))
 	var me: Dictionary = (idx as Dictionary).get(str(int(npcs.zone.info.id)), {}) if idx is Dictionary else {}

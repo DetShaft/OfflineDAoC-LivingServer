@@ -472,7 +472,8 @@ func _inn() -> Dictionary:
 
 func _zone_name(id: int) -> String:
 	var idx = JSON.parse_string(FileAccess.get_file_as_string("res://content/zones/zones_index.json"))
-	return String((idx as Dictionary).get(str(id), {}).get("name", "")) if idx is Dictionary else ""
+	var stored := String((idx as Dictionary).get(str(id), {}).get("name", "")) if idx is Dictionary else ""
+	return ZoneLoader.place_name(id, stored)
 
 
 ## The quest the courier hands over, one per realm (registered with QuestDb each session; its state is on you).

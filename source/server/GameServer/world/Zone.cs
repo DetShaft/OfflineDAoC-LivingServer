@@ -147,7 +147,7 @@ namespace DOL.GS
                     case 250://caledonia
                     case 251://murdaigean
                     case 252://thidranki
-                    case 253://abermenai
+                    case 253://killaloe
                     case 249://darkness falls
                     case 276://marfach caverns
                     case 277://hall of the corrupt
@@ -197,7 +197,7 @@ namespace DOL.GS
                     case 250://caledonia
                     case 251://murdaigean
                     case 252://thidranki
-                    case 253://abermenai
+                    case 253://killaloe
                         return true;
                     default:
                         return false;

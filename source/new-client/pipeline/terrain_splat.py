@@ -21,9 +21,14 @@ from daoc_mpk import read_mpk
 from assets_pipeline import CLIENT
 
 
-def decode(zone_id):
-    """{(px, py): [{'tex', 'tiles', 'tileable', 'weight': 128x128 float 0..1}]} for every patch."""
-    ter = read_mpk(str(CLIENT / f'zones/zone{zone_id:03d}/ter{zone_id:03d}.mpk'))
+def decode(zone_id, ter_path=None):
+    """{(px, py): [{'tex', 'tiles', 'tileable', 'weight': 128x128 float 0..1}]} for every patch.
+
+    ter_path is the archive itself. Zone 253's build passes retail zone 237's ter237.mpk, which is not
+    under zones/zone253. Other zones keep the old lookup.
+    """
+    path = Path(ter_path) if ter_path else CLIENT / f'zones/zone{zone_id:03d}/ter{zone_id:03d}.mpk'
+    ter = read_mpk(str(path))
     layers = defaultdict(list)
     for r in list(csv.reader(io.StringIO(ter['textures.csv'].decode('latin1'))))[1:]:
         if len(r) > 10 and r[0].strip().isdigit():

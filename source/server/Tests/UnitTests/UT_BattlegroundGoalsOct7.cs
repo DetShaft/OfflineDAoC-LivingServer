@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using DOL.GS;
+using DOL.GS.DatabaseUpdate;
 using NUnit.Framework;
 using OfflineDaoc.Configuration;
 
@@ -14,11 +15,26 @@ namespace DOL.UnitTests
     [TestFixture, NonParallelizable]
     public class UT_BattlegroundGoalsOct7
     {
-        [TestCase(14, null)] [TestCase(15, "Abermenai")] [TestCase(19, "Abermenai")]
+        [TestCase(14, null)] [TestCase(15, "Killaloe")] [TestCase(19, "Killaloe")]
         [TestCase(20, "Thidranki")] [TestCase(24, "Thidranki")] [TestCase(25, "Murdaigean")] [TestCase(29, "Murdaigean")]
         [TestCase(30, "Caledonia")] [TestCase(35, "Caledonia")] [TestCase(36, null)] [TestCase(50, null)]
         public void BracketsAreByLevelOnly(int level, string expected) =>
             Assert.That(BattlegroundBrackets.ForLevel(level)?.Name, Is.EqualTo(expected));
+
+        [Test]
+        public void KillaloeRenameReplacesTheOldNameAndStops()
+        {
+            Assert.That(KillaloeBattlegroundUpdate.Rename("Abermenai"), Is.EqualTo("Killaloe"));
+            Assert.That(KillaloeBattlegroundUpdate.Rename("Dun Abermenai"), Is.EqualTo("Dun Killaloe"));
+            Assert.That(KillaloeBattlegroundUpdate.Rename("Abermenai (15-19)"), Is.EqualTo("Killaloe (15-19)"));
+            Assert.That(KillaloeBattlegroundUpdate.Rename("abermenai"), Is.EqualTo("killaloe"));
+            Assert.That(KillaloeBattlegroundUpdate.Rename("Killaloe"), Is.EqualTo("Killaloe"));
+            Assert.That(KillaloeBattlegroundUpdate.Rename("Dun Killaloe"), Is.EqualTo("Dun Killaloe"));
+            Assert.That(KillaloeBattlegroundUpdate.Rename("Thidranki"), Is.EqualTo("Thidranki"));
+            Assert.That(KillaloeBattlegroundUpdate.Rename(null), Is.Null);
+            Assert.That(BattlegroundBrackets.ForRegion(253).CentralKeep, Is.EqualTo("Dun Killaloe"));
+            Assert.That(BattlegroundBrackets.ForRegion(253).RegionId, Is.EqualTo(253));
+        }
 
         [Test]
         public void DefaultsKeepBattlegroundsOff()

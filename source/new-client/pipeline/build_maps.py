@@ -17,6 +17,7 @@ from pathlib import Path
 from PIL import Image
 from assets_pipeline import ROOT, CLIENT
 from build_zone import zone_name, zone_section
+import killaloe_terrain
 
 SRC = CLIENT / 'ui/maps'
 OUT = ROOT / 'godot/content/maps'
@@ -90,7 +91,10 @@ def main():
             placed.append({'zone': z, 'left': int(kv.get(f'zone{k}_left', 0) or 0), 'top': int(kv.get(f'zone{k}_top', 0) or 0),
                            'width': int(kv.get(f'zone{k}_width', w0) or w0), 'height': int(kv.get(f'zone{k}_height', h0) or h0)})
             if z in zones and kv.get(f'zone{k}_desc'):
-                zones[z]['desc'] = kv[f'zone{k}_desc']
+                desc = kv[f'zone{k}_desc']
+                if z == killaloe_terrain.BATTLEGROUND_ZONE:
+                    desc = desc.replace('Abermenai', killaloe_terrain.PLACE_NAME).replace('abermenai', 'killaloe')
+                zones[z]['desc'] = desc
             # the capitals' and dungeons' own regions give their map's square in zone UNITS (game.dll's map: a spot
             # minus zoneK_offsetx / _offsety, over zoneK_width / _height - then an area's rect inside that): the
             # zone map shows that square, not the whole zone (owner 2026-10-14: Jordheim's map was way off - the
@@ -104,6 +108,8 @@ def main():
         # renders in the client, not maps - left out (the city's own zone map is the real one)
         if not f or r in (10, 101, 201) or not any(p['zone'] in zones for p in placed):
             continue
+        if r == killaloe_terrain.BATTLEGROUND_ZONE:
+            label = killaloe_terrain.PLACE_NAME
         regions[r] = {'name': label or f'Region {r}', 'map': f'r{r:03d}.png', 'desc': kv.get('region_desc', ''),
                       'zones': [p for p in placed if p['zone'] in zones]}
         for p in regions[r]['zones']:

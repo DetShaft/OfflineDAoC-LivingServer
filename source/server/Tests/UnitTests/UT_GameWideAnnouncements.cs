@@ -41,10 +41,10 @@ namespace DOL.UnitTests
         [Test]
         public void BattlegroundSiegeLinesNameTheHolder()
         {
-            Assert.That(GameWideAnnouncements.BattlegroundSiegeStarted(eRealm.Albion, "Dun Abermenai", "Abermenai", eRealm.None),
-                Is.EqualTo("Albion's forces are assaulting the unclaimed Dun Abermenai in Abermenai!"));
-            Assert.That(GameWideAnnouncements.BattlegroundSiegeStarted(eRealm.Midgard, "Dun Abermenai", "Abermenai", eRealm.Hibernia),
-                Is.EqualTo("Midgard's forces have laid siege to Hibernia's Dun Abermenai in Abermenai!"));
+            Assert.That(GameWideAnnouncements.BattlegroundSiegeStarted(eRealm.Albion, "Dun Killaloe", "Killaloe", eRealm.None),
+                Is.EqualTo("Albion's forces are assaulting the unclaimed Dun Killaloe in Killaloe!"));
+            Assert.That(GameWideAnnouncements.BattlegroundSiegeStarted(eRealm.Midgard, "Dun Killaloe", "Killaloe", eRealm.Hibernia),
+                Is.EqualTo("Midgard's forces have laid siege to Hibernia's Dun Killaloe in Killaloe!"));
         }
     }
 }

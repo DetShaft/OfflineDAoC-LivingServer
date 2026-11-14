@@ -1216,15 +1216,15 @@ var _zone_names := {}
 
 func _where(c: Dictionary) -> String:
 	if String(c.get("location_text", "")) != "":         # the server's own words for where the character is
-		return String(c.location_text)
+		return ZoneLoader.place_name(0, String(c.location_text))
 	var loc = c.get("location")
 	if loc is Dictionary and loc.has("zone"):
 		if _zone_names.is_empty():
 			var ix = JSON.parse_string(FileAccess.get_file_as_string("res://content/zones/zones_index.json")) 					if FileAccess.file_exists("res://content/zones/zones_index.json") else null
 			if ix is Dictionary:
 				for k in ix:
-					_zone_names[int(k)] = String(ix[k].get("name", ""))
-		var n := String(_zone_names.get(int(loc.zone), ""))
+					_zone_names[int(k)] = ZoneLoader.place_name(int(k), String(ix[k].get("name", "")))
+		var n := ZoneLoader.place_name(int(loc.zone), String(_zone_names.get(int(loc.zone), "")))
 		if n != "":
 			return n
 	return String(CharacterStore.start_of(c).zone_name)

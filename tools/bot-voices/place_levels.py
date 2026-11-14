@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 PLACES = Path(__file__).resolve().parents[2] / 'source/server/GameServer/bots/autonomous/data/chat/places.json'
-BRACKETS = {'abermenai': (15, 19), 'thidranki': (20, 24), 'murdaigean': (25, 29), 'caledonia': (30, 35)}
+BRACKETS = {'killaloe': (15, 19), 'thidranki': (20, 24), 'murdaigean': (25, 29), 'caledonia': (30, 35)}
 
 
 def main():

@@ -500,8 +500,8 @@
   {
     "Path": "new-client/godot/game/ui/lfg_window.gd",
     "Released": "",
-    "Fixed": "0f3788155bfc335d5fd16875d1d2076e7750b7a91f9d8910a986f8a7f865bb71",
-    "Size": 13661,
+    "Fixed": "bdc2528140f4dd3424a094d87b066208f230ce497217a329f79965206546e77a",
+    "Size": 13742,
     "File": "content/godot/game/ui/lfg_window.gd",
     "Create": true
   },
@@ -607,6 +607,30 @@
     "Fixed": "f5f1e272223f38ef09c33c77d8000e369c26e4c0474a38b9c71e27d126d8755e",
     "Size": 36065,
     "File": "content/godot/game/npcs/npc_manager.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/map_window.gd",
+    "Released": "6bce74393a05f2aeeacef2269895d5f32282b1c8989232372493170dca957ae4",
+    "Fixed": "87abb8844482a29bcdf6a5ae39311bfdaa7b4e943540b3f96eb207a1bb739ed2",
+    "Size": 22712,
+    "File": "content/godot/game/ui/map_window.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/combat/combat.gd",
+    "Released": "f7cd64a35cbe43d527f3e2bac4d70e8a66209dcbb04197e891b887da80d4aa7b",
+    "Fixed": "b74e7ad207126eb83fe61a2e938bcf065889099bd89aed1b7d66b81c3a72fcfd",
+    "Size": 113226,
+    "File": "content/godot/game/combat/combat.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/zone_loader.gd",
+    "Released": "cf7fecaf8afb095621014f551558af67499a690ce2a93e01117d34de6a82fff0",
+    "Fixed": "0ada958665e5a362e6a70c0be96f03d6e71f152468eb87b18dc4d43c21ede153",
+    "Size": 36766,
+    "File": "content/godot/game/zone_loader.gd",
     "ReplaceAny": true
   }
 ]

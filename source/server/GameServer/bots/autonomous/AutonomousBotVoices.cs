@@ -131,7 +131,7 @@ public static class AutonomousBotVoices
         if (bot.CurrentZone?.IsRvR == true || bot.CurrentRegion?.IsRvR == true)
         {
             flags.Add("in_rvr");
-            // 0.36-se.4: a battleground (Abermenai, Thidranki, Murdaigean, Caledonia, Cathal Valley) or the frontier proper
+            // 0.36-se.4: a battleground (Killaloe, Thidranki, Murdaigean, Caledonia, Cathal Valley) or the frontier proper
             flags.Add(IsBattlegroundRegion(bot.CurrentRegionID) ? "in_battleground" : "in_frontier");
         }
         if (TravelingTo(bot) != null) flags.Add("traveling");
@@ -212,7 +212,7 @@ public static class AutonomousBotVoices
         bubbles is not int b || level >= 50 ? null : b < 2 ? "xp_low" : b < 8 ? "xp_mid" : "xp_high";
 
     /// <summary>The battlegrounds of this world (the Battleground table): Cathal Valley 165, Caledonia 250, Murdaigean 251,
-    /// Thidranki 252, Abermenai 253.</summary>
+    /// Thidranki 252, Killaloe 253.</summary>
     public static bool IsBattlegroundRegion(ushort regionId) => regionId is 165 or 250 or 251 or 252 or 253;
 
     /// <summary>Camelot City, Jordheim and Tir na Nog.</summary>
