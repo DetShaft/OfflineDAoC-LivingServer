@@ -80,9 +80,40 @@ public static class ReleaseFeed
         return owner + "/" + repo;
     }
 
+    /// <summary>File in runtime\updates holding the last successful /releases answer, for the changelog when offline.</summary>
+    public const string ReleaseListCacheFileName = "release-notes-cache.json";
+
     /// <summary>The newest usable release, or null with the reason. Never throws.</summary>
     public static ReleaseInfo? TryGetLatest(IReleaseWeb web, out string? problem) =>
         TryGetLatest(web, allowPrereleases: false, out problem);
+
+    /// <summary>
+    /// Published Living Server releases for the changelog, newest first. Drafts are omitted; prereleases follow
+    /// allowPrereleases like the update check. On success, rawJson is the API answer so the launcher can cache it.
+    /// </summary>
+    public static IReadOnlyList<ReleaseInfo> TryGetReleaseHistory(IReleaseWeb web, bool allowPrereleases, out string? rawJson, out string? problem)
+    {
+        rawJson = null;
+        try
+        {
+            rawJson = web.GetText(ReleasesUrl, CheckTimeout);
+            IReadOnlyList<ReleaseInfo> list = VisibleReleases(ReleaseInfo.ParseList(rawJson), allowPrereleases);
+            problem = list.Count == 0 ? "GitHub listed no Living Server releases" : null;
+            return list;
+        }
+        catch (Exception e)
+        {
+            problem = Innermost(e).Message;
+            return Array.Empty<ReleaseInfo>();
+        }
+    }
+
+    /// <summary>Non-draft releases with a Living Server build tag, optionally hiding prereleases.</summary>
+    public static IReadOnlyList<ReleaseInfo> VisibleReleases(IReadOnlyList<ReleaseInfo> releases, bool allowPrereleases) =>
+        releases
+            .Where(r => !r.Draft && r.Version != null && (allowPrereleases || !r.Prerelease))
+            .OrderByDescending(r => r.Version!)
+            .ToList();
 
     /// <summary>
     /// The newest usable release for the configured repository. When allowPrereleases is false, uses /releases/latest.

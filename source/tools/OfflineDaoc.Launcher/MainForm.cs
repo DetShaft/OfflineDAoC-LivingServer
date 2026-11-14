@@ -538,6 +538,7 @@ internal sealed partial class MainForm : Form
         _socialExpansionSettings = new SocialExpansionSettingsControl(_database, BotGoalsServerStopped);
         socialExpansion.Controls.Add(_socialExpansionSettings);
         tabs.TabPages.Add(socialExpansion);
+        AddChangelogTab(tabs);
         tabs.TabPages.Add(groups);
         tabs.TabPages.Add(rvr);
         var battlegrounds = new TabPage("Battlegrounds") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };

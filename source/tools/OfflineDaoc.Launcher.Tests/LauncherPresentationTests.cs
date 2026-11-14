@@ -162,6 +162,8 @@ public sealed class LauncherPresentationTests
             Does.Not.Contain("Realm Status"));
         Assert.That(controls.OfType<TabControl>().SelectMany(tab => tab.TabPages.Cast<TabPage>()).Select(page => page.Text),
             Does.Contain("Options"));
+        Assert.That(controls.OfType<TabControl>().SelectMany(tab => tab.TabPages.Cast<TabPage>()).Select(page => page.Text),
+            Does.Contain("Changelog"));
         Assert.That(controls.OfType<DataGridView>(), Is.Not.Empty);
         Assert.That(controls.OfType<DataGridView>().All(grid => !grid.RowHeadersVisible), Is.True);
         var populationGrid = (DataGridView)mainFormType.GetField("_grid", HiddenInstance)!.GetValue(form)!;
