@@ -871,8 +871,11 @@ def build(zone_id, upscale=True):
             over = layers[1:9]
             files = []
             for k in range(0, 8, 4):
-                chans = [over[i]['weight'] if i < len(over) else np.zeros((128, 128), np.float32) for i in range(k, k + 4)]
-                img = Image.fromarray((np.clip(np.stack(chans, axis=2), 0, 1) * 255).astype(np.uint8), 'RGBA')
+                # Missing overlays used to be 128x128 zeros. Killaloe's maps are another size, so the
+                # next image (the patch's second four channels, or the next patch) died in np.stack
+                # (owner, 2026-11-14). Fit every channel to the size this patch's maps already use.
+                chans = [over[i]['weight'] if i < len(over) else None for i in range(k, k + 4)]
+                img = terrain_splat.pack_weights(chans)
                 name = f'patch_{px:02d}_{py:02d}_w{k // 4}.png'
                 save_if_changed(img, sdir / name)
                 files.append(f'splat/{name}')
