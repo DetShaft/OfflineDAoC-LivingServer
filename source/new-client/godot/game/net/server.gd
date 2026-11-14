@@ -1718,6 +1718,7 @@ var market_search := {}                           # the filters of the last sear
 var listings := {}                                # chest slot -> runtime ItemDb id "srvc:<slot>"
 var listing_page := 0                             # the chest's page on the server (100 slots each)
 var proceeds := -1                                # sale proceeds waiting (copper; the greeting's amount), -1 unknown
+var suggested_price := 0                          # copper the broker just suggested for a drag that is not on sale yet
 
 
 func _listings_packet(d: Dictionary, opened: bool) -> void:
@@ -1837,6 +1838,9 @@ func _exchange_text(text: String) -> void:
 		market_count = int(text.get_slice(" ", 3))
 	elif text.begins_with("Your listings - page "):
 		listing_page = maxi(int(text.get_slice(" ", 4).trim_suffix(".")) - 1, 0)
+	elif text.begins_with("Suggested price "):
+		var suggested := RegEx.create_from_string("^Suggested price ([0-9]+) copper").search(text)
+		suggested_price = int(suggested.get_string(1)) if suggested else 0
 	else:
 		return
 	exchange_changed.emit()

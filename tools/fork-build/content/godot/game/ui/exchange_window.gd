@@ -9,8 +9,8 @@ extends ClassicWindow
 ##            bonus, crafted only), 20 results a page with their prices; BUY (or double-click, or drag a result into
 ##            the backpack - the server's way).
 ##   MY LISTINGS - your listing chest (100 slots a chest page, five pages of twenty here): drag a backpack item in
-##            to list it (a suggested price is filled in; SET PRICE changes it), DEPOSIT THIS BAG lists the gear in
-##            the sack open in the inventory, TAKE BACK (or drag it to the backpack) cancels.
+##            to store it (the suggested price is filled in; LIST IT sells it, CANCEL leaves it stored), DEPOSIT THIS
+##            BAG lists the gear in the sack open in the inventory, TAKE BACK (or drag it to the backpack) cancels.
 ## SALE PROCEEDS: what the broker holds for you (its greeting's amount, sales while you are online added) and CLAIM.
 ## The broker answers only within reach and in its own realm (the server's rules); its words come in the chat.
 ## Text sizes (owner 2026-10-13: "some of the text is small and hard to read"): rows 11, captions 10, nothing under 10.
@@ -225,8 +225,8 @@ func _build_listings() -> void:
 	_listings.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_listings)
 	_listings.add_child(_panel(Rect2(COL_X - 8, LIST_Y - 26, COL_W + 16, ROWS * ROW_H + 32)))
-	var help := UiArt.label("TO SELL ONE: DRAG IT FROM YOUR BACKPACK ONTO THE LIST. IT IS PRICED FOR YOU; CHANGE THAT PRICE OR KEEP IT.\n\n" +
-			"DEPOSIT THIS BAG LISTS THE GEAR IN THE SACK YOU HAVE OPEN, AT THOSE SAME PRICES.\n\n" +
+	var help := UiArt.label("TO SELL ONE: DRAG IT IN. IT STAYS STORED UNTIL YOU LIST IT. THE SUGGESTED PRICE IS FILLED IN, AND YOU CAN CHANGE IT.\n\n" +
+			"DEPOSIT THIS BAG LISTS THE GEAR IN THE OPEN SACK AT THOSE PRICES.\n\n" +
 			"A PRICE OF 0 KEEPS THE ITEM HERE, NOT FOR SALE. TAKE BACK CANCELS A LISTING.\n\n" +
 			"MONEY FROM SALES WAITS HERE. YOUR LISTINGS NEVER EXPIRE.", CAPTION, UiArt.CREAM, false)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -341,7 +341,7 @@ func refresh() -> void:
 	if _ask_price >= 0 and Server.listings.has(_ask_price):
 		var s := _ask_price
 		_ask_price = -1
-		ask_price(s)
+		ask_price(s, true)
 
 
 ## The id shown on row i: a result's or a listing's runtime ItemDb id ("" empty).
@@ -459,7 +459,7 @@ func list_item(from: int, slot := -1) -> void:
 
 
 ## The price box in the granite: platinum / gold / silver / copper (0 = kept in the chest, not for sale).
-func ask_price(slot: int) -> void:
+func ask_price(slot: int, from_drag := false) -> void:
 	var it := ItemDb.item(String(Server.listings.get(slot, "")))
 	if it.is_empty():
 		return
@@ -485,6 +485,10 @@ func ask_price(slot: int) -> void:
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(nm)
 	var have := maxi(Server.listing_price(slot), 0)
+	if have == 0 and from_drag:
+		have = maxi(Server.suggested_price, 0)
+	if from_drag:
+		Server.suggested_price = 0
 	var parts := PlayerData.split_money(have)
 	var fields := {}
 	var x := 22.0
@@ -500,7 +504,7 @@ func ask_price(slot: int) -> void:
 		box.add_child(l)
 		fields[k[0]] = f
 		x += 96.0
-	var note := UiArt.label("SUGGESTED PRICE IS FILLED IN. EDIT IT, OR SET 0 TO NOT SELL", CAPTION, UiArt.DIM)
+	var note := UiArt.label("SUGGESTED PRICE IS FILLED IN. LIST IT, OR CANCEL TO LEAVE IT STORED", CAPTION, UiArt.DIM)
 	note.position = Vector2(0, 94)
 	note.size = Vector2(box.size.x, 14)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -515,7 +519,7 @@ func ask_price(slot: int) -> void:
 	yes.position = Vector2(box.size.x * 0.5 - 120, 120)
 	yes.pressed.connect(done.bind(true))
 	box.add_child(yes)
-	var no := UiArt.button("KEEP PRICE", Vector2(110, 24), 11)
+	var no := UiArt.button("CANCEL", Vector2(110, 24), 11)
 	no.position = Vector2(box.size.x * 0.5 + 10, 120)
 	no.pressed.connect(done.bind(false))
 	box.add_child(no)

@@ -73,7 +73,7 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
     public static string BuildListingsPrompt(int pageNumber) =>
         $"Your listings - page {pageNumber}. Your listings have no total cap and never expire.\n" +
         "[Previous listing page]  [Next listing page]\n" +
-        "Deposit lists the armor, weapons, jewelry and similar gear in that backpack bag. Each piece is listed at a suggested price you can change.\n" +
+        "Deposit lists the armor, weapons, jewelry and similar gear in that backpack bag at a suggested price you can change. Dragging one item in stores it until you set a price.\n" +
         "[Deposit all gear from bag 1]\n" +
         "[Deposit all gear from bag 2]\n" +
         "[Deposit all gear from bag 3]\n" +
@@ -129,8 +129,8 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
                 "Realm Exchange - Help",
                 [
                     "Browse: opens the realm market search. Drag a result to an empty backpack slot to buy it.",
-                    "Manage: opens your listing chest. Drag a tradable backpack item into an empty slot. It is listed at a suggested price, which you can change.",
-                    "Deposit all gear from bag 1 through bag 5 lists the armor, weapons, shields, instruments, jewelry and similar gear in that backpack bag. Bag 1 is the first bag.",
+                    "Manage: opens your listing chest. Drag a tradable backpack item into an empty slot. It stays stored until you set a price. The exchange tells you a suggested price.",
+                    "Deposit all gear from bag 1 through bag 5 lists the armor, weapons, shields, instruments, jewelry and similar gear in that backpack bag at that suggested price. Bag 1 is the first bag.",
                     "Anything that is not tradable gear stays in the bag. Set a price of 0 to keep a listed piece in the chest without selling it.",
                     "Drag one of your listed items back to your backpack to cancel it.",
                     "A purchase transfers that exact persisted item and that exact amount of copper between buyer and seller.",
@@ -156,7 +156,7 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
         foreach (var item in GetClientInventory(player)) slots[item.Key] = item.Value;
         player.Out.SendInventoryItemsUpdate(slots, eInventoryWindowType.ConsignmentOwner);
         player.Out.SendConsignmentMerchantMoney(0);
-        player.Out.SendMessage("Drag a real item into an empty exchange slot. It is listed at a suggested price, which you can change. Deposit all gear from a bag lists that bag's gear the same way.", eChatType.CT_Merchant, eChatLoc.CL_ChatWindow);
+        player.Out.SendMessage("Drag a real item into an empty exchange slot. It stays stored until you set a price; the suggested price is told to you. Deposit all gear from a bag lists that bag's gear at the suggested prices.", eChatType.CT_Merchant, eChatLoc.CL_ChatWindow);
         int page = player.TempProperties.GetProperty<int>(ListingsPageProperty);
         player.Out.SendMessage(BuildListingsPrompt(page + 1), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
     }
@@ -379,14 +379,17 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
 
         item.OwnerLot = ExchangeOwnerLot;
         item.OwnerID = player.InternalID;
-        int price = RealmExchangePricing.SuggestCopper(item);
-        item.SellPrice = price;
+        bool wholeBag = player.TempProperties.GetProperty<bool>(BulkDepositProperty);
+        int suggested = RealmExchangePricing.SuggestCopper(item);
+        // A bag deposit is the player's request to list. A single drag waits for the price they set,
+        // which is the packet the original client sends after its price box, and the new client's List it.
+        item.SellPrice = RealmExchangePricing.SellPriceOnDeposit(wholeBag, item);
         MarketCache.AddItem(item);
         GameServer.Database.SaveObject(item);
-        if (player?.Out != null && !player.TempProperties.GetProperty<bool>(BulkDepositProperty))
+        if (player.Out != null && !wholeBag)
         {
             player.Out.SendMessage(
-                $"{item.Name} is listed for {Money.GetString(price)}. Set another price to change it, or 0 to keep it in the chest without selling.",
+                $"Suggested price {suggested} copper ({Money.GetString(suggested)}). {item.Name} is in the chest and not for sale until you set a price.",
                 eChatType.CT_Merchant,
                 eChatLoc.CL_ChatWindow);
         }

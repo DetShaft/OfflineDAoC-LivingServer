@@ -38,15 +38,52 @@ public static class RealmExchangePricing
         if (item?.Template == null)
             return 0;
 
+        int count = item.MaxCount > 1 ? Math.Max(1, item.Count) : 1;
+        return PriceCopper(
+            Math.Clamp(item.Level, 1, 200),
+            Math.Clamp(item.Quality, 1, 100),
+            Math.Max(0, WeightedUtility(item)),
+            (eObjectType)item.Object_Type,
+            (eInventorySlot)item.Item_Type,
+            count,
+            sellerDisposition);
+    }
+
+    /// <summary>
+    /// A bag deposit lists at the suggestion. A single drag stays unsold until the player sets a price,
+    /// so nothing buys the piece while the price box is still open.
+    /// </summary>
+    public static int SellPriceOnDeposit(bool wholeBag, DbInventoryItem item) =>
+        wholeBag ? SuggestCopper(item) : 0;
+
+    /// <summary>
+    /// Worth a bot listing when one piece is at least half a perfect, unbonused piece of the same kind,
+    /// and the whole stack is at least 50 copper. Quality near 50 is the line. Bonuses can lift a poorer piece.
+    /// A stack of cheap pieces does not qualify just by being numerous.
+    /// </summary>
+    public static bool IsWorthListing(DbInventoryItem item)
+    {
+        if (item?.Template == null || SuggestCopper(item) < 50)
+            return false;
+
         int level = Math.Clamp(item.Level, 1, 200);
         int quality = Math.Clamp(item.Quality, 1, 100);
         long utility = Math.Max(0, WeightedUtility(item));
-        long raw = (long)level * level * LevelSquaredCopper + utility * level * UtilityCopperPerLevel;
+        eObjectType type = (eObjectType)item.Object_Type;
         eInventorySlot slot = (eInventorySlot)item.Item_Type;
-        long priced = raw * quality * CategoryPerMille((eObjectType)item.Object_Type, slot) * SlotPerMille(slot);
+        int piece = PriceCopper(level, quality, utility, type, slot, 1, 0);
+        int plain = PriceCopper(level, 100, 0, type, slot, 1, 0);
+        return piece >= Math.Max(1, plain / 2);
+    }
+
+    private static int PriceCopper(
+        int level, int quality, long utility, eObjectType type, eInventorySlot slot, int count, double sellerDisposition)
+    {
+        long raw = (long)level * level * LevelSquaredCopper + utility * level * UtilityCopperPerLevel;
+        long priced = raw * quality * CategoryPerMille(type, slot) * SlotPerMille(slot);
         priced /= 100L * 1000L * 1000L;
-        if (item.MaxCount > 1)
-            priced *= Math.Max(1, item.Count);
+        if (count > 1)
+            priced *= count;
         if (priced < 1)
             priced = 1;
 

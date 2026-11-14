@@ -92,6 +92,42 @@ public sealed class UT_RealmExchangePricing
     }
 
     [Test]
+    public void SellPriceOnDeposit_ListsABagAndHoldsASingleDrag()
+    {
+        DbInventoryItem torso = Piece("plain torso", 10, 100, eObjectType.Cloth, eInventorySlot.TorsoArmor);
+
+        Assert.That(RealmExchangePricing.SellPriceOnDeposit(true, torso), Is.EqualTo(1100));
+        Assert.That(RealmExchangePricing.SellPriceOnDeposit(false, torso), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void IsWorthListing_FollowsQualityAgainstAPlainPieceOfTheSameKind()
+    {
+        DbInventoryItem fine = Piece("fine torso", 10, 100, eObjectType.Cloth, eInventorySlot.TorsoArmor);
+        DbInventoryItem middling = Piece("middling torso", 10, 50, eObjectType.Cloth, eInventorySlot.TorsoArmor);
+        DbInventoryItem poor = Piece("poor torso", 10, 49, eObjectType.Cloth, eInventorySlot.TorsoArmor);
+        DbInventoryItem poorButSkilled = Piece("skilled torso", 10, 40, eObjectType.Cloth, eInventorySlot.TorsoArmor);
+        poorButSkilled.Bonus1Type = (int)eProperty.Skill_Slashing;
+        poorButSkilled.Bonus1 = 10;
+        DbInventoryItem pocketChange = Piece("pocket change", 1, 100, eObjectType.Cloth, eInventorySlot.TorsoArmor);
+        DbInventoryItem fineJunk = Piece("fine junk", 20, 100, eObjectType.GenericItem, eInventorySlot.FirstBackpack);
+        DbInventoryItem poorJunk = Piece("poor junk", 20, 40, eObjectType.GenericItem, eInventorySlot.FirstBackpack);
+        DbInventoryItem smallStack = Piece("small stack", 1, 100, eObjectType.GenericItem, eInventorySlot.FirstBackpack);
+        smallStack.MaxCount = 20;
+        smallStack.Count = 4;
+
+        Assert.That(RealmExchangePricing.IsWorthListing(fine), Is.True);
+        Assert.That(RealmExchangePricing.IsWorthListing(middling), Is.True);
+        Assert.That(RealmExchangePricing.IsWorthListing(poor), Is.False);
+        Assert.That(RealmExchangePricing.IsWorthListing(poorButSkilled), Is.True);
+        Assert.That(RealmExchangePricing.IsWorthListing(pocketChange), Is.False);
+        Assert.That(RealmExchangePricing.IsWorthListing(fineJunk), Is.True);
+        Assert.That(RealmExchangePricing.IsWorthListing(poorJunk), Is.False);
+        Assert.That(RealmExchangePricing.SuggestCopper(smallStack), Is.EqualTo(12));
+        Assert.That(RealmExchangePricing.IsWorthListing(smallStack), Is.False, "four cheap pieces stay under 50 copper");
+    }
+
+    [Test]
     public void IsDepositGear_KeepsWornGearAndLeavesTheRest()
     {
         Assert.That(RealmExchangePricing.IsDepositGear(Piece("armor", 10, 100, eObjectType.Plate, eInventorySlot.LegsArmor)), Is.True);
