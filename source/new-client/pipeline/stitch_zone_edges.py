@@ -13,6 +13,11 @@ Writes, per outdoor zone (content/zones/zoneNNN):
 and adds 'heights_2x_apron' / 'heights_2x_apron_size' to zone.json. Where a region has no zone beyond an edge, the
 edge sample is the zone's own (as before).
 
+Before rewriting, a normal zone's interior has to match the zones.dat sampler (the same dat the build read). Zone 253
+can instead carry ground borrowed from another zone: Killaloe is retail zone 237 at region offset 64, 64, and the
+build copies those samples onto zone 253 without that offset. Those samples are not supposed to match the retail
+placement, so the check uses the heights the build wrote and still stitches only this zone's own edges.
+
   python pipeline/stitch_zone_edges.py              all built outdoor zones
   python pipeline/stitch_zone_edges.py 200 201      only these (their neighbours are read, not written)
 """
@@ -68,36 +73,50 @@ def _raw(zone_id):
 class Region:
     """One region's terrain as a single height function on the 256-unit sample lattice."""
 
-    def __init__(self, zones, region):
+    def __init__(self, zones, region, grids=None):
         self.cells = {}                                    # (sample x, sample y) of a zone's corner -> grid
         self.blocks = {}                                   # (block x, block y) -> that zone's corner (offsets need not be zone multiples)
         for zid, z in zones.items():
             if z['region'] != region or z['type'] != '0' or z['w'] != 8 or z['h'] != 8:
                 continue
-            g = _raw(zid)
-            if g is not None and g.shape == (N, N):
+            # grids= lets a test supply the samples. The build reads each zone's own dat.
+            g = grids.get(zid) if grids is not None else _raw(zid)
+            if g is not None and np.shape(g) == (N, N):
                 corner = (z['ox'] * BLOCK // CELL, z['oy'] * BLOCK // CELL)
                 self.cells[corner] = g
                 for bx in range(z['ox'], z['ox'] + 8):
                     for by in range(z['oy'], z['oy'] + 8):
                         self.blocks[(bx, by)] = corner
 
-    def sample(self, sx, sy, home):
+    def sample(self, sx, sy, home, lock_interior=False):
         """Height at lattice point (sx, sy) of the region; a point no zone covers falls back to the home zone's own
-        nearest sample (an edge of the region's terrain)."""
+        nearest sample (an edge of the region's terrain).
+
+        lock_interior keeps the home zone's own 256 square on `home` even when the block map would read a different
+        grid (borrowed ground, whose retail placement is not this zone's)."""
+        hx, hy, hg = home
+        if lock_interior and 0 <= sx - hx < N and 0 <= sy - hy < N:
+            return hg[sy - hy, sx - hx]
         corner = self.blocks.get((sx * CELL // BLOCK, sy * CELL // BLOCK))
         if corner is not None:
             cx, cy = corner
             return self.cells[corner][sy - cy, sx - cx]
-        hx, hy, hg = home
         return hg[min(max(sy - hy, 0), N - 1), min(max(sx - hx, 0), N - 1)]
 
-    def grid(self, corner, pad):
-        """The home zone's samples from -pad to N + pad (inclusive of the far edge): (N + 1 + 2 pad) square."""
+    def grid(self, corner, pad, home_grid=None):
+        """The home zone's samples from -pad to N + pad (inclusive of the far edge): (N + 1 + 2 pad) square.
+
+        home_grid, when given, is the ground the build wrote. The interior is that grid. Samples outside it still
+        come from the neighbour that actually covers them."""
         cx, cy = corner
-        home = (cx, cy, self.cells[corner])
+        if home_grid is None:
+            home = (cx, cy, self.cells[corner])
+            lock = False
+        else:
+            home = (cx, cy, home_grid)
+            lock = True
         r = range(-pad, N + 1 + pad)
-        return np.array([[self.sample(cx + i, cy + j, home) for i in r] for j in r], dtype=np.float64)
+        return np.array([[self.sample(cx + i, cy + j, home, lock) for i in r] for j in r], dtype=np.float64)
 
 
 def catmull_rom_2x(h):
@@ -111,6 +130,23 @@ def catmull_rom_2x(h):
         out[1::2] = mid[:a.shape[0] - 1]
         return out
     return axis(axis(h).T).T
+
+
+def checks_client_placement(zone_id, info):
+    """True when the built interior has to match the zones.dat sampler.
+
+    A normal zone's heights come from its own dat, which is what the sampler reads, so they match. Borrowed ground
+    is another zone's samples copied onto this one: Killaloe is retail zone 237 at region offset 64, 64, and the
+    zone 253 build drops that offset. The sampler's samples are that other placement and are not supposed to match.
+    zone.json "terrain_from" is the zone the ground was copied from.
+    """
+    source = (info or {}).get('terrain_from')
+    if source is None:
+        return True
+    try:
+        return int(source) == int(zone_id)
+    except (TypeError, ValueError):
+        return True
 
 
 def stitch(zone_ids=None):
@@ -130,16 +166,31 @@ def stitch(zone_ids=None):
             print(f'zone {zid}: not in zones.dat'); continue
         reg = regions.get(z['region']) or regions.setdefault(z['region'], Region(zones, z['region']))
         corner = (z['ox'] * BLOCK // CELL, z['oy'] * BLOCK // CELL)
-        if corner not in reg.cells:
-            print(f'zone {zid}: no outdoor terrain'); continue
         out = ROOT / f'godot/content/zones/zone{zid:03d}'
-        g = reg.grid(corner, 2)                            # samples -2 .. 258
+        info_p = out / 'zone.json'
+        info = json.loads(info_p.read_text(encoding='utf-8')) if info_p.exists() else {}
+        borrowed = not checks_client_placement(zid, info)
+        if not borrowed and corner not in reg.cells:
+            print(f'zone {zid}: no outdoor terrain'); continue
+        if borrowed:
+            # The client sampler would read this zone's own dat where zones.dat puts it, or retail zone 237 at
+            # offset 64, 64. The build did neither: the heights already written are the borrowed ground.
+            print(f'zone {zid}: ground borrowed from zone {int(info["terrain_from"])}; '
+                  f'the interior stays the build, retail offset was not applied')
+            old = np.fromfile(out / 'heights.f32', dtype='<f4').reshape(N + 1, N + 1)
+            g = reg.grid(corner, 2, np.asarray(old[:N, :N], dtype=np.float64) / M)
+        else:
+            g = reg.grid(corner, 2)                        # samples -2 .. 258
+            old = np.fromfile(out / 'heights.f32', dtype='<f4').reshape(N + 1, N + 1)
         fine = catmull_rom_2x(g)                           # index 2k = sample k - 2
         base = g[2:2 + N + 1, 2:2 + N + 1]                 # 257
         hi = fine[4:4 + 2 * N + 1, 4:4 + 2 * N + 1]       # 513
         apron = fine[3:3 + 2 * N + 3, 3:3 + 2 * N + 3]    # 515
-        old = np.fromfile(out / 'heights.f32', dtype='<f4').reshape(N + 1, N + 1)
-        assert np.allclose(old[:N, :N], base[:N, :N] * M, atol=1e-3), f'zone {zid}: interior samples differ from the build'
+        agrees = np.allclose(old[:N, :N], base[:N, :N] * M, atol=1e-3)
+        if borrowed:
+            assert agrees, f'zone {zid}: borrowed ground interior changed during the stitch'
+        else:
+            assert agrees, f'zone {zid}: interior samples differ from the build'
         (base * M).astype('<f4').tofile(out / 'heights.f32')
         (hi * M).astype('<f4').tofile(out / 'heights_2x.f32')
         (apron * M).astype('<f4').tofile(out / 'heights_2x_apron.f32')

@@ -1086,6 +1086,10 @@ def build(zone_id, upscale=True):
             'texture_sets': {'original': 'textures/original',
                              **({'x4plus': 'textures/x4plus'} if upscale or (out / 'textures/x4plus').exists() else {})},
             'terrain_detail': detail, 'ground_splat': splat, 'clutter': clutter, 'water_maps': water_maps, 'lights': lights, 'missing_textures': missing, 'warnings': warnings}
+    if ground_id != zone_id:
+        # stitch_zone_edges checks the interior against the zones.dat placement. This ground is another zone's
+        # (Killaloe is retail 237 at offset 64, 64) and that offset was not applied.
+        zone['terrain_from'] = ground_id
     (out / 'zone.json').write_text(json.dumps(zone, indent=1), encoding='utf-8')
     import stitch_zone_edges                                # the far edges from the neighbour zones (seamless borders)
     stitch_zone_edges.stitch([zone_id])
