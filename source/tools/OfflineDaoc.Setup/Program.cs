@@ -15,6 +15,7 @@ internal static class Program
     private const int ExpectedPeriodMapRestoredSpawnCount = 1290;
     private const int ExpectedTotalRestoredSpawnCount =
         ExpectedConservativeRestoredSpawnCount + ExpectedPeriodMapRestoredSpawnCount;
+    private const int ExpectedKillaloeZone253SpawnCount = 74;
 
     private static int Main(string[] args)
     {
@@ -33,6 +34,7 @@ internal static class Program
                 RestoreConservativeClassic165FrontierAndAlbionSpawns(migrationConnection);
                 RestorePeriodMapClassic165FrontierAndAlbionSpawns(migrationConnection);
                 EnsureRealmExchangeBrokers(migrationConnection);
+                EnsureKillaloeZone253Mobs(migrationConnection);
                 VerifyClassic165SpawnProfile(migrationConnection);
                 Console.WriteLine($"Classic 1.65 spawn profile applied. Recoverable backup: {backupPath}");
                 return 0;
@@ -57,6 +59,7 @@ internal static class Program
             RestoreConservativeClassic165FrontierAndAlbionSpawns(connection);
             RestorePeriodMapClassic165FrontierAndAlbionSpawns(connection);
             EnsureRealmExchangeBrokers(connection);
+            EnsureKillaloeZone253Mobs(connection);
             ApplyClassicSiRules(connection);
             CreateAccount(connection, options.AccountName, options.Password);
             WriteCredentials(options);
@@ -389,6 +392,57 @@ internal static class Program
         }
     }
 
+    private static void EnsureKillaloeZone253Mobs(SQLiteConnection connection)
+    {
+        const string migrationId = "killaloe-zone253-spawns-v1";
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS offline_world_migrations (
+                MigrationId TEXT PRIMARY KEY,
+                AppliedUtc TEXT NOT NULL,
+                Description TEXT NOT NULL,
+                ArchivedRows INTEGER NOT NULL
+            );
+            """);
+
+        string sql = LoadEmbeddedText("killaloe_zone253_mobs.sql");
+        var skipped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        long imported = ImportSqlText(connection, sql, "killaloe_zone253_mobs.sql", GetTables(connection), skipped);
+        if (skipped.Count > 0)
+            throw new InvalidOperationException("Killaloe zone 253 SQL did not match the Mob table: " + string.Join(", ", skipped));
+
+        using var count = connection.CreateCommand();
+        count.CommandText = """
+            SELECT COUNT(*) FROM Mob
+            WHERE PackageID='offline-killaloe-zone253' AND Region=253 AND ClassType='DOL.GS.GameNPC'
+            """;
+        int placed = Convert.ToInt32(count.ExecuteScalar(), CultureInfo.InvariantCulture);
+        if (placed != ExpectedKillaloeZone253SpawnCount)
+            throw new InvalidOperationException($"Killaloe zone 253 spawn pack has {placed:N0} rows; expected {ExpectedKillaloeZone253SpawnCount:N0}.");
+
+        using var outside = connection.CreateCommand();
+        outside.CommandText = """
+            SELECT COUNT(*) FROM Mob
+            WHERE PackageID='offline-killaloe-zone253'
+              AND (Region<>253 OR X<0 OR X>65536 OR Y<0 OR Y>65536)
+            """;
+        int bad = Convert.ToInt32(outside.ExecuteScalar(), CultureInfo.InvariantCulture);
+        if (bad != 0)
+            throw new InvalidOperationException($"Killaloe zone 253 spawn pack has {bad:N0} rows outside region 253 or 0..65536.");
+
+        using var record = connection.CreateCommand();
+        record.CommandText = """
+            INSERT OR IGNORE INTO offline_world_migrations(MigrationId, AppliedUtc, Description, ArchivedRows)
+            VALUES (@id, @utc,
+                'Place OpenDAoC Killaloe (region 237) field spawns into region 253 with retail offset 524288 removed from X and Y.',
+                @count);
+            """;
+        record.Parameters.AddWithValue("@id", migrationId);
+        record.Parameters.AddWithValue("@utc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        record.Parameters.AddWithValue("@count", placed);
+        record.ExecuteNonQuery();
+        Console.WriteLine($"Killaloe zone 253: {placed:N0} field spawns in region 253 ({imported:N0} rows written).");
+    }
+
     private static void EnsureRealmExchangeBrokers(SQLiteConnection connection)
     {
         var brokers = new[]
@@ -714,6 +768,18 @@ internal static class Program
         Console.WriteLine($"Restored {restored:N0} {label} monster rows.");
     }
 
+    private static string LoadEmbeddedText(string suffix)
+    {
+        Assembly assembly = typeof(Program).Assembly;
+        string resource = assembly.GetManifestResourceNames().SingleOrDefault(name =>
+            name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"The embedded world-data file '{suffix}' is missing.");
+        using Stream stream = assembly.GetManifestResourceStream(resource)
+            ?? throw new InvalidOperationException($"The embedded world-data file '{suffix}' could not be opened.");
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        return reader.ReadToEnd();
+    }
+
     private static string[] LoadRestoredSpawnIds(string suffix)
     {
         Assembly assembly = typeof(Program).Assembly;
@@ -754,6 +820,7 @@ internal static class Program
                     AND Mob.Region <> 249
                     AND Mob.Mob_ID NOT IN (SELECT Mob_ID FROM offline_classic165_restored_mobs)
                     AND COALESCE(Mob.PackageID,'') <> 'offline-classic-frontier-dungeon-restored'
+                    AND COALESCE(Mob.PackageID,'') <> 'offline-killaloe-zone253'
                     AND COALESCE(Mob.LastTimeRowUpdated,'') >= '2021-01-01');
             """;
         using var reader = verify.ExecuteReader();
@@ -778,6 +845,60 @@ internal static class Program
         Execute(connection, $"ALTER TABLE {QuoteIdentifier(table)} ADD COLUMN {QuoteIdentifier(column)} {definition}");
     }
 
+    private static long ImportSqlText(SQLiteConnection connection, string text, string label,
+        Dictionary<string, HashSet<string>> tables, HashSet<string> skippedTables)
+    {
+        var fileRows = 0L;
+        var statementCount = 0;
+        var parsedStatementCount = 0;
+        var matchedStatementCount = 0;
+        foreach (var statement in ExtractReplaceStatements(text))
+        {
+            statementCount++;
+            var parsed = ParseHeader(statement);
+            if (parsed is not null) parsedStatementCount++;
+            if (parsed is null || !tables.TryGetValue(parsed.Value.Table, out var existingColumns))
+            {
+                if (parsed is not null)
+                    skippedTables.Add(parsed.Value.Table);
+                continue;
+            }
+            matchedStatementCount++;
+
+            var selected = parsed.Value.Columns
+                .Select((name, index) => (Name: name, Index: index))
+                .Where(column => existingColumns.Contains(column.Name))
+                .ToArray();
+
+            if (selected.Length == 0)
+                continue;
+
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = $"INSERT OR REPLACE INTO {QuoteIdentifier(parsed.Value.Table)} ({string.Join(",", selected.Select(column => QuoteIdentifier(column.Name)))}) VALUES ({string.Join(",", selected.Select((_, index) => $"@p{index}"))})";
+            for (var index = 0; index < selected.Length; index++)
+                command.Parameters.Add($"@p{index}", DbType.Object);
+
+            foreach (var row in ParseRows(parsed.Value.Values))
+            {
+                if (row.Count != parsed.Value.Columns.Length)
+                    throw new FormatException($"Unexpected value count in {label} for table {parsed.Value.Table}.");
+
+                for (var index = 0; index < selected.Length; index++)
+                    command.Parameters[index].Value = ToValue(row[selected[index].Index]);
+
+                command.ExecuteNonQuery();
+                fileRows++;
+            }
+
+            transaction.Commit();
+        }
+
+        Console.WriteLine($"  {label}: {fileRows:N0} rows ({statementCount} statements, {parsedStatementCount} parsed, {matchedStatementCount} matched)");
+        return fileRows;
+    }
+
     private static void ImportWorldData(SQLiteConnection connection, string sourcePath)
     {
         var tables = GetTables(connection);
@@ -787,66 +908,8 @@ internal static class Program
 
         foreach (var file in files)
         {
-            var fileRows = 0L;
-            var statementCount = 0;
-            var parsedStatementCount = 0;
-            var matchedStatementCount = 0;
-            var text = File.ReadAllText(file, Encoding.UTF8);
-            foreach (var statement in ExtractReplaceStatements(text))
-            {
-                statementCount++;
-                var parsed = ParseHeader(statement);
-                if (parsed is not null) parsedStatementCount++;
-                if (parsed is null || !tables.TryGetValue(parsed.Value.Table, out var existingColumns))
-                {
-                    if (parsed is not null)
-                    {
-                        skippedTables.Add(parsed.Value.Table);
-                    }
-                    continue;
-                }
-                matchedStatementCount++;
-
-                var selected = parsed.Value.Columns
-                    .Select((name, index) => (Name: name, Index: index))
-                    .Where(column => existingColumns.Contains(column.Name))
-                    .ToArray();
-
-                if (selected.Length == 0)
-                {
-                    continue;
-                }
-
-                using var transaction = connection.BeginTransaction();
-                using var command = connection.CreateCommand();
-                command.Transaction = transaction;
-                command.CommandText = $"INSERT OR REPLACE INTO {QuoteIdentifier(parsed.Value.Table)} ({string.Join(",", selected.Select(column => QuoteIdentifier(column.Name)))}) VALUES ({string.Join(",", selected.Select((_, index) => $"@p{index}"))})";
-                for (var index = 0; index < selected.Length; index++)
-                {
-                    command.Parameters.Add($"@p{index}", DbType.Object);
-                }
-
-                foreach (var row in ParseRows(parsed.Value.Values))
-                {
-                    if (row.Count != parsed.Value.Columns.Length)
-                    {
-                        throw new FormatException($"Unexpected value count in {Path.GetFileName(file)} for table {parsed.Value.Table}.");
-                    }
-
-                    for (var index = 0; index < selected.Length; index++)
-                    {
-                        command.Parameters[index].Value = ToValue(row[selected[index].Index]);
-                    }
-
-                    command.ExecuteNonQuery();
-                    importedRows++;
-                    fileRows++;
-                }
-
-                transaction.Commit();
-            }
-
-            Console.WriteLine($"  {Path.GetFileName(file)}: {fileRows:N0} rows ({statementCount} statements, {parsedStatementCount} parsed, {matchedStatementCount} matched)");
+            long fileRows = ImportSqlText(connection, File.ReadAllText(file, Encoding.UTF8), Path.GetFileName(file), tables, skippedTables);
+            importedRows += fileRows;
         }
 
         Execute(connection, "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA optimize;");
