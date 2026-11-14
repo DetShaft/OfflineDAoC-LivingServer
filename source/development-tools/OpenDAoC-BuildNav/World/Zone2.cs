@@ -262,7 +262,19 @@ namespace CEM.World
         /// </summary>
         public HeightMap Heightmap
         {
-            get { return !HasHeightmap ? null : (_heightmap ?? (_heightmap = new HeightMap(this))); }
+            get
+            {
+                if (!HasHeightmap)
+                    return null;
+                if (_heightmap != null)
+                    return _heightmap;
+                string? heightsFile = ClientHeights.PathFor(ID);
+                if (heightsFile != null)
+                    _heightmap = HeightMap.FromClientHeights(ClientHeights.ReadUnits(heightsFile), Width);
+                else
+                    _heightmap = new HeightMap(this);
+                return _heightmap;
+            }
         }
 
         /// <summary>
@@ -329,12 +341,24 @@ namespace CEM.World
 
         internal List<List<Vector3>> GetRiverPoints()
         {
-            return _rivers;
+            EnsureSectorDat();
+            return _rivers ?? new List<List<Vector3>>();
         }
 
         internal int[] GetWaterHeights()
         {
-            return _waterHeights;
+            EnsureSectorDat();
+            return _waterHeights ?? new int[0];
+        }
+
+        /// <summary>
+        /// Rivers and water heights live in sector.dat. The classic ground path opens that file
+        /// while reading the terrain scale. A heights.f32 zone does not, so open it on first use.
+        /// </summary>
+        private void EnsureSectorDat()
+        {
+            if (_rivers == null)
+                LoadSectorDat();
         }
 
         private void LoadSectorDat()
