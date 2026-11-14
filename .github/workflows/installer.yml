@@ -1,5 +1,5 @@
 # Builds the Living Server Setup exe and tests it on Windows: pictures of every page, then a real install of
-# Offline DAoC from shadowofze's releases and every path Setup takes (tools/installer/test-installer.ps1).
+# Offline DAoC from Living Server's copy of shadowofze's releases and every path Setup takes (tools/installer/test-installer.ps1).
 # Beta 1.1.2: also which package Setup installs (a newer one from GitHub, checked by its digest), and the launcher's
 # update path end to end on a fake game folder (tools/installer/test-launcher-update.ps1).
 # Beta 1.1.11: the releases come from this fork's published releases (tools/release/pick_releases.py), never fixed tags.
@@ -187,8 +187,10 @@ jobs:
             scenarios: client,smoke
           - name: resume
             scenarios: resume,netfx,smoke
-          - name: import
-            scenarios: import,freshcopy
+          # "import" is not run since 2026-11-13: it needs the 0.35b release files, which Living Server's copy of
+          # shadowofze's releases does not hold (his repository went offline).
+          - name: freshcopy
+            scenarios: freshcopy
           - name: ui
             scenarios: ui
     name: e2e-${{ matrix.name }}
