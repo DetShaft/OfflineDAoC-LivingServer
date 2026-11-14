@@ -6,9 +6,9 @@ merged friends/LFG/commander into source but never packaged them, so Shift+F / S
 
 This check covers source/new-client/godot/game/ui and game/net (the windows and packet client), and since 1.1.13
 game/combat and game/perf_governor.gd (spell effects and the performance governor), and from the robe fix
-game/fig3_figure.gd (character figures, issue #37). Each file that
-differs from the 0.37 release commit BASE must have a content-patches entry whose Fixed hash matches the current
-file; brand-new files need Create: true; .cs changes require the MMOEngine.dll File entry.
+game/fig3_figure.gd (character figures, issue #37), and game/npcs/npc_manager.gd (targeting, issue #65).
+Each file that differs from the 0.37 release commit BASE must have a content-patches entry whose Fixed hash
+matches the current file; brand-new files need Create: true; .cs changes require the MMOEngine.dll File entry.
 
     python3 tools/release/check_newclient_packaged.py
 """
@@ -30,6 +30,7 @@ SCAN_ROOTS = (
     ROOT / "source/new-client/godot/game/perf_governor.gd",
     ROOT / "source/new-client/godot/game/anim_lod.gd",
     ROOT / "source/new-client/godot/game/fig3_figure.gd",
+    ROOT / "source/new-client/godot/game/npcs/npc_manager.gd",
 )
 PATCHES = ROOT / "tools/fork-build/content-patches.json"
 DLL_PATH = "new-client/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll"

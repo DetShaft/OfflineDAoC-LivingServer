@@ -869,7 +869,7 @@ func con_level(player_level: int, npc_level: int) -> int:
 ## Targeting on the server, as the old client did: "You target [X]." here, the examine line from the server (the
 ## examine bit), the in-view bits so it doesn't answer "Target is not in view."
 func select(n: Npc) -> void:
-	if n == null or not n.state.alive:
+	if n == null or (not n.state.alive and not can_target_corpse(n)):
 		return
 	target = n
 	target_object = 0
@@ -881,6 +881,16 @@ func select(n: Npc) -> void:
 			"health": n.state.health, "guild": String(n.spawn.get("guild", ""))})
 	if Server.client:
 		Server.client.call("Target", int(n.spawn.get("oid", 0)), 0x8000 | 0x6000)
+
+
+## A dead bot of your realm, so it can be targeted for a resurrection. The server deletes every other NPC the moment
+## it dies (RemoveObject type 0: its body sinks here, Npc.make_corpse) but keeps a bot's body where it fell until the
+## bot releases (GameBot.RetainCorpseForResurrection), so a dead living it still holds is a bot - a companion or a
+## gamebot alike. A resurrection only takes dead members of your realm (eSpellTarget.CORPSE).
+func can_target_corpse(n: Npc) -> bool:
+	if n == null or not is_instance_valid(n) or n.corpse or n.state == null:
+		return false
+	return by_oid.get(int(n.spawn.get("oid", 0))) == n.state and int(n.spawn.get("realm", 0)) == PlayerData.realm_id()
 
 
 func _is_my_commander(n: Npc) -> bool:

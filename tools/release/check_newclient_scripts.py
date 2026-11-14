@@ -45,6 +45,7 @@ SHIPPED = [
     "game/perf_governor.gd",
     "game/anim_lod.gd",
     "game/fig3_figure.gd",
+    "game/npcs/npc_manager.gd",
 ]
 CREATE_ONLY = [
     "game/ui/friends_window.gd",
@@ -60,6 +61,7 @@ RELEASED_PATHS = [
     "game/perf_governor.gd",
     "game/anim_lod.gd",
     "game/fig3_figure.gd",
+    "game/npcs/npc_manager.gd",
 ]
 NEW_CLASSES = ("FriendsWindow", "LfgWindow", "CommanderPanel")
 GODOT_VERSION = "4.7.2"
