@@ -540,7 +540,7 @@ func update_views(max_build: int) -> void:
 			active.erase(s.index)
 			s.view = null
 	_prep_start()
-	if target and is_instance_valid(target) and not target.state.alive:
+	if target and is_instance_valid(target) and not target.state.alive and not can_target_corpse(target):
 		clear_target()                                     # it died: no target on a corpse (owner's old client)
 	if target and is_instance_valid(target):
 		PlayerData.target["con_color"] = target.con_color(PlayerData.level)
@@ -703,11 +703,12 @@ var last_pick_dist := INF                    # how far along the click ray the l
 func pick(camera: Camera3D, screen_pos: Vector2) -> Npc:
 	last_pick_dist = INF
 	var from := camera.project_ray_origin(screen_pos)
-	var to := from + camera.project_ray_normal(screen_pos) * 120.0
-	var q := PhysicsRayQueryParameters3D.create(from, to, 1 << 9)
+	var dir := camera.project_ray_normal(screen_pos)
+	var q := PhysicsRayQueryParameters3D.create(from, from + dir * 120.0, 1 << 9)
 	q.collide_with_areas = false
+	var body := _pick_corpse(from, dir)
 	# a corpse isn't clickable: the ray goes on through it, so a dead bot lying under it can still be targeted for
-	# a resurrection (owner 2026-10-11)
+	# a resurrection (owner 2026-10-11); a living standing in front of that body is targeted instead
 	for _i in 4:
 		var hit := get_world_3d().direct_space_state.intersect_ray(q)
 		if hit.is_empty():
@@ -716,12 +717,55 @@ func pick(camera: Camera3D, screen_pos: Vector2) -> Npc:
 		if c and c.has_meta("npc"):
 			var n: Npc = c.get_meta("npc")
 			if is_instance_valid(n) and n.state.alive:
-				last_pick_dist = from.distance_to(hit.position)
-				return n
+				var d := from.distance_to(hit.position)
+				if body.is_empty() or d <= float(body.dist):
+					last_pick_dist = d
+					return n
+				break
 			q.exclude = q.exclude + [hit.rid]
 			continue
 		break
+	if not body.is_empty():
+		last_pick_dist = float(body.dist)
+		return body.npc as Npc
 	return _pick_name(camera, screen_pos)
+
+
+## A dead living that can still be targeted (can_target_corpse) lying across the click ray, the nearest:
+## {npc, dist (metres from the camera)}, or {}. Its click box went off with its life (Npc.sync_pick) and was the shape
+## of it standing, so the body is found where its bones lie now.
+func _pick_corpse(from: Vector3, dir: Vector3) -> Dictionary:
+	var best := {}
+	for i in active:
+		var n: Npc = active[i]
+		if not is_instance_valid(n) or not n.visible or n.state.alive or not can_target_corpse(n):
+			continue
+		var at = _body_box(n).intersects_ray(from, dir)
+		if at is Vector3 and (best.is_empty() or from.distance_to(at) < float(best.dist)):
+			best = {"npc": n, "dist": from.distance_to(at)}
+	return best
+
+
+## Where a body lies: the box round its skeleton's bones as posed now, 0.3 m wider all round; without a skeleton, a
+## figure's length round its feet, whichever way it fell.
+func _body_box(n: Npc) -> AABB:
+	var sk: Skeleton3D = null
+	if is_instance_valid(n.model):
+		var found := n.model.find_children("*", "Skeleton3D", true, false)
+		if not found.is_empty():
+			sk = found[0] as Skeleton3D
+	if sk == null or sk.get_bone_count() == 0:
+		var h := maxf(n.height, 0.5)
+		return AABB(n.global_position - Vector3(h, 0.0, h), Vector3(h * 2.0, 0.8, h * 2.0))
+	var box := AABB(sk.global_transform * sk.get_bone_global_pose(0).origin, Vector3.ZERO)
+	for b in range(1, sk.get_bone_count()):
+		box = box.expand(sk.global_transform * sk.get_bone_global_pose(b).origin)
+	return box.grow(0.3)
+
+
+## Whether a dead NPC can still be targeted (a resurrection). Never in the game's own world: see ServerWorld.
+func can_target_corpse(_n: Npc) -> bool:
+	return false
 
 
 ## The overhead names are clickable too (owner 2026-10-10: "you could click on visible names to target on the old
@@ -757,7 +801,7 @@ func _pick_name(camera: Camera3D, screen_pos: Vector2) -> Npc:
 
 
 func select(n: Npc) -> void:
-	if n == null or not n.state.alive:
+	if n == null or (not n.state.alive and not can_target_corpse(n)):
 		return                                             # (a corpse can't be targeted - owner's old client)
 	target = n
 	var s := n.spawn
