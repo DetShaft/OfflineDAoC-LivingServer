@@ -77,22 +77,27 @@ namespace CEM.Client.ZoneExporter
                         {
                             int z = 0;
                             var waterZ = -1;
+                            // A 257-grid (heights.f32) already has cell 256, the far edge the new client draws.
+                            // A 256-grid (terrain.pcx) has no sample there, so CellHeight asks the next zone.
                             if (sx == 7 && x == (xVectors - 1))
                             {
                                 if (sy == 7 && y == (yVectors - 1))
                                 {
-                                    z = EdgeHeight(256, 256, heightmap[sx * 32 + (x - 1), sy * 32 + (y - 1)]);
+                                    z = CEM.World.ClientHeights.CellHeight(heightmap, 256, 256,
+                                        (cx, cy) => EdgeHeight(cx, cy, heightmap[sx * 32 + (x - 1), sy * 32 + (y - 1)]));
                                     waterZ = _waterMap [sx * 32 + (x - 1), sy * 32 + (y - 1)];
                                 }
                                 else
                                 {
-                                    z = EdgeHeight(256, sy * 32 + y, heightmap[sx * 32 + (x - 1), sy * 32 + y]);
+                                    z = CEM.World.ClientHeights.CellHeight(heightmap, 256, sy * 32 + y,
+                                        (cx, cy) => EdgeHeight(cx, cy, heightmap[sx * 32 + (x - 1), sy * 32 + y]));
                                     waterZ = _waterMap [sx * 32 + (x - 1), sy * 32 + y];
                                 }
                             }
                             else if (sy == 7 && y == (yVectors - 1))
                             {
-                                z = EdgeHeight(sx * 32 + x, 256, heightmap[sx * 32 + x, sy * 32 + (y - 1)]);
+                                z = CEM.World.ClientHeights.CellHeight(heightmap, sx * 32 + x, 256,
+                                    (cx, cy) => EdgeHeight(cx, cy, heightmap[sx * 32 + x, sy * 32 + (y - 1)]));
                                 waterZ = _waterMap [sx * 32 + x, sy * 32 + (y - 1)];
                             }
                             else
@@ -155,9 +160,10 @@ namespace CEM.Client.ZoneExporter
                 if (!NeighbourHeights.TryGetValue(neighbour.ID, out heights))
                     NeighbourHeights[neighbour.ID] = heights = neighbour.Heightmap.ToIntArray();
             }
-            int size = heights.GetLength(0);
-            int nx = Math.Clamp((int)((point.X - neighbour.XOffset) * size / neighbour.Width), 0, size - 1);
-            int ny = Math.Clamp((int)((point.Y - neighbour.YOffset) * size / neighbour.Height), 0, size - 1);
+            int samplesX = heights.GetLength(0);
+            int samplesY = heights.GetLength(1);
+            int nx = CEM.World.ClientHeights.SampleIndex(samplesX, point.X - neighbour.XOffset, neighbour.Width);
+            int ny = CEM.World.ClientHeights.SampleIndex(samplesY, point.Y - neighbour.YOffset, neighbour.Height);
             return heights[nx, ny];
         }
 

@@ -12,9 +12,11 @@ namespace CEM.World {
     private readonly int _size;
     private readonly int _terrainFactor;
     private readonly byte[,] _terrainMap;
+    private readonly int[,]? _clientUnits;
+    private readonly int _zoneWidth;
 
     /// <summary>
-    /// Creates a new heightmap
+    /// Creates a new heightmap from the classic client's terrain.pcx and offset.pcx.
     /// </summary>
     /// <param name="zone"></param>
     public HeightMap(Zone2 zone) {
@@ -23,7 +25,36 @@ namespace CEM.World {
       _offsetMap = zone.LoadOffsetMap();
       _offsetFactor = zone.OffsetMapScaleFactor;
       _loc2Px = 1.0f*(_size = _terrainMap.GetLength(0))/zone.Width;
+      _clientUnits = null;
+      _zoneWidth = zone.Width;
       Log.Debug("Loaded heightmap for {0}", zone);
+    }
+
+    /// <summary>
+    /// Ground from heights.f32. <paramref name="units"/> is indexed [east, south], in DAoC units.
+    /// </summary>
+    private HeightMap(int[,] units, int zoneWidth) {
+      _clientUnits = units;
+      _zoneWidth = zoneWidth;
+      _size = units.GetLength(0);
+      _loc2Px = 0;
+      _terrainFactor = 0;
+      _offsetFactor = 0;
+      _terrainMap = new byte[1, 1];
+      _offsetMap = new byte[1, 1];
+    }
+
+    /// <summary>
+    /// A 257 x 257 grid of DAoC units read from heights.f32.
+    /// </summary>
+    public static HeightMap FromClientHeights(int[,] units, int zoneWidth) {
+      if (units == null)
+        throw new ArgumentNullException(nameof(units));
+      if (zoneWidth <= 0)
+        throw new ArgumentOutOfRangeException(nameof(zoneWidth));
+      if (units.GetLength(0) != ClientHeights.Samples || units.GetLength(1) != ClientHeights.Samples)
+        throw new InvalidDataException("heights.f32 must be " + ClientHeights.Samples + " x " + ClientHeights.Samples + ".");
+      return new HeightMap(units, zoneWidth);
     }
 
     /// <summary>
@@ -31,8 +62,11 @@ namespace CEM.World {
     /// </summary>
     public ushort this[float zoneX, float zoneY] {
       get {
-        return
-          (ushort) Util.Clip((int) Math.Round(GetInterpolatedPixelHeight(zoneX*_loc2Px, zoneY*_loc2Px)), 100, 65000);
+        int[,]? client = _clientUnits;
+        float raw = client != null
+          ? ClientHeights.Interpolate(client, zoneX, zoneY, _zoneWidth)
+          : GetInterpolatedPixelHeight(zoneX*_loc2Px, zoneY*_loc2Px);
+        return (ushort) Util.Clip((int) Math.Round(raw), 100, 65000);
       }
     }
 
@@ -81,6 +115,9 @@ namespace CEM.World {
     /// </summary>
     /// <returns></returns>
     public int[,] ToIntArray() {
+      int[,]? client = _clientUnits;
+      if (client != null)
+        return (int[,]) client.Clone();
       var res = new int[_size,_size];
       for (int x = 0; x < _size; x++)
         for (int y = 0; y < _size; y++)

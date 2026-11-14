@@ -262,7 +262,19 @@ namespace CEM.World
         /// </summary>
         public HeightMap Heightmap
         {
-            get { return !HasHeightmap ? null : (_heightmap ?? (_heightmap = new HeightMap(this))); }
+            get
+            {
+                if (!HasHeightmap)
+                    return null;
+                if (_heightmap != null)
+                    return _heightmap;
+                string? heightsFile = ClientHeights.PathFor(ID);
+                if (heightsFile != null)
+                    _heightmap = HeightMap.FromClientHeights(ClientHeights.ReadUnits(heightsFile), Width);
+                else
+                    _heightmap = new HeightMap(this);
+                return _heightmap;
+            }
         }
 
         /// <summary>

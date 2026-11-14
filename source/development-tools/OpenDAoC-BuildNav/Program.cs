@@ -73,11 +73,60 @@ namespace CEM
                 NifIgnorelist = File.ReadAllLines(ignorelistFile).ToList();
             }
 
-            BuildNavmeshes();
-            Log.Normal("---------------------------------------------------------------------------");
-            Log.Normal("All done.");
+            if (BuildNavmeshes())
+            {
+                Log.Normal("---------------------------------------------------------------------------");
+                Log.Normal("All done.");
+            }
             if (!Console.IsInputRedirected && !Console.IsOutputRedirected)
                 Console.ReadKey();
+        }
+
+        /// <summary>
+        /// When --heights names a file, that one zone's ground is heights.f32. Every other zone stays on terrain.pcx.
+        /// </summary>
+        private static bool TryUseClientHeights(Zone2[] zones)
+        {
+            if (string.IsNullOrWhiteSpace(Arguments.Heights))
+                return true;
+
+            var zoneIds = new List<ushort>();
+            foreach (Zone2 zone in zones)
+            {
+                if (zone != null)
+                    zoneIds.Add(zone.ID);
+            }
+
+            ClientHeights.Assignment ground;
+            try
+            {
+                ground = ClientHeights.Use(Arguments.Heights, zoneIds);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidDataException)
+            {
+                Log.Error(ex.Message);
+                return false;
+            }
+
+            Zone2? groundZone = null;
+            foreach (Zone2 zone in zones)
+            {
+                if (zone != null && zone.ID == ground.ZoneId)
+                {
+                    groundZone = zone;
+                    break;
+                }
+            }
+            if (groundZone == null || !groundZone.HasHeightmap)
+            {
+                ClientHeights.Clear();
+                Log.Error("Zone {0} has no outdoor ground. heights.f32 replaces terrain.pcx on an outdoor zone.", ground.ZoneId);
+                return false;
+            }
+
+            Log.Normal("Zone {0} ({1}) ground is {2}. This zone does not use terrain.pcx.",
+                ground.ZoneId, groundZone.Name, ground.FilePath);
+            return true;
         }
 
         private static IEnumerable<Zone2> GetZonesToBuild()
@@ -99,13 +148,15 @@ namespace CEM
             }
         }
 
-        private static void BuildNavmeshes()
+        private static bool BuildNavmeshes()
         {
             World.WorldMgr.Init();
-            Log.Normal("-----------------------------------------------------------------------------");
-            Log.Normal("Building recast navmeshes!");
 
             var zones = GetZonesToBuild().Distinct().Shuffle().ToArray();
+            if (!TryUseClientHeights(zones))
+                return false;
+            Log.Normal("-----------------------------------------------------------------------------");
+            Log.Normal("Building recast navmeshes!");
             Log.Normal("We will be creating {0} zones today. Right here. Right now.", zones.Length);
             Log.Normal("-----------------------------------------------------------------------------");
             Log.Normal("");
@@ -129,6 +180,7 @@ namespace CEM
                 int finished = Interlocked.Increment(ref finishedZones);
                 Console.Title = String.Format("[{2}%] NavGen {0}/{1}", finished, zones.Length, finished * 100 / zones.Length);
             })).ToArray());
+            return true;
         }
 
         /// <summary>
@@ -148,6 +200,7 @@ namespace CEM
                 ExportObjOnly = false;
                 RecastBuildAll = false;
                 NormalPriority = false;
+                Heights = "";
             }
 
             [Argument("config", Description = "Configuration File to use")]
@@ -167,6 +220,9 @@ namespace CEM
 
             [Argument("zones", Description = "Zones to build (recast navmesh), CSV")]
             public string RecastBuildZoneID { get; set; }
+
+            [Argument("heights", Description = "One zone's ground from heights.f32: <zone>=<path>")]
+            public string Heights { get; set; }
 
             [Argument("all", Description = "Build All Regions")]
             public bool RecastBuildAll { get; set; }
