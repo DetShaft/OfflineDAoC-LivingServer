@@ -1916,10 +1916,13 @@ namespace DOL.AI.Brain
                 return false;
             _nextExchangeCheckTick = now + 3_000 + Random.Shared.Next(4_001);
 
-            // Reserve and post the single best item before shopping, so a full
+            // Reserve and post the best item before shopping, so a full
             // 40-slot backpack—not a partially vendored remainder—determines
-            // the listing. The world controller routes to a vendor after this
-            // slot is occupied and returns here for upgrades only after clearing.
+            // the listing. One item is posted per visit to the broker. While
+            // a listing slot remains and another valuable is in the bag, the
+            // task break is not finished, so the next check posts another.
+            // The world controller routes to a vendor after the allowance is
+            // full and returns here for upgrades only after clearing.
             AutonomousBotEconomy.ListingCandidate candidate = AutonomousBotEconomy.FindValuableListingCandidate(bot);
             if (candidate != null &&
                 AutonomousBotEconomy.FindFreeListingSlot(AutonomousBotEconomy.GetOwnerId(bot.DatabaseID)) >= 0)

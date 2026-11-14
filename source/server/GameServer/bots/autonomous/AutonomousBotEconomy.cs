@@ -20,7 +20,11 @@ namespace DOL.GS;
         private static readonly Logger Log = LoggerManager.Create(MethodBase.GetCurrentMethod().DeclaringType);
         private const string OwnerPrefix = "offlinebot:";
         private const int MinimumEquipmentUpgrade = 8;
-        private const int MaxBotRealmExchangeListings = 1;
+        /// <summary>
+        /// How many real backpack items one gamebot may have on the Realm Exchange at once.
+        /// Raised so a round-robin share can be listed, still only at a natural task break.
+        /// </summary>
+        public const int MaxBotRealmExchangeListings = 8;
         private const int ServiceDecisionSafetyRefreshMilliseconds = 5 * 60_000;
         private sealed class ServiceDecisionState
         {
@@ -359,9 +363,9 @@ namespace DOL.GS;
 
         private static eWorldServiceKind? EvaluateNeededService(GameBot bot)
         {
-            // Choose the single listing from the complete backpack before any
-            // vendor sale changes that candidate pool. Once the listing slot is
-            // occupied, finish clearing every disposable item before shopping.
+            // Choose the next listing from the complete backpack before any
+            // vendor sale changes that candidate pool. Once the listing allowance
+            // is full, finish clearing every disposable item before shopping.
             if (HasListingSpace(bot) && FindValuableListingCandidate(bot) != null)
                 return eWorldServiceKind.RealmExchange;
 
@@ -376,7 +380,7 @@ namespace DOL.GS;
                 return eWorldServiceKind.Vendor;
 
             // The vendor phase has now made room. If the bot arrived with its
-            // one listing slot already occupied, it naturally skipped the first
+            // listing allowance already full, it naturally skipped the first
             // branch and reaches this realm-local upgrade appraisal directly.
             return !IsBackpackFull(bot) && FindBestUsefulExchangePurchase(bot) != null
                 ? eWorldServiceKind.RealmExchange
@@ -590,7 +594,7 @@ namespace DOL.GS;
                 return true;
             if (trainedCrafter && item.IsStackable && item.Count > 0)
                 return true;
-            // If the bot's single listing slot is occupied, unwanted gear can
+            // If the bot's listing allowance is full, unwanted gear can
             // still be sold normally. Never vendor an equippable upgrade.
             return canList && item.IsTradable && RealmExchangePricing.IsWorthListing(item);
         }

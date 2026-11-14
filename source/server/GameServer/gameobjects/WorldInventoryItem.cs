@@ -16,6 +16,9 @@ namespace DOL.GS
         public override LanguageDataObject.eTranslationIdentifier TranslationIdentifier => LanguageDataObject.eTranslationIdentifier.eItem;
         public virtual bool IsPlayerDiscarded => false;
 
+        /// <summary>The group member whose round-robin turn this drop is. Null when anyone who owns it may take it.</summary>
+        public GamePlayer ReservedFor { get; set; }
+
         public WorldInventoryItem() : base() { }
 
         public WorldInventoryItem(DbInventoryItem item) : this()

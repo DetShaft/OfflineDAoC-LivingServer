@@ -59,6 +59,13 @@ namespace DOL.GS
         /// <summary>The level of the kit EquipBot last generated; a level sync never rolls a lower one.</summary>
         private int _generatedGearLevel;
         public bool SuppressLootAndProgress => IsTemporaryGroupHelper;
+
+        /// <summary>
+        /// Friended companion bots and autonomous gamebots take a round-robin share.
+        /// A /spawn helper does not, until friending turns it into a gamebot.
+        /// </summary>
+        public bool ReceivesGroupLoot =>
+            !IsTemporaryGroupHelper && !IsEpicSpecialForce && (IsAutonomousWorldBot || Owner != null);
         internal int EquipmentLevelFloor { get; private set; }
         internal int EquipmentLevelCap { get; private set; }
         public OfflineWorldBotRecord PersistentRecord { get; private set; }
@@ -1701,7 +1708,9 @@ namespace DOL.GS
         public TryPickUpResult TryAutoPickUpItem(WorldInventoryItem item)
         {
             item.AssertLockAcquisition();
-            if (!IsAutonomousWorldBot || IsTemporaryGroupHelper || IsEpicSpecialForce)
+            // Companions keep the drop in the backpack they are wearing. Autonomous gamebots
+            // also appraise it. /spawn helpers and the Epic Special Forces still take nothing.
+            if (IsTemporaryGroupHelper || IsEpicSpecialForce || (!IsAutonomousWorldBot && Owner == null))
                 return TryPickUpResult.DoesNotWant;
             if (Inventory == null)
             {
@@ -1721,6 +1730,9 @@ namespace DOL.GS
 
             item.RemoveFromWorld();
             _reportedLootRejection = null;
+            if (!IsAutonomousWorldBot)
+                return TryPickUpResult.Success;
+
             AutonomousBotEconomy.MarkInventoryChanged(this);
             // Queue owned loot for the existing asynchronous save before appraisal.
             // This is not a synchronous commit; /spawn helpers never enter this path.

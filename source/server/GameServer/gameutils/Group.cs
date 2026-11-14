@@ -63,6 +63,8 @@ namespace DOL.GS
 
         public bool AutosplitLoot { get; set; } = true;
         public bool AutosplitCoins { get; set; } = true;
+        private int _lootTurn;
+        private readonly Lock _lootTurnLock = new();
         public byte Status { get; set; } = 0x0A;
 
         public AbstractMission Mission
@@ -578,163 +580,297 @@ namespace DOL.GS
 
         public object GameStaticItemOwnerComparand => null;
 
-        public TryPickUpResult TryAutoPickUpMoney(GameMoney money)
-        {
-            if (Leader != null)
-                return TryPickUpMoney(Leader, money);
+        public TryPickUpResult TryAutoPickUpMoney(GameMoney money) => SplitCoins(Leader, money);
 
+        public TryPickUpResult TryPickUpMoney(GamePlayer source, GameMoney money) => SplitCoins(source, money);
+
+        /// <summary>
+        /// Coins are split across players and gamebots who can hold them. Every copper is paid once.
+        /// Companion bots have no purse, so their part stays with the members who do.
+        /// </summary>
+        private TryPickUpResult SplitCoins(GamePlayer source, GameMoney money)
+        {
             money.AssertLockAcquisition();
             if (!AutosplitCoins)
                 return TryPickUpResult.DoesNotWant;
-            GameBot[] eligible = GetMembersInTheGroup().OfType<GameBot>()
-                .Where(bot => bot.IsAutonomousWorldBot && !bot.IsTemporaryGroupHelper &&
-                              bot.ObjectState == eObjectState.Active && bot.CurrentRegion == money.CurrentRegion &&
-                              bot.IsWithinRadius(money, WorldMgr.VISIBILITY_DISTANCE))
-                .ToArray();
-            if (eligible.Length == 0)
+
+            List<GameLiving> fitted = BotsThatFit(EligibleCoinMembers(money), money.Value);
+            if (fitted.Count == 0)
+            {
+                if (source?.Client?.Account != null)
+                    source.Out.SendMessage(LanguageMgr.GetTranslation(source.Client.Account.Language, "GamePlayer.PickupObject.NoOneGroupWantsMoney"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                return TryPickUpResult.Blocked;
+            }
+
+            long[] shares = GroupLoot.SplitCopper(money.Value, fitted.Count);
+            long unpaid = 0;
+            bool paid = false;
+            GamePlayer firstPlayer = null;
+            for (int index = 0; index < fitted.Count; index++)
+            {
+                long share = shares[index];
+                if (share <= 0)
+                    continue;
+
+                if (fitted[index] is GamePlayer player)
+                {
+                    firstPlayer ??= player;
+                    CreditPlayer(player, share, fitted.Count > 1);
+                    paid = true;
+                }
+                else if (fitted[index] is GameBot bot && AutonomousBotGuildEconomy.PayLootShare(bot, share))
+                    paid = true;
+                else
+                    unpaid += share;
+            }
+
+            if (unpaid > 0 && firstPlayer != null)
+            {
+                CreditPlayer(firstPlayer, unpaid, true);
+                unpaid = 0;
+            }
+            else if (unpaid > 0)
+            {
+                foreach (GameLiving member in fitted)
+                {
+                    if (member is GameBot bot && AutonomousBotGuildEconomy.PayLootShare(bot, unpaid))
+                    {
+                        unpaid = 0;
+                        break;
+                    }
+                }
+            }
+
+            // Nothing was stored. Leave the pile where it is so a later pickup can try again.
+            if (unpaid > 0 && !paid)
                 return TryPickUpResult.Blocked;
 
-            long quotient = money.Value / eligible.Length;
-            long remainder = money.Value % eligible.Length;
-            for (int index = 0; index < eligible.Length; index++)
-            {
-                long share = quotient + (index < remainder ? 1 : 0);
-                // Each share pays the bot's guild dues as a solo pickup does (bot or player guild; a full bank leaves it with the bot).
-                if (share > 0)
-                    AutonomousBotGuildEconomy.PayLootShare(eligible[index], share);
-            }
             _ = money.RemoveFromWorld();
             return TryPickUpResult.Success;
+        }
+
+        private static void CreditPlayer(GamePlayer player, long grossShare, bool shared)
+        {
+            long net = player.ApplyGuildDues(grossShare);
+            if (net <= 0)
+                return;
+
+            string language = player.Client?.Account?.Language;
+            string message = language == null ? null : LanguageMgr.GetTranslation(language,
+                shared ? "GamePlayer.PickupObject.YourLootShare" : "GamePlayer.PickupObject.YouPickUp",
+                Money.GetString(grossShare));
+            player.AddMoney(net, message);
+            InventoryLogging.LogInventoryAction("(ground)", player, eInventoryActionType.Loot, grossShare);
         }
 
         public TryPickUpResult TryAutoPickUpItem(WorldInventoryItem inventoryItem)
         {
-            if (Leader == null)
-            {
-                inventoryItem.AssertLockAcquisition();
-                foreach (GameBot bot in GetMembersInTheGroup().OfType<GameBot>()
-                             .Where(bot => bot.IsAutonomousWorldBot && !bot.IsTemporaryGroupHelper &&
-                                           bot.ObjectState == eObjectState.Active && bot.CurrentRegion == inventoryItem.CurrentRegion &&
-                                           bot.IsWithinRadius(inventoryItem, WorldMgr.VISIBILITY_DISTANCE))
-                             .OrderBy(_ => Random.Shared.Next()))
-                {
-                    TryPickUpResult result = bot.TryAutoPickUpItem(inventoryItem);
-                    if (result is TryPickUpResult.Success)
-                        return result;
-                }
-                return TryPickUpResult.Blocked;
-            }
-            // We don't care if players have auto loot enabled, or if they can see the item (the item isn't added to the world yet anyway), or who attacked last, etc.
-            return TryPickUpItem(Leader, inventoryItem);
-        }
-
-        public TryPickUpResult TryPickUpMoney(GamePlayer source, GameMoney money)
-        {
-            money.AssertLockAcquisition();
-
-            if (!AutosplitCoins)
+            inventoryItem.AssertLockAcquisition();
+            // Discarded gear and a group that is not sharing stay on the solo path.
+            // The player's own /autoloot still picks up a kill that has no group.
+            // Inside a group, the player's turn waits on the corpse for /look.
+            if (!AutosplitLoot || inventoryItem.IsPlayerDiscarded)
                 return TryPickUpResult.DoesNotWant;
 
-            List<GamePlayer> eligibleMembers = new(8);
-
-            // Members must be in visible range.
-            foreach (GamePlayer member in GetPlayersInTheGroup())
-            {
-                // Ignores `GamePlayer.AutoSplitLoot`.
-                if (member.ObjectState is eObjectState.Active && member.CanSeeObject(money))
-                    eligibleMembers.Add(member);
-            }
-
-            if (eligibleMembers.Count == 0)
-            {
-                source.Out.SendMessage(LanguageMgr.GetTranslation(source.Client.Account.Language, "GamePlayer.PickupObject.NoOneGroupWantsMoney"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+            List<GameLiving> eligible = EligibleItemMembers(inventoryItem);
+            if (eligible.Count == 0)
                 return TryPickUpResult.Blocked;
-            }
 
-            SplitMoneyBetweenEligibleMembers(eligibleMembers, money);
-            _ = money.RemoveFromWorld();
-            return TryPickUpResult.Success;
-
-            static void SplitMoneyBetweenEligibleMembers(List<GamePlayer> eligibleMembers, GameMoney money)
+            lock (_lootTurnLock)
             {
-                long splitMoney = (long) Math.Ceiling((double) money.Value / eligibleMembers.Count);
-                long moneyToPlayer;
-
-                foreach (GamePlayer eligibleMember in eligibleMembers)
+                int count = eligible.Count;
+                for (int step = 0; step < count; step++)
                 {
-                    moneyToPlayer = eligibleMember.ApplyGuildDues(splitMoney);
-
-                    if (moneyToPlayer > 0)
+                    int index = (_lootTurn + step) % count;
+                    GameLiving member = eligible[index];
+                    if (member is GamePlayer player)
                     {
-                        eligibleMember.AddMoney(moneyToPlayer, LanguageMgr.GetTranslation(eligibleMember.Client.Account.Language, eligibleMembers.Count > 1 ? "GamePlayer.PickupObject.YourLootShare" : "GamePlayer.PickupObject.YouPickUp", Money.GetString(splitMoney)));
-                        InventoryLogging.LogInventoryAction("(ground)", eligibleMember, eInventoryActionType.Loot, splitMoney);
+                        if (!PlayerCanHold(player, inventoryItem.Item))
+                            continue;
+
+                        _lootTurn = index + 1;
+                        inventoryItem.ReservedFor = player;
+                        if (player.Client != null)
+                            player.Out.SendMessage($"{inventoryItem.Name} is yours to look over. /look, then /look take.", eChatType.CT_Loot, eChatLoc.CL_SystemWindow);
+                        // Blocked leaves the drop in the world. DropLoot adds it there.
+                        return TryPickUpResult.Blocked;
+                    }
+
+                    if (member is GameBot bot)
+                    {
+                        TryPickUpResult result = bot.TryAutoPickUpItem(inventoryItem);
+                        if (result is not TryPickUpResult.Success)
+                            continue;
+
+                        _lootTurn = index + 1;
+                        TellGroupItem(inventoryItem.Name, bot.Name);
+                        return TryPickUpResult.Success;
                     }
                 }
             }
+
+            return TryPickUpResult.Blocked;
         }
 
         public TryPickUpResult TryPickUpItem(GamePlayer source, WorldInventoryItem item)
         {
             item.AssertLockAcquisition();
 
-            // A group is only able to pick up items if auto split is enabled. Otherwise, solo logic should apply.
-            // Group members are filtered to exclude far away players or players with auto split solo enabled.
-            // A player with enough room in his inventory is chosen randomly.
-            // If there is none, the item should simply stays on the ground.
-            // Items discarded by players can only be picked up by those same players.
-            if (!AutosplitLoot || item.IsPlayerDiscarded)
+            // A group only hands out items while autosplit is on. A player's discarded
+            // item stays theirs. The person who looks and takes a drop is the one who receives it.
+            if (!AutosplitLoot || item.IsPlayerDiscarded || source == null)
                 return TryPickUpResult.DoesNotWant;
 
-            List<GamePlayer> eligibleMembers = new(8);
-
-            // Members must be in visible range.
-            foreach (GamePlayer member in GetPlayersInTheGroup())
+            string language = source.Client?.Account?.Language;
+            if (item.ReservedFor != null && item.ReservedFor != source)
             {
-                if (member.ObjectState is eObjectState.Active && member.AutoSplitLoot && member.CanSeeObject(item))
-                    eligibleMembers.Add(member);
-            }
-
-            if (eligibleMembers.Count == 0)
-            {
-                source.Out.SendMessage(LanguageMgr.GetTranslation(source.Client.Account.Language, "GamePlayer.PickupObject.NoOneWantsThis", item.Name), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                if (language != null)
+                    source.Out.SendMessage($"{item.Name} is {item.ReservedFor.Name}'s to look over.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 return TryPickUpResult.Blocked;
             }
 
-            if (!GiveItemToRandomEligibleMember(eligibleMembers, item.Item, out GamePlayer eligibleMember))
+            if (!GiveItem(source, item.Item))
+            {
+                if (language != null)
+                    source.Out.SendMessage(LanguageMgr.GetTranslation(language, "GamePlayer.PickupObject.BackpackFull"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 return TryPickUpResult.Blocked;
+            }
 
-            Message.SystemToOthers(source, LanguageMgr.GetTranslation(source.Client.Account.Language, "GamePlayer.PickupObject.GroupMemberPicksUp", Name, item.Item.GetName(1, false)), eChatType.CT_System);
-            SendMessageToGroupMembers(LanguageMgr.GetTranslation(source.Client.Account.Language, "GamePlayer.PickupObject.Autosplit", item.Item.GetName(1, true), eligibleMember.Name), eChatType.CT_System, eChatLoc.CL_SystemWindow);
-            InventoryLogging.LogInventoryAction("(ground)", eligibleMember, eInventoryActionType.Loot, item.Item.Template, item.Item.IsStackable ? item.Item.Count : 1);
-            _ = item.RemoveFromWorld();
+            if (language != null)
+            {
+                source.Out.SendMessage(LanguageMgr.GetTranslation(language, "GamePlayer.PickupObject.YouGet", item.Item.GetName(1, false)), eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                if (source.CurrentRegion != null)
+                    Message.SystemToOthers(source, LanguageMgr.GetTranslation(language, "GamePlayer.PickupObject.GroupMemberPicksUp", source.Name, item.Item.GetName(1, false)), eChatType.CT_System);
+            }
+
+            InventoryLogging.LogInventoryAction("(ground)", source, eInventoryActionType.Loot, item.Item.Template, item.Item.IsStackable ? item.Item.Count : 1);
+            item.ReservedFor = null;
+            if (!item.RemoveFromWorld())
+                item.ObjectState = eObjectState.Inactive;
             return TryPickUpResult.Success;
 
-            static bool GiveItemToRandomEligibleMember(List<GamePlayer> eligibleMembers, DbInventoryItem item, out GamePlayer eligibleMember)
+            static bool GiveItem(GamePlayer player, DbInventoryItem item)
             {
-                int randomIndex;
-                int lastIndex;
+                if (player?.Inventory == null || item == null)
+                    return false;
 
-                do
+                return item.IsStackable
+                    ? player.Inventory.AddTemplate(item, item.Count, eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack)
+                    : player.Inventory.AddItem(eInventorySlot.FirstEmptyBackpack, item);
+            }
+        }
+
+        private List<GameLiving> SnapshotMembers()
+        {
+            List<GameLiving> copy = new();
+            lock (_groupMembersLock)
+                copy.AddRange(_groupMembers);
+            return copy;
+        }
+
+        private static bool NearDrop(GameLiving member, GameObject drop) =>
+            member != null && drop != null && member.ObjectState == eObjectState.Active &&
+            member.CurrentRegionID == drop.CurrentRegionID &&
+            member.IsWithinRadius(drop, WorldMgr.VISIBILITY_DISTANCE);
+
+        private List<GameLiving> EligibleCoinMembers(GameMoney money)
+        {
+            List<GameLiving> members = new();
+            foreach (GameLiving member in SnapshotMembers())
+            {
+                if (!NearDrop(member, money))
+                    continue;
+                if (member is GamePlayer)
+                    members.Add(member);
+                else if (member is GameBot bot && bot.IsAutonomousWorldBot && bot.ReceivesGroupLoot &&
+                         bot.DatabaseID > 0 && bot.PersistentRecord != null)
+                    members.Add(bot);
+            }
+
+            return members;
+        }
+
+        private List<GameLiving> EligibleItemMembers(WorldInventoryItem item)
+        {
+            List<GameLiving> members = new();
+            foreach (GameLiving member in SnapshotMembers())
+            {
+                if (!NearDrop(member, item))
+                    continue;
+                if (member is GamePlayer player)
                 {
-                    lastIndex = eligibleMembers.Count - 1;
-                    randomIndex = Util.Random(0, lastIndex);
-                    eligibleMember = eligibleMembers[randomIndex];
-
-                    if (GiveItem(eligibleMember, item))
-                        return true;
-
-                    eligibleMember.Out.SendMessage(LanguageMgr.GetTranslation(eligibleMember.Client.Account.Language, "GamePlayer.PickupObject.BackpackFull"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
-                    eligibleMembers.SwapRemoveAt(randomIndex);
-                } while (eligibleMembers.Count > 0);
-
-                return false;
-
-                static bool GiveItem(GamePlayer player, DbInventoryItem item)
-                {
-                    return item.IsStackable ?
-                        player.Inventory.AddTemplate(item, item.Count, eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack) :
-                        player.Inventory.AddItem(eInventorySlot.FirstEmptyBackpack, item);
+                    if (player.AutoSplitLoot)
+                        members.Add(player);
                 }
+                else if (member is GameBot bot && bot.ReceivesGroupLoot)
+                    members.Add(bot);
+            }
+
+            return members;
+        }
+
+        /// <summary>
+        /// Drops any gamebot whose purse cannot hold its share, then splits again,
+        /// so a full purse never deletes the other members' copper.
+        /// </summary>
+        private static List<GameLiving> BotsThatFit(List<GameLiving> eligible, long total)
+        {
+            List<GameLiving> fitted = new(eligible);
+            for (int pass = 0; pass < eligible.Count && fitted.Count > 0; pass++)
+            {
+                long[] shares = GroupLoot.SplitCopper(total, fitted.Count);
+                int unfit = -1;
+                for (int index = 0; index < fitted.Count; index++)
+                {
+                    if (fitted[index] is GameBot bot && !BotCanHold(bot, shares[index]))
+                    {
+                        unfit = index;
+                        break;
+                    }
+                }
+
+                if (unfit < 0)
+                    return fitted;
+                fitted.RemoveAt(unfit);
+            }
+
+            return fitted;
+        }
+
+        private static bool BotCanHold(GameBot bot, long share)
+        {
+            if (bot?.PersistentRecord == null || bot.DatabaseID <= 0 || share < 0)
+                return false;
+            if (share == 0)
+                return true;
+
+            // A full guild bank returns the dues to the bot, so the purse must fit the whole share.
+            long net = AutonomousBotGuildEconomy.ShareAfterDues(bot, share, out _, out _);
+            long worst = Math.Max(net, share);
+            return bot.PersistentRecord.MoneyCopper <= long.MaxValue - worst;
+        }
+
+        private static bool PlayerCanHold(GamePlayer player, DbInventoryItem item)
+        {
+            if (player == null)
+                return false;
+            // A player with no inventory yet still gets the turn; /look reports a full bag later.
+            if (player.Inventory == null || item == null)
+                return true;
+            if (item.IsStackable &&
+                player.Inventory.FindFirstPartiallyFullSlot(eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack, item) != eInventorySlot.Invalid)
+                return true;
+            return player.Inventory.FindFirstEmptySlot(eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack) != eInventorySlot.Invalid;
+        }
+
+        private void TellGroupItem(string itemName, string receiverName)
+        {
+            foreach (GamePlayer member in SnapshotMembers().OfType<GamePlayer>())
+            {
+                string language = member.Client?.Account?.Language;
+                if (language == null)
+                    continue;
+                member.Out.SendMessage(LanguageMgr.GetTranslation(language, "GamePlayer.PickupObject.Autosplit", itemName, receiverName), eChatType.CT_System, eChatLoc.CL_SystemWindow);
             }
         }
 
