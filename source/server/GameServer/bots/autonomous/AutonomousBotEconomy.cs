@@ -132,6 +132,7 @@ namespace DOL.GS;
         ItemQuery query = new() { Realm = bot.Realm };
         return MarketCache.SearchItems(query)
             .Where(item => item.OwnerLot == lot && item.IsTradable && item.SellPrice > 0 && item.SellPrice <= money &&
+                item.SellPrice <= RealmExchangePricing.SuggestCopper(item) &&
                 item.OwnerID != GetOwnerId(bot.DatabaseID) && !RealmExchangeExpiry.IsExpired(item, DateTime.UtcNow))
             .OrderBy(item => item.SellPrice)
             .Take(maximumResults)
@@ -711,21 +712,12 @@ namespace DOL.GS;
 
     public static int RollListingPrice(DbInventoryItem item) => RecommendListingPrice(item, -0.35 + Random.Shared.NextDouble() * 0.85);
 
-        public static int RecommendListingPrice(DbInventoryItem item, double sellerDisposition = 0)
-    {
-        if (item == null)
-            return 0;
-        int utility = Math.Abs(item.Bonus) + Math.Abs(item.ExtraBonus) + Math.Abs(item.Bonus1) + Math.Abs(item.Bonus2) +
-                      Math.Abs(item.Bonus3) + Math.Abs(item.Bonus4) + Math.Abs(item.Bonus5) + Math.Abs(item.Bonus6) +
-                      Math.Abs(item.Bonus7) + Math.Abs(item.Bonus8) + Math.Abs(item.Bonus9) + Math.Abs(item.Bonus10);
-        double rarity = Math.Clamp((item.Quality - 85) / 3d + (item.IsROG ? 2 : 0) + (item.IsCrafted ? 1 : 0) +
-                                   Math.Min(3, utility / 20d), 0, 10);
-        var facts = new AutonomousAuctionValuation.ItemFacts(
-            Math.Max(1, item.Level), Math.Max(1, item.Count), Math.Max(1, item.Quality),
-            Math.Max(1, (int)item.ConditionPercent), rarity, utility, item.MaxCount > 1 || item.Count > 1);
-        long price = AutonomousAuctionValuation.Recommend(facts, sellerDisposition).BuyoutCopper;
-        return (int)Math.Clamp(price, 1, int.MaxValue);
-    }
+    /// <summary>
+    /// The shared Realm Exchange price, shifted a little by how eager the bot is to sell.
+    /// A player deposit uses the same price with no shift. Bots will not pay more than that unshifted price.
+    /// </summary>
+    public static int RecommendListingPrice(DbInventoryItem item, double sellerDisposition = 0) =>
+        RealmExchangePricing.SuggestCopper(item, sellerDisposition);
 
     public static bool TryList(GameBot bot, DbInventoryItem item, int priceCopper)
     {

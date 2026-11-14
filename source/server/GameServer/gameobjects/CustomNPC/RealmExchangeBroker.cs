@@ -24,6 +24,7 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
     private const string ModeBrowse = "browse";
     private const string ModeSell = "sell";
     private const string ListingsPageProperty = "OfflineRealmExchange.ListingsPage";
+    private const string BulkDepositProperty = "OfflineRealmExchange.BulkDeposit";
     private const string ProceedsKeyPrefix = "RealmExchange.Proceeds.";
     private const int PageSize = 20;
 
@@ -69,6 +70,17 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
         (pendingProceeds > 0 ? $"[Claim sale proceeds]: {Money.GetString(pendingProceeds)}\n" : "Sale proceeds: none waiting\n") +
         "[How does this work?]";
 
+    public static string BuildListingsPrompt(int pageNumber) =>
+        $"Your listings - page {pageNumber}. Your listings have no total cap and never expire.\n" +
+        "[Previous listing page]  [Next listing page]\n" +
+        "Deposit lists the armor, weapons, jewelry and similar gear in that backpack bag. Each piece is listed at a suggested price you can change.\n" +
+        "[Deposit all gear from bag 1]\n" +
+        "[Deposit all gear from bag 2]\n" +
+        "[Deposit all gear from bag 3]\n" +
+        "[Deposit all gear from bag 4]\n" +
+        "[Deposit all gear from bag 5]\n" +
+        "[Browse the exchange]";
+
     public override bool WhisperReceive(GameLiving source, string text)
     {
         if (!base.WhisperReceive(source, text) || source is not GamePlayer player || !CanUseExchange(player))
@@ -83,6 +95,11 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
             page = Math.Clamp(page + (command.StartsWith("next") ? 1 : -1), 0, maximumPage);
             player.TempProperties.SetProperty(ListingsPageProperty, page);
             OpenListings(player);
+            return true;
+        }
+        if (RealmExchangePricing.TryParseDepositBag(text, out int depositBag))
+        {
+            DepositGearFromBag(player, depositBag);
             return true;
         }
         if (command.Contains("browse"))
@@ -112,7 +129,9 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
                 "Realm Exchange - Help",
                 [
                     "Browse: opens the realm market search. Drag a result to an empty backpack slot to buy it.",
-                    "Manage: opens your listing chest. Drag a tradable backpack item into an empty slot, then enter its copper price.",
+                    "Manage: opens your listing chest. Drag a tradable backpack item into an empty slot. It is listed at a suggested price, which you can change.",
+                    "Deposit all gear from bag 1 through bag 5 lists the armor, weapons, shields, instruments, jewelry and similar gear in that backpack bag. Bag 1 is the first bag.",
+                    "Anything that is not tradable gear stays in the bag. Set a price of 0 to keep a listed piece in the chest without selling it.",
                     "Drag one of your listed items back to your backpack to cancel it.",
                     "A purchase transfers that exact persisted item and that exact amount of copper between buyer and seller.",
                     "Player sale proceeds remain safely held by the exchange while you are offline. Return here and choose Claim sale proceeds.",
@@ -137,9 +156,113 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
         foreach (var item in GetClientInventory(player)) slots[item.Key] = item.Value;
         player.Out.SendInventoryItemsUpdate(slots, eInventoryWindowType.ConsignmentOwner);
         player.Out.SendConsignmentMerchantMoney(0);
-        player.Out.SendMessage("Drag a real item into an empty exchange slot, then set its price in copper.", eChatType.CT_Merchant, eChatLoc.CL_ChatWindow);
+        player.Out.SendMessage("Drag a real item into an empty exchange slot. It is listed at a suggested price, which you can change. Deposit all gear from a bag lists that bag's gear the same way.", eChatType.CT_Merchant, eChatLoc.CL_ChatWindow);
         int page = player.TempProperties.GetProperty<int>(ListingsPageProperty);
-        player.Out.SendMessage($"Your listings - page {page + 1}. Your listings have no total cap and never expire.\n[Previous listing page]  [Next listing page]\n[Browse the exchange]", eChatType.CT_Say, eChatLoc.CL_PopupWindow);
+        player.Out.SendMessage(BuildListingsPrompt(page + 1), eChatType.CT_Say, eChatLoc.CL_PopupWindow);
+    }
+
+    private void DepositGearFromBag(GamePlayer player, int bagNumber)
+    {
+        if (!CanUseExchange(player) || player.Inventory == null || !RealmExchangePricing.TryGetBagBounds(bagNumber, out int firstSlot, out int lastSlot))
+        {
+            player.Out.SendMessage("You need to be at the Realm Exchange to deposit gear.", eChatType.CT_Merchant, eChatLoc.CL_ChatWindow);
+            return;
+        }
+
+        SetActive(player, ModeSell);
+        List<DbInventoryItem> bagItems = player.Inventory.GetItemRange((eInventorySlot)firstSlot, (eInventorySlot)lastSlot).ToList();
+        int gearCount = bagItems.Count(RealmExchangePricing.IsDepositGear);
+        int listed = 0;
+        int planned = 0;
+        int firstListedSlot = -1;
+
+        lock (TransactionLock)
+        {
+            HashSet<int> used = GetDbItems(player).Select(item => item.SlotPosition).ToHashSet();
+            List<RealmExchangePricing.DepositPiece> plan = RealmExchangePricing.PlanBag(
+                bagItems, bagNumber, used, FirstDbSlot, RealmExchangePricing.PlayerListingCapacity);
+            planned = plan.Count;
+            player.TempProperties.SetProperty(BulkDepositProperty, true);
+            try
+            {
+                foreach (RealmExchangePricing.DepositPiece piece in plan)
+                {
+                    if (!TryDepositPiece(player, piece))
+                        continue;
+                    listed++;
+                    if (firstListedSlot < 0)
+                        firstListedSlot = piece.ListingSlot;
+                }
+            }
+            finally
+            {
+                player.TempProperties.RemoveProperty(BulkDepositProperty);
+            }
+        }
+
+        if (firstListedSlot >= FirstDbSlot)
+            player.TempProperties.SetProperty(ListingsPageProperty, (firstListedSlot - FirstDbSlot) / 100);
+        OpenListings(player);
+        player.Out.SendMessage(DescribeDeposit(bagNumber, bagItems.Count, gearCount, planned, listed), eChatType.CT_Merchant, eChatLoc.CL_ChatWindow);
+    }
+
+    private static string DescribeDeposit(int bagNumber, int itemsInBag, int gearCount, int planned, int listed)
+    {
+        if (gearCount == 0)
+            return $"Bag {bagNumber} has no tradable gear to list. Armor, weapons, shields, instruments, jewelry and similar pieces are listed. Other items stay in the bag.";
+
+        if (listed == 0)
+            return $"The exchange could not list the gear from bag {bagNumber}.";
+
+        string message = $"Listed {listed} {(listed == 1 ? "piece" : "pieces")} from bag {bagNumber} at suggested prices. Set a different price on any piece to change it.";
+        int noRoom = gearCount - planned;
+        int notMoved = planned - listed;
+        int other = itemsInBag - gearCount;
+        if (noRoom > 0)
+            message += $" {noRoom} {(noRoom == 1 ? "piece" : "pieces")} stayed in the bag because the chest is full.";
+        if (notMoved > 0)
+            message += $" {notMoved} {(notMoved == 1 ? "piece" : "pieces")} could not be moved.";
+        if (other > 0)
+            message += $" {other} {(other == 1 ? "item" : "items")} stayed because {(other == 1 ? "it is" : "they are")} not tradable gear.";
+        return message;
+    }
+
+    private bool TryDepositPiece(GamePlayer player, RealmExchangePricing.DepositPiece piece)
+    {
+        DbInventoryItem item = piece.Item;
+        if (item == null || player?.Inventory == null)
+            return false;
+        if (item.SlotPosition is < (int)eInventorySlot.FirstBackpack or > (int)eInventorySlot.LastBackpack)
+            return false;
+
+        int page = (piece.ListingSlot - FirstDbSlot) / 100;
+        int offset = piece.ListingSlot - FirstDbSlot - page * 100;
+        if (page < 0 || offset is < 0 or >= 100)
+            return false;
+
+        var pageInventory = new ListingPageInventory(this, page);
+        IDictionary<int, DbInventoryItem> updates = GameInventoryObjectExtensions.MoveItem(
+            pageInventory, player, (eInventorySlot)item.SlotPosition, FirstClientSlot + offset, 0);
+        if (updates == null || updates.Count == 0 || item.OwnerLot != ExchangeOwnerLot || item.SlotPosition != piece.ListingSlot)
+            return false;
+
+        if (item.SellPrice != piece.PriceCopper)
+        {
+            if (!MarketCache.UpdateItem(item, static (listed, value) => listed.SellPrice = value, piece.PriceCopper))
+                item.SellPrice = piece.PriceCopper;
+            GameServer.Database.SaveObject(item);
+        }
+
+        var backpack = new Dictionary<int, DbInventoryItem>();
+        foreach (KeyValuePair<int, DbInventoryItem> pair in updates)
+        {
+            if (!GameInventoryObjectExtensions.IsHousingInventorySlot((eInventorySlot)pair.Key))
+                backpack[pair.Key] = pair.Value;
+        }
+
+        if (backpack.Count > 0)
+            player.Out.SendInventoryItemsUpdate(backpack, eInventoryWindowType.Update);
+        return true;
     }
 
     private void SetActive(GamePlayer player, string mode)
@@ -256,9 +379,17 @@ public sealed partial class RealmExchangeBroker : GameNPC, IGameInventoryObject
 
         item.OwnerLot = ExchangeOwnerLot;
         item.OwnerID = player.InternalID;
-        item.SellPrice = 0;
+        int price = RealmExchangePricing.SuggestCopper(item);
+        item.SellPrice = price;
         MarketCache.AddItem(item);
         GameServer.Database.SaveObject(item);
+        if (player?.Out != null && !player.TempProperties.GetProperty<bool>(BulkDepositProperty))
+        {
+            player.Out.SendMessage(
+                $"{item.Name} is listed for {Money.GetString(price)}. Set another price to change it, or 0 to keep it in the chest without selling.",
+                eChatType.CT_Merchant,
+                eChatLoc.CL_ChatWindow);
+        }
         return true;
     }
 

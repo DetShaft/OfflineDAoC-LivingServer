@@ -9,7 +9,8 @@ extends ClassicWindow
 ##            bonus, crafted only), 20 results a page with their prices; BUY (or double-click, or drag a result into
 ##            the backpack - the server's way).
 ##   MY LISTINGS - your listing chest (100 slots a chest page, five pages of twenty here): drag a backpack item in
-##            to list it (its price is asked), SET PRICE to change it, TAKE BACK (or drag it to the backpack) cancels.
+##            to list it (a suggested price is filled in; SET PRICE changes it), DEPOSIT THIS BAG lists the gear in
+##            the sack open in the inventory, TAKE BACK (or drag it to the backpack) cancels.
 ## SALE PROCEEDS: what the broker holds for you (its greeting's amount, sales while you are online added) and CLAIM.
 ## The broker answers only within reach and in its own realm (the server's rules); its words come in the chat.
 ## Text sizes (owner 2026-10-13: "some of the text is small and hard to read"): rows 11, captions 10, nothing under 10.
@@ -224,10 +225,10 @@ func _build_listings() -> void:
 	_listings.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_listings)
 	_listings.add_child(_panel(Rect2(COL_X - 8, LIST_Y - 26, COL_W + 16, ROWS * ROW_H + 32)))
-	var help := UiArt.label("TO SELL: DRAG AN ITEM FROM YOUR BACKPACK ONTO THE LIST, THEN SET ITS PRICE.\n\n" +
-			"SET PRICE CHANGES A PRICE. A PRICE OF 0 KEEPS THE ITEM HERE, NOT FOR SALE.\n\n" +
-			"TO CANCEL: TAKE BACK, OR DRAG THE LISTING TO YOUR BACKPACK.\n\n" +
-			"MONEY FROM SALES WAITS HERE: CLAIM IT AT THE TOP.\n\nYOUR LISTINGS NEVER EXPIRE.", CAPTION, UiArt.CREAM, false)
+	var help := UiArt.label("TO SELL ONE: DRAG IT FROM YOUR BACKPACK ONTO THE LIST. IT IS PRICED FOR YOU; CHANGE THAT PRICE OR KEEP IT.\n\n" +
+			"DEPOSIT THIS BAG LISTS THE GEAR IN THE SACK YOU HAVE OPEN, AT THOSE SAME PRICES.\n\n" +
+			"A PRICE OF 0 KEEPS THE ITEM HERE, NOT FOR SALE. TAKE BACK CANCELS A LISTING.\n\n" +
+			"MONEY FROM SALES WAITS HERE. YOUR LISTINGS NEVER EXPIRE.", CAPTION, UiArt.CREAM, false)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	help.position = Vector2(COL_X, LIST_Y - 20)
 	_fix_size(help, Vector2(COL_W, 290))
@@ -245,6 +246,11 @@ func _build_listings() -> void:
 	nxt.position = Vector2(COL_X + COL_W - 90, LIST_Y + 304)
 	nxt.pressed.connect(func(): Server.command("/whisper next listing page"))
 	_listings.add_child(nxt)
+	var deposit := UiArt.button("DEPOSIT THIS BAG", Vector2(COL_W, 24), 10)
+	deposit.position = Vector2(COL_X, LIST_Y + 332)
+	deposit.pressed.connect(func():
+		Server.command("/whisper deposit all gear from bag %d" % (InventorySheet.sack + 1)))
+	_listings.add_child(deposit)
 	var how := UiArt.button("HOW IT WORKS", Vector2(COL_W, 24), 10)
 	how.position = Vector2(COL_X, LIST_Y + ROWS * ROW_H - 28)
 	how.pressed.connect(func(): Server.command("/whisper how does this work"))
@@ -494,7 +500,7 @@ func ask_price(slot: int) -> void:
 		box.add_child(l)
 		fields[k[0]] = f
 		x += 96.0
-	var note := UiArt.label("A PRICE OF 0 KEEPS IT IN THE CHEST, NOT FOR SALE", CAPTION, UiArt.DIM)
+	var note := UiArt.label("SUGGESTED PRICE IS FILLED IN. EDIT IT, OR SET 0 TO NOT SELL", CAPTION, UiArt.DIM)
 	note.position = Vector2(0, 94)
 	note.size = Vector2(box.size.x, 14)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -509,7 +515,7 @@ func ask_price(slot: int) -> void:
 	yes.position = Vector2(box.size.x * 0.5 - 120, 120)
 	yes.pressed.connect(done.bind(true))
 	box.add_child(yes)
-	var no := UiArt.button("CANCEL", Vector2(110, 24), 11)
+	var no := UiArt.button("KEEP PRICE", Vector2(110, 24), 11)
 	no.position = Vector2(box.size.x * 0.5 + 10, 120)
 	no.pressed.connect(done.bind(false))
 	box.add_child(no)
