@@ -8,6 +8,17 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.18 (in development)
+
+**Abermenai and Murdaigean portal keeps are guarded (#75).** A battleground keep loads only its doors from the keep
+tables; its guards are world NPC rows, and the world has them at each realm's portal keep in Thidranki and Caledonia but
+none at the portal keeps in Abermenai (levels 15-19) and Murdaigean (25-29). Those keeps stood empty, so enemies could
+camp the realm entrances. Each realm's portal keep stands at the same spot in all four battlegrounds, so at server start
+a guardless one now gets the guards of its realm's portal keep in Thidranki or Caledonia (hastener, fighters and
+casters), at the same places. They are not saved to the database. The server log names each filled keep with a
+`BG_PORTAL_GUARDS` line. The central keeps, the battleground monsters and the teleporters are unchanged. Tests only: not
+yet seen in game.
+
 ## Beta 1.1.17 — 2026-11-13
 
 **LFG bots come to you (#55).** Inviting a bot from the find-group window when it was far away answered "too far away to
