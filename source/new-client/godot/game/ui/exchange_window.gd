@@ -9,7 +9,8 @@ extends ClassicWindow
 ##            bonus, crafted only), 20 results a page with their prices; BUY (or double-click, or drag a result into
 ##            the backpack - the server's way).
 ##   MY LISTINGS - your listing chest (100 slots a chest page, five pages of twenty here): drag a backpack item in
-##            to list it (its price is asked), SET PRICE to change it, TAKE BACK (or drag it to the backpack) cancels.
+##            to store it (the suggested price is filled in; LIST IT sells it, CANCEL leaves it stored), DEPOSIT THIS
+##            BAG lists the gear in the sack open in the inventory, TAKE BACK (or drag it to the backpack) cancels.
 ## SALE PROCEEDS: what the broker holds for you (its greeting's amount, sales while you are online added) and CLAIM.
 ## The broker answers only within reach and in its own realm (the server's rules); its words come in the chat.
 ## Text sizes (owner 2026-10-13: "some of the text is small and hard to read"): rows 11, captions 10, nothing under 10.
@@ -224,10 +225,10 @@ func _build_listings() -> void:
 	_listings.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_listings)
 	_listings.add_child(_panel(Rect2(COL_X - 8, LIST_Y - 26, COL_W + 16, ROWS * ROW_H + 32)))
-	var help := UiArt.label("TO SELL: DRAG AN ITEM FROM YOUR BACKPACK ONTO THE LIST, THEN SET ITS PRICE.\n\n" +
-			"SET PRICE CHANGES A PRICE. A PRICE OF 0 KEEPS THE ITEM HERE, NOT FOR SALE.\n\n" +
-			"TO CANCEL: TAKE BACK, OR DRAG THE LISTING TO YOUR BACKPACK.\n\n" +
-			"MONEY FROM SALES WAITS HERE: CLAIM IT AT THE TOP.\n\nYOUR LISTINGS NEVER EXPIRE.", CAPTION, UiArt.CREAM, false)
+	var help := UiArt.label("TO SELL ONE: DRAG IT IN. IT STAYS STORED UNTIL YOU LIST IT. THE SUGGESTED PRICE IS FILLED IN, AND YOU CAN CHANGE IT.\n\n" +
+			"DEPOSIT THIS BAG LISTS THE GEAR IN THE OPEN SACK AT THOSE PRICES.\n\n" +
+			"A PRICE OF 0 KEEPS THE ITEM HERE, NOT FOR SALE. TAKE BACK CANCELS A LISTING.\n\n" +
+			"MONEY FROM SALES WAITS HERE. YOUR LISTINGS NEVER EXPIRE.", CAPTION, UiArt.CREAM, false)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	help.position = Vector2(COL_X, LIST_Y - 20)
 	_fix_size(help, Vector2(COL_W, 290))
@@ -245,6 +246,11 @@ func _build_listings() -> void:
 	nxt.position = Vector2(COL_X + COL_W - 90, LIST_Y + 304)
 	nxt.pressed.connect(func(): Server.command("/whisper next listing page"))
 	_listings.add_child(nxt)
+	var deposit := UiArt.button("DEPOSIT THIS BAG", Vector2(COL_W, 24), 10)
+	deposit.position = Vector2(COL_X, LIST_Y + 332)
+	deposit.pressed.connect(func():
+		Server.command("/whisper deposit all gear from bag %d" % (InventorySheet.sack + 1)))
+	_listings.add_child(deposit)
 	var how := UiArt.button("HOW IT WORKS", Vector2(COL_W, 24), 10)
 	how.position = Vector2(COL_X, LIST_Y + ROWS * ROW_H - 28)
 	how.pressed.connect(func(): Server.command("/whisper how does this work"))
@@ -335,7 +341,7 @@ func refresh() -> void:
 	if _ask_price >= 0 and Server.listings.has(_ask_price):
 		var s := _ask_price
 		_ask_price = -1
-		ask_price(s)
+		ask_price(s, true)
 
 
 ## The id shown on row i: a result's or a listing's runtime ItemDb id ("" empty).
@@ -453,7 +459,7 @@ func list_item(from: int, slot := -1) -> void:
 
 
 ## The price box in the granite: platinum / gold / silver / copper (0 = kept in the chest, not for sale).
-func ask_price(slot: int) -> void:
+func ask_price(slot: int, from_drag := false) -> void:
 	var it := ItemDb.item(String(Server.listings.get(slot, "")))
 	if it.is_empty():
 		return
@@ -479,6 +485,10 @@ func ask_price(slot: int) -> void:
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(nm)
 	var have := maxi(Server.listing_price(slot), 0)
+	if have == 0 and from_drag:
+		have = maxi(Server.suggested_price, 0)
+	if from_drag:
+		Server.suggested_price = 0
 	var parts := PlayerData.split_money(have)
 	var fields := {}
 	var x := 22.0
@@ -494,7 +504,7 @@ func ask_price(slot: int) -> void:
 		box.add_child(l)
 		fields[k[0]] = f
 		x += 96.0
-	var note := UiArt.label("A PRICE OF 0 KEEPS IT IN THE CHEST, NOT FOR SALE", CAPTION, UiArt.DIM)
+	var note := UiArt.label("SUGGESTED PRICE IS FILLED IN. LIST IT, OR CANCEL TO LEAVE IT STORED", CAPTION, UiArt.DIM)
 	note.position = Vector2(0, 94)
 	note.size = Vector2(box.size.x, 14)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

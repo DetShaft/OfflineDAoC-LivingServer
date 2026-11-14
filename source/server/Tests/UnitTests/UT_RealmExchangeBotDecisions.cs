@@ -245,18 +245,53 @@ namespace DOL.UnitTests
 
             int appraisal = AutonomousBotEconomy.RecommendListingPrice(item);
             int[] rolls = Enumerable.Range(0, 96).Select(_ => AutonomousBotEconomy.RollListingPrice(item)).ToArray();
-            double rarity = Math.Clamp((item.Quality - 85) / 3d + 2, 0, 10);
-            var facts = new AutonomousAuctionValuation.ItemFacts(item.Level, Math.Max(1, item.Count), item.Quality,
-                Math.Max(1, (int)item.ConditionPercent), rarity, 0, false);
-            int minimum = (int)AutonomousAuctionValuation.Recommend(facts, -0.35).BuyoutCopper;
-            int maximum = (int)AutonomousAuctionValuation.Recommend(facts, 0.50).BuyoutCopper;
+            int minimum = RealmExchangePricing.SuggestCopper(item, -0.35);
 
             Assert.Multiple(() =>
             {
+                Assert.That(appraisal, Is.EqualTo(RealmExchangePricing.SuggestCopper(item)));
                 Assert.That(AutonomousBotEconomy.RecommendListingPrice(item), Is.EqualTo(appraisal));
-                Assert.That(rolls, Has.All.InRange(minimum, maximum));
+                Assert.That(rolls, Has.All.InRange(minimum, appraisal));
+                Assert.That(rolls, Has.All.LessThanOrEqualTo(appraisal),
+                    "a bot ask must stay at or below the price another bot will pay");
                 Assert.That(rolls.Distinct().Count(), Is.GreaterThan(1));
             });
+        }
+
+        [Test]
+        public void LowQualityGearIsVendoredWhileAFinerPieceIsListed()
+        {
+            DecisionBot bot = Bot();
+            GivePersistentRecord(bot, true);
+            DbInventoryItem poor = AddBackpack(bot, Item("poor cloth", 10, 40,
+                (int)eInventorySlot.FirstBackpack, 2_000));
+            DbInventoryItem fine = AddBackpack(bot, Item("fine cloth", 10, 100,
+                (int)eInventorySlot.FirstBackpack, 2_000));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(RealmExchangePricing.IsWorthListing(poor), Is.False);
+                Assert.That(RealmExchangePricing.IsWorthListing(fine), Is.True);
+                Assert.That(AutonomousBotEconomy.FindValuableListingCandidate(bot)?.Item, Is.SameAs(fine));
+                Assert.That(AutonomousBotEconomy.FindVendorTrashCandidate(bot), Is.SameAs(poor));
+            });
+        }
+
+        [Test]
+        public void ExchangeBuyer_PaysUpToTheSuggestedPriceAndNoMore()
+        {
+            DecisionBot bot = Bot();
+            GivePersistentRecord(bot, true, 500_000);
+            DbInventoryItem piece = GameInventoryItem.Create(Item("priced trousers", 20, 99,
+                (int)eInventorySlot.LegsArmor, 5_000, 30));
+            int suggested = RealmExchangePricing.SuggestCopper(piece);
+            AddMarketItem(piece, "real-player-owner", (int)eInventorySlot.Consignment_First, suggested + 1);
+
+            Assert.That(AutonomousBotEconomy.FindBestUsefulExchangePurchase(bot), Is.Null,
+                "a useful piece priced above the shared suggestion is not something a bot will pay");
+
+            Assert.That(MarketCache.UpdateItem(piece, static (listed, value) => listed.SellPrice = value, suggested), Is.True);
+            Assert.That(AutonomousBotEconomy.FindBestUsefulExchangePurchase(bot)?.Item, Is.SameAs(piece));
         }
 
         [Test]

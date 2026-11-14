@@ -69,6 +69,18 @@ public sealed class UT_RealmExchangeInterface
         Assert.That(greeting, Does.Contain("[How does this work?]"));
     }
 
+    [Test]
+    public void BuildListingsPrompt_OffersADepositForEachBackpackBag()
+    {
+        string prompt = RealmExchangeBroker.BuildListingsPrompt(2);
+
+        Assert.That(prompt, Does.Contain("Your listings - page 2."));
+        for (int bag = 1; bag <= RealmExchangePricing.BagCount; bag++)
+            Assert.That(prompt, Does.Contain($"[Deposit all gear from bag {bag}]"));
+        Assert.That(prompt, Does.Contain("[Previous listing page]"));
+        Assert.That(prompt, Does.Contain("[Next listing page]"));
+    }
+
     [TestCase(1, eObjectType.Cloth)]
     [TestCase(2, eObjectType.Leather)]
     public void FindExchangeItems_AppliesNativeFiltersToNeutralRealmItemsWithinItsBroker(

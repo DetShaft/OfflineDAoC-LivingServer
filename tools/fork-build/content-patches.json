@@ -556,16 +556,16 @@
   {
     "Path": "new-client/godot/game/net/server.gd",
     "Released": "13a8a3bf7bcc42fce06888b3b4cfd2425b8ea1c5c16f46b1c9dbf50f524d1348",
-    "Fixed": "5123f1829186b2bd67c24c6ab81379780fb6693479bb8c69e591f5c4f727155b",
-    "Size": 83524,
+    "Fixed": "1c26e7420c87da8541856b1214d0fbf6a934028b0099b615b36ca916fb898c29",
+    "Size": 83850,
     "File": "content/godot/game/net/server.gd",
     "ReplaceAny": true
   },
   {
     "Path": "new-client/godot/game/ui/exchange_window.gd",
     "Released": "fc53eb93dc40812b3a78bcc0ed67a7c22c6bde0251c22e6b0c5ec37df865f240",
-    "Fixed": "9fde14931225ce5fe4461838ff71d06c88fb8314b8104ab5e85b13bb45438e35",
-    "Size": 32190,
+    "Fixed": "946e74fdb492fb09fa78725a40c26058c59156a1437bdd5db7e623cf9efd5eb1",
+    "Size": 32771,
     "File": "content/godot/game/ui/exchange_window.gd",
     "ReplaceAny": true
   },
