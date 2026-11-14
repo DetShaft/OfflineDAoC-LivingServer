@@ -30,6 +30,18 @@ namespace CEM.World {
       Files.Clear();
     }
 
+    /// <summary>
+    /// How many river outlines to export. A missing list is no rivers, and the build continues.
+    /// </summary>
+    public static int RiverCount<T>(IReadOnlyCollection<T>? rivers) {
+      return rivers == null ? 0 : rivers.Count;
+    }
+
+    /// <summary>Water-surface heights. A missing array leaves every cell dry.</summary>
+    public static int[] WaterHeightsOrNone(int[]? heights) {
+      return heights ?? new int[0];
+    }
+
     /// <summary>Path supplied for this zone, or null when the zone keeps terrain.pcx.</summary>
     public static string? PathFor(ushort zoneId) {
       string? path;

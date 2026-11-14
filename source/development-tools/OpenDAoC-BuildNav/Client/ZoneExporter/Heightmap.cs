@@ -19,10 +19,11 @@ namespace CEM.Client.ZoneExporter
             int[,] heightmap = Zone.Heightmap.ToIntArray();
 
             #region rivers
-            // Export rivers
+            // Export rivers. The heights.f32 path does not read terrain scale, which is what used to
+            // open sector.dat, so this list can be missing. A missing list is no rivers.
             List<List<Vector3>> riverPoints = Zone.GetRiverPoints();
-            int numWater = riverPoints.Count;
-            _waterHeights = Zone.GetWaterHeights();
+            int numWater = CEM.World.ClientHeights.RiverCount(riverPoints);
+            _waterHeights = CEM.World.ClientHeights.WaterHeightsOrNone(Zone.GetWaterHeights());
             for (int i = 0; i < numWater; i++)
             {
                 int points = riverPoints[i].Count / 2;

@@ -33,6 +33,24 @@ namespace OpenDAoC_BuildNav.Tests
         }
 
         [Test]
+        public void RiverCount_MissingList_IsNoRivers()
+        {
+            Assert.That(ClientHeights.RiverCount<int>(null), Is.EqualTo(0));
+            Assert.That(ClientHeights.RiverCount(new int[0]), Is.EqualTo(0));
+            Assert.That(ClientHeights.RiverCount(new[] { 1, 2 }), Is.EqualTo(2));
+        }
+
+        [Test]
+        public void WaterHeights_MissingArray_LeavesTheZoneDry()
+        {
+            int[] none = ClientHeights.WaterHeightsOrNone(null);
+            int[] kept = ClientHeights.WaterHeightsOrNone(new[] { 400 });
+
+            Assert.That(none, Is.Empty);
+            Assert.That(kept, Is.EqualTo(new[] { 400 }));
+        }
+
+        [Test]
         public void Resolve_ZoneEqualsPath_NamesThatZone()
         {
             ClientHeights.Assignment assignment = ClientHeights.Resolve(

@@ -49,7 +49,7 @@ Pass the full path. The tool runs with its working directory in `base\`. The nam
 
 `heights_2x.f32` is the refined render grid. The builder reads `heights.f32`.
 
-Water, rivers, fixtures and ladders still come from the classic files for that zone id. On zone 253 those files are Abermenai's, so this switch changes the ground surface.  
+Water, rivers, fixtures and ladders still come from the classic files for that zone id. On zone 253 those files are Abermenai's, so this switch changes the ground surface. A zone with no river list is built with no rivers.  
 
 ## Output folder structure
 

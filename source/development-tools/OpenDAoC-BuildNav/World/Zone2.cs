@@ -341,12 +341,24 @@ namespace CEM.World
 
         internal List<List<Vector3>> GetRiverPoints()
         {
-            return _rivers;
+            EnsureSectorDat();
+            return _rivers ?? new List<List<Vector3>>();
         }
 
         internal int[] GetWaterHeights()
         {
-            return _waterHeights;
+            EnsureSectorDat();
+            return _waterHeights ?? new int[0];
+        }
+
+        /// <summary>
+        /// Rivers and water heights live in sector.dat. The classic ground path opens that file
+        /// while reading the terrain scale. A heights.f32 zone does not, so open it on first use.
+        /// </summary>
+        private void EnsureSectorDat()
+        {
+            if (_rivers == null)
+                LoadSectorDat();
         }
 
         private void LoadSectorDat()
