@@ -14,5 +14,8 @@
     <EmbeddedResource Include="..\..\server\GameServer\bots\autonomous\data\classic165_period_restored_spawn_ids.txt"
                       Link="data\classic165_period_restored_spawn_ids.txt" />
     <EmbeddedResource Include="data\killaloe_zone253_mobs.sql" />
+    <EmbeddedResource Include="data\killaloe_zone253_keep_npcs.sql" />
+    <EmbeddedResource Include="data\killaloe_zone253_keep_doors.sql" />
+    <EmbeddedResource Include="data\killaloe_zone253_keep_pads.sql" />
   </ItemGroup>
 </Project>

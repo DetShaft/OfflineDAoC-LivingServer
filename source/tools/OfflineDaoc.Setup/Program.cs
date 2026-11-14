@@ -16,6 +16,8 @@ internal static class Program
     private const int ExpectedTotalRestoredSpawnCount =
         ExpectedConservativeRestoredSpawnCount + ExpectedPeriodMapRestoredSpawnCount;
     private const int ExpectedKillaloeZone253SpawnCount = 74;
+    private const int ExpectedKillaloeZone253KeepNpcCount = 105;
+    private const int ExpectedKillaloeZone253KeepDoorCount = 17;
 
     private static int Main(string[] args)
     {
@@ -35,6 +37,7 @@ internal static class Program
                 RestorePeriodMapClassic165FrontierAndAlbionSpawns(migrationConnection);
                 EnsureRealmExchangeBrokers(migrationConnection);
                 EnsureKillaloeZone253Mobs(migrationConnection);
+                EnsureKillaloeZone253KeepObjects(migrationConnection);
                 VerifyClassic165SpawnProfile(migrationConnection);
                 Console.WriteLine($"Classic 1.65 spawn profile applied. Recoverable backup: {backupPath}");
                 return 0;
@@ -60,6 +63,7 @@ internal static class Program
             RestorePeriodMapClassic165FrontierAndAlbionSpawns(connection);
             EnsureRealmExchangeBrokers(connection);
             EnsureKillaloeZone253Mobs(connection);
+            EnsureKillaloeZone253KeepObjects(connection);
             ApplyClassicSiRules(connection);
             CreateAccount(connection, options.AccountName, options.Password);
             WriteCredentials(options);
@@ -443,6 +447,199 @@ internal static class Program
         Console.WriteLine($"Killaloe zone 253: {placed:N0} field spawns in region 253 ({imported:N0} rows written).");
     }
 
+    private static void EnsureKillaloeZone253KeepObjects(SQLiteConnection connection)
+    {
+        const string migrationId = "killaloe-zone253-keep-objects-v1";
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS offline_world_migrations (
+                MigrationId TEXT PRIMARY KEY,
+                AppliedUtc TEXT NOT NULL,
+                Description TEXT NOT NULL,
+                ArchivedRows INTEGER NOT NULL
+            );
+            """);
+
+        var tables = GetTables(connection);
+        var skipped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        long importedNpcs = ImportSqlText(connection, LoadEmbeddedText("killaloe_zone253_keep_npcs.sql"),
+            "killaloe_zone253_keep_npcs.sql", tables, skipped);
+        long importedDoors = ImportSqlText(connection, LoadEmbeddedText("killaloe_zone253_keep_doors.sql"),
+            "killaloe_zone253_keep_doors.sql", tables, skipped);
+        if (skipped.Count > 0)
+            throw new InvalidOperationException("Killaloe keep SQL did not match Mob/Door: " + string.Join(", ", skipped));
+
+        using var npcCount = connection.CreateCommand();
+        npcCount.CommandText = """
+            SELECT COUNT(*) FROM Mob
+            WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND ClassType='DOL.GS.GameNPC'
+            """;
+        int npcs = Convert.ToInt32(npcCount.ExecuteScalar(), CultureInfo.InvariantCulture);
+        if (npcs != ExpectedKillaloeZone253KeepNpcCount)
+            throw new InvalidOperationException($"Killaloe keep NPC pack has {npcs:N0} rows; expected {ExpectedKillaloeZone253KeepNpcCount:N0}.");
+
+        using var npcOutside = connection.CreateCommand();
+        npcOutside.CommandText = """
+            SELECT COUNT(*) FROM Mob
+            WHERE PackageID='offline-killaloe-keep-253'
+              AND (Region<>253 OR X<0 OR X>65536 OR Y<0 OR Y>65536)
+            """;
+        int badNpcs = Convert.ToInt32(npcOutside.ExecuteScalar(), CultureInfo.InvariantCulture);
+        if (badNpcs != 0)
+            throw new InvalidOperationException($"Killaloe keep NPC pack has {badNpcs:N0} rows outside region 253 or 0..65536.");
+
+        using var doorCount = connection.CreateCommand();
+        doorCount.CommandText = """
+            SELECT COUNT(*) FROM Door
+            WHERE Door_ID LIKE 'offline-killaloe-door-%'
+              AND CAST(InternalID/1000000 AS INTEGER)=253
+            """;
+        int doors = Convert.ToInt32(doorCount.ExecuteScalar(), CultureInfo.InvariantCulture);
+        if (doors != ExpectedKillaloeZone253KeepDoorCount)
+            throw new InvalidOperationException($"Killaloe keep door pack has {doors:N0} rows; expected {ExpectedKillaloeZone253KeepDoorCount:N0}.");
+
+        using var doorOutside = connection.CreateCommand();
+        doorOutside.CommandText = """
+            SELECT COUNT(*) FROM Door
+            WHERE Door_ID LIKE 'offline-killaloe-door-%'
+              AND (CAST(InternalID/1000000 AS INTEGER)<>253 OR X<0 OR X>65536 OR Y<0 OR Y>65536)
+            """;
+        int badDoors = Convert.ToInt32(doorOutside.ExecuteScalar(), CultureInfo.InvariantCulture);
+        if (badDoors != 0)
+            throw new InvalidOperationException($"Killaloe keep door pack has {badDoors:N0} rows outside zone 253 or 0..65536.");
+
+        RelocateKillaloeZone253KeepPads(connection);
+
+        using var record = connection.CreateCommand();
+        record.CommandText = """
+            INSERT OR IGNORE INTO offline_world_migrations(MigrationId, AppliedUtc, Description, ArchivedRows)
+            VALUES (@id, @utc,
+                'Place live-captured Killaloe keep NPCs and doors into region 253 with retail offset 524288 already removed from X and Y. Move region 253 Keep rows onto those Killaloe spots and drop the Abermenai Door InternalIDs.',
+                @count);
+            """;
+        record.Parameters.AddWithValue("@id", migrationId);
+        record.Parameters.AddWithValue("@utc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        record.Parameters.AddWithValue("@count", npcs + doors);
+        record.ExecuteNonQuery();
+        Console.WriteLine($"Killaloe keep objects: {npcs:N0} NPCs and {doors:N0} doors in region 253 ({importedNpcs + importedDoors:N0} rows written).");
+    }
+
+    private static void RelocateKillaloeZone253KeepPads(SQLiteConnection connection)
+    {
+        const string padsMigrationId = "killaloe-zone253-keep-pads-v1";
+        var tables = GetTables(connection);
+        if (!tables.ContainsKey("Keep") || !tables.ContainsKey("Door"))
+            throw new InvalidOperationException("Killaloe keep pads need Keep and Door tables.");
+
+        string sql = LoadEmbeddedText("killaloe_zone253_keep_pads.sql");
+        foreach (string statement in SplitSqlStatements(sql, skipArea: !tables.ContainsKey("Area")))
+            Execute(connection, statement);
+
+        AssertKeepAt(connection, keepId: 37, x: 20536, y: 57944, z: 8288);
+        AssertKeepAt(connection, keepId: 36, x: 60657, y: 35209, z: 8288);
+        AssertKeepAt(connection, keepId: 35, x: 10963, y: 13279, z: 8288);
+        AssertKeepAt(connection, keepId: 33, x: 32779, y: 32612, z: 8768);
+
+        int leftoverKeeps = ScalarInt(connection, """
+            SELECT COUNT(*) FROM Keep WHERE Region=253 AND (
+                (X=37301 AND Y=52362) OR (X=54053 AND Y=24680) OR
+                (X=18362 AND Y=18257) OR (X=33089 AND Y=38271))
+            """);
+        if (leftoverKeeps != 0)
+            throw new InvalidOperationException($"Region 253 still has {leftoverKeeps:N0} Keep row(s) on the Abermenai pads.");
+
+        int leftoverDoors = ScalarInt(connection, """
+            SELECT COUNT(*) FROM Door WHERE InternalID IN
+                (253000101, 253000102, 253000201, 253000202, 253000301, 253000302, 253041601, 253041602)
+            """);
+        if (leftoverDoors != 0)
+            throw new InvalidOperationException($"Region 253 still has {leftoverDoors:N0} Abermenai Door row(s) loaded beside the Killaloe doors.");
+
+        int capturedDoors = ScalarInt(connection, """
+            SELECT COUNT(*) FROM Door
+            WHERE Door_ID LIKE 'offline-killaloe-door-%'
+              AND CAST(InternalID/1000000 AS INTEGER)=253
+            """);
+        if (capturedDoors != ExpectedKillaloeZone253KeepDoorCount)
+            throw new InvalidOperationException($"Killaloe keep door pack has {capturedDoors:N0} rows after the pad move; expected {ExpectedKillaloeZone253KeepDoorCount:N0}.");
+
+        int hibKeepGates = ScalarInt(connection, """
+            SELECT COUNT(*) FROM Door
+            WHERE Door_ID LIKE 'offline-killaloe-door-%'
+              AND CAST(InternalID/1000000 AS INTEGER)=253
+              AND Name='Keep Gate'
+              AND InternalID BETWEEN 253203000 AND 253203999
+            """);
+        if (hibKeepGates != 0)
+            throw new InvalidOperationException("Hibernia keep gate was not in the capture and must not be invented.");
+
+        int jarlMoved = ScalarInt(connection, """
+            SELECT COUNT(*) FROM Mob
+            WHERE PackageID='offline-killaloe-keep-253' AND Name='Jarl Killaloe'
+              AND Region=253 AND X=32924 AND Y=31537
+            """);
+        if (jarlMoved != 1)
+            throw new InvalidOperationException("Killaloe keep NPCs must stay on the captured spots; they were not retargeted onto Abermenai.");
+
+        using var record = connection.CreateCommand();
+        record.CommandText = """
+            INSERT OR IGNORE INTO offline_world_migrations(MigrationId, AppliedUtc, Description, ArchivedRows)
+            VALUES (@id, @utc,
+                'Move region 253 Keep rows onto captured Killaloe spots and drop Abermenai Door InternalIDs 253000101/102, 253000201/202, 253000301/302, 253041601/602.',
+                @count);
+            """;
+        record.Parameters.AddWithValue("@id", padsMigrationId);
+        record.Parameters.AddWithValue("@utc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        record.Parameters.AddWithValue("@count", leftoverDoors);
+        record.ExecuteNonQuery();
+        Console.WriteLine("Killaloe keep pads: region 253 Keep rows sit on the captured spots; Abermenai Door InternalIDs are gone.");
+    }
+
+    private static void AssertKeepAt(SQLiteConnection connection, int keepId, int x, int y, int z)
+    {
+        int present = ScalarInt(connection, "SELECT COUNT(*) FROM Keep WHERE Region=253 AND KeepID=@id",
+            ("@id", keepId));
+        if (present == 0)
+            return;
+        int moved = ScalarInt(connection,
+            "SELECT COUNT(*) FROM Keep WHERE Region=253 AND KeepID=@id AND X=@x AND Y=@y AND Z=@z",
+            ("@id", keepId), ("@x", x), ("@y", y), ("@z", z));
+        if (moved != 1)
+            throw new InvalidOperationException($"Region 253 KeepID {keepId} is not at the captured Killaloe spot {x},{y},{z}.");
+    }
+
+    private static int ScalarInt(SQLiteConnection connection, string sql, params (string Name, object Value)[] parameters)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        foreach (var (name, value) in parameters)
+            command.Parameters.AddWithValue(name, value);
+        return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+    }
+
+    private static IEnumerable<string> SplitSqlStatements(string sql, bool skipArea)
+    {
+        var uncommented = new StringBuilder();
+        foreach (string line in sql.Split('\n'))
+        {
+            string trimmed = line.Trim();
+            if (trimmed.Length == 0 || trimmed.StartsWith("--", StringComparison.Ordinal))
+                continue;
+            if (uncommented.Length > 0)
+                uncommented.Append('\n');
+            uncommented.Append(trimmed);
+        }
+
+        foreach (string raw in uncommented.ToString().Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string statement = raw.Replace('\n', ' ').Trim();
+            if (statement.Length == 0)
+                continue;
+            if (skipArea && statement.StartsWith("UPDATE Area", StringComparison.OrdinalIgnoreCase))
+                continue;
+            yield return statement;
+        }
+    }
+
     private static void EnsureRealmExchangeBrokers(SQLiteConnection connection)
     {
         var brokers = new[]
@@ -821,6 +1018,7 @@ internal static class Program
                     AND Mob.Mob_ID NOT IN (SELECT Mob_ID FROM offline_classic165_restored_mobs)
                     AND COALESCE(Mob.PackageID,'') <> 'offline-classic-frontier-dungeon-restored'
                     AND COALESCE(Mob.PackageID,'') <> 'offline-killaloe-zone253'
+                    AND COALESCE(Mob.PackageID,'') <> 'offline-killaloe-keep-253'
                     AND COALESCE(Mob.LastTimeRowUpdated,'') >= '2021-01-01');
             """;
         using var reader = verify.ExecuteReader();
