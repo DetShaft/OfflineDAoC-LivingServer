@@ -136,7 +136,7 @@ public sealed class ReleaseInfo
             string line = PlainLine(raw);
             if (line.Length == 0)
             {
-                if (result.Length > 0 && result[^1] != '\n')
+                if (result.Length > 0 && result[result.Length - 1] != '\n')
                     result.AppendLine();
                 continue;
             }
