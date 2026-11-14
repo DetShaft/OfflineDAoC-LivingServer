@@ -533,11 +533,12 @@ namespace DOL.UnitTests
         }
 
         [Test]
-        public void ListingLimit_RejectsSecondWithoutLoss_ThenReusesFreedSlot()
+        public void ListingLimit_RejectsOnePastTheAllowanceWithoutLoss_ThenReusesFreedSlot()
         {
             ExchangeBot seller = Bot(110, 500);
             string owner = AutonomousBotEconomy.GetOwnerId(seller.DatabaseID);
-            MarketCache.AddItem(Listing(owner, 100, (int)eInventorySlot.Consignment_First));
+            for (int i = 0; i < AutonomousBotEconomy.MaxBotRealmExchangeListings; i++)
+                MarketCache.AddItem(Listing(owner, 100, (int)eInventorySlot.Consignment_First + i));
 
             DbInventoryItem candidate = Item("limit candidate");
             seller.Inventory.AddItem(eInventorySlot.FirstBackpack, candidate);
