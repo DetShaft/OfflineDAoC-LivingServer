@@ -299,6 +299,49 @@ public class UpdatePolicyTests
         Assert.That(ReleaseFeed.NormalizeRepository("not-a-repo"), Is.EqualTo(ReleaseFeed.DefaultRepository));
         ReleaseFeed.Configure(ReleaseFeed.DefaultRepository);
     }
+
+    [Test]
+    public void ReleaseHistoryHidesPrereleasesUnlessAllowed()
+    {
+        string final = UpdateFixtures.ReleaseJson("v1.1-beta", [1]);
+        string prerelease = UpdateFixtures.ReleaseJson("v1.1.1-beta", [1], prerelease: true);
+        string json = "[" + final + "," + prerelease + "]";
+        var web = new FakeReleaseWeb { Json = json };
+        IReadOnlyList<ReleaseInfo> stable = ReleaseFeed.TryGetReleaseHistory(web, allowPrereleases: false, out _, out string? problem);
+        Assert.That(problem, Is.Null);
+        Assert.That(stable.Select(r => r.TagName), Is.EqualTo(new[] { "v1.1-beta" }));
+
+        IReadOnlyList<ReleaseInfo> all = ReleaseFeed.TryGetReleaseHistory(web, allowPrereleases: true, out _, out _);
+        Assert.That(all.Select(r => r.TagName), Is.EqualTo(new[] { "v1.1.1-beta", "v1.1-beta" }));
+    }
+
+    [Test]
+    public void TheReleaseBodyPlainTextStripsMarkdown()
+    {
+        ReleaseInfo release = ReleaseInfo.Parse(UpdateFixtures.Read("release-latest-v1.1-beta.json"))!;
+        Assert.That(release.PublishedAtUtc, Is.EqualTo(DateTime.Parse("2026-10-29T19:04:13Z").ToUniversalTime()));
+        string plain = release.BodyPlainText();
+        Assert.That(plain, Does.Contain("The realm talks back"));
+        Assert.That(plain, Does.Not.Contain("**").And.Not.Contain("###"));
+    }
+
+    [Test]
+    public void TheReleaseNotesCacheRoundTrips()
+    {
+        string folder = UpdateFixtures.TempFolder();
+        try
+        {
+            string json = "[" + UpdateFixtures.Read("release-latest-v1.1-beta.json") + "]";
+            ReleaseNotesCache.Save(folder, json);
+            Assert.That(ReleaseNotesCache.TryRead(folder), Is.EqualTo(json));
+            var list = ReleaseFeed.VisibleReleases(ReleaseInfo.ParseList(json), allowPrereleases: false);
+            Assert.That(list, Has.Count.EqualTo(1));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
 }
 
 [TestFixture]

@@ -19,6 +19,7 @@ public sealed class ReleaseInfo
     [DataMember(Name = "tag_name")] public string? TagName { get; set; }
     [DataMember(Name = "name")] public string? Title { get; set; }
     [DataMember(Name = "body")] public string? Body { get; set; }
+    [DataMember(Name = "published_at")] public string? PublishedAt { get; set; }
     [DataMember(Name = "html_url")] public string? PageUrl { get; set; }
     [DataMember(Name = "prerelease")] public bool Prerelease { get; set; }
     [DataMember(Name = "draft")] public bool Draft { get; set; }
@@ -26,6 +27,19 @@ public sealed class ReleaseInfo
 
     /// <summary>The build the tag names ("v1.1.2-beta" is 1.1.2-beta), or null for a tag that isn't a build.</summary>
     public BuildVersion? Version => BuildVersion.Parse(TagName);
+
+    /// <summary>When GitHub published the release, or null when the API omitted it or the value isn't a date.</summary>
+    public DateTime? PublishedAtUtc
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(PublishedAt))
+                return null;
+            return DateTime.TryParse(PublishedAt, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal,
+                out DateTime when) ? when : null;
+        }
+    }
 
     /// <summary>A published, final release whose tag is a build: the only kind an update is offered from by default.</summary>
     public bool IsUsable => IsUsableWith(allowPrereleases: false);
@@ -105,15 +119,40 @@ public sealed class ReleaseInfo
         {
             if (result.Count >= lines)
                 break;
-            string line = raw.Trim();
-            line = Regex.Replace(line, @"^(#{1,6}\s+|[-*+]\s+|\d+\.\s+|>\s*)", "");
-            line = Regex.Replace(line, @"!?\[([^\]]*)\]\([^)]*\)", "$1");
-            line = line.Replace("**", "").Replace("__", "").Replace("`", "").Trim();
+            string line = PlainLine(raw);
             if (line.Length == 0 || Regex.IsMatch(line, @"^[-=_*|: ]+$"))
                 continue;
             result.Add(line);
         }
         return result;
+    }
+
+    /// <summary>Release notes with headings, list marks, links and emphasis reduced to plain text.</summary>
+    public string BodyPlainText()
+    {
+        var result = new StringBuilder();
+        foreach (string raw in (Body ?? "").Replace("\r\n", "\n").Split('\n'))
+        {
+            string line = PlainLine(raw);
+            if (line.Length == 0)
+            {
+                if (result.Length > 0 && result[result.Length - 1] != '\n')
+                    result.AppendLine();
+                continue;
+            }
+            if (Regex.IsMatch(line, @"^[-=_*|: ]+$"))
+                continue;
+            result.AppendLine(line);
+        }
+        return result.ToString().TrimEnd();
+    }
+
+    private static string PlainLine(string raw)
+    {
+        string line = raw.Trim();
+        line = Regex.Replace(line, @"^(#{1,6}\s+|[-*+]\s+|\d+\.\s+|>\s*)", "");
+        line = Regex.Replace(line, @"!?\[([^\]]*)\]\([^)]*\)", "$1");
+        return line.Replace("**", "").Replace("__", "").Replace("`", "").Trim();
     }
 }
 

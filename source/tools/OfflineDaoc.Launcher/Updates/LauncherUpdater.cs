@@ -78,6 +78,8 @@ public sealed class LauncherUpdater
 
     public UpdateSettings Settings { get; }
 
+    internal IReleaseWeb Web => _web;
+
     /// <summary>The game folder a launcher belongs to: the parent of the runtime folder its server lives in.</summary>
     public static string GameFolderFor(string serverRoot) =>
         Path.GetDirectoryName(Path.GetFullPath(serverRoot).TrimEnd('\\', '/')) ?? serverRoot;
