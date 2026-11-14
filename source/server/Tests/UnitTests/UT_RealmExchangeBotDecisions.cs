@@ -330,9 +330,12 @@ namespace DOL.UnitTests
             DecisionBot bot = Bot();
             GivePersistentRecord(bot, true);
 
-            DbInventoryItem existingListing = GameInventoryItem.Create(Item("existing bot listing", 1, 80,
-                (int)eInventorySlot.FirstBackpack, 2));
-            AddMarketItem(existingListing, bot.InternalID, (int)eInventorySlot.Consignment_First, 100);
+            for (int i = 0; i < AutonomousBotEconomy.MaxBotRealmExchangeListings; i++)
+            {
+                DbInventoryItem existingListing = GameInventoryItem.Create(Item("existing bot listing " + i, 1, 80,
+                    (int)eInventorySlot.FirstBackpack, 2));
+                AddMarketItem(existingListing, bot.InternalID, (int)eInventorySlot.Consignment_First + i, 100);
+            }
 
             DbInventoryItem playerUpgrade = GameInventoryItem.Create(Item("player market upgrade", 20, 99,
                 (int)eInventorySlot.LegsArmor, 5_000, 30));
@@ -340,7 +343,7 @@ namespace DOL.UnitTests
             FillBackpack(bot);
 
             Assert.That(AutonomousBotEconomy.FindFreeListingSlot(bot.InternalID), Is.EqualTo(-1),
-                "one existing listing must consume the bot's complete listing allowance");
+                "a full listing allowance leaves no slot for another exchange listing");
             Assert.That(AutonomousBotEconomy.GetNeededService(bot), Is.EqualTo(eWorldServiceKind.Vendor),
                 "a full backpack must be cleared at a vendor before an exchange purchase");
 

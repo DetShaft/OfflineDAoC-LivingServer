@@ -10,6 +10,8 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.17 — 2026-11-13
 
+**Group loot is looked over and shared (#72).** In a group, each drop takes a turn across you, a companion bot, and any gamebots with you. A /spawn helper still gets nothing until you friend it and it becomes a gamebot. Your turn stays on the corpse: `/look` lists it, `/look take` puts the one you choose in your bag. Solo kills still follow `/autoloot`. A companion keeps its share in the backpack it is wearing now. A gamebot keeps its share, and can have eight things listed on the Realm Exchange, still only when it stops at a task break. Coins are split once across you and gamebots that can hold them. Tests only: not yet seen in game.
+
 **LFG bots come to you (#55).** Inviting a bot from the find-group window when it was far away answered "too far away to
 join you. Meet up first." A same-realm gamebot with a fresh LFG ad, or waiting solo on group matchmaking, and not in a
 group of its own, now takes the same trip a friend does: 30 seconds in your zone, 30 more for each zone between you, the

@@ -58,6 +58,8 @@ namespace DOL.UnitTests
             public override int Z => 0;
             public ICharacterClass TestClass;
             public override ICharacterClass CharacterClass => TestClass ?? new ClassEnchanter();
+            public long GainedCopper;
+            public override void AddMoney(long money, string messageFormat) => GainedCopper += money;
         }
 
         private sealed class LootServer : GameServer
@@ -813,6 +815,175 @@ namespace DOL.UnitTests
             Assert.That(bot.Inventory.AllItems.Count, Is.EqualTo(40));
             Assert.That(bot.Inventory.AllItems.Contains(drop.Item), Is.False);
             Assert.That(drop.Item.OwnerID, Is.Null);
+        }
+
+        private static Group GroupOf(params GameLiving[] members)
+        {
+            Group group = new(members[0]);
+            var list = (List<GameLiving>)typeof(Group).GetField("_groupMembers", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(group);
+            foreach (GameLiving member in members)
+            {
+                member.ObjectState = GameObject.eObjectState.Active;
+                member.Group = group;
+                if (member is LootPlayer player)
+                    player.AutoSplitLoot = true;
+                list.Add(member);
+            }
+            return group;
+        }
+
+        private static LootBot CompanionOf(GamePlayer owner)
+        {
+            LootBot bot = Bot(true);
+            Property(bot, nameof(GameBot.IsTemporaryGroupHelper), false);
+            Property(bot, nameof(GameBot.Owner), owner);
+            bot.Name = "Companion";
+            return bot;
+        }
+
+        private static WorldInventoryItem Drop()
+        {
+            DbItemTemplate template = Pants();
+            template.IsPickable = true;
+            return new WorldInventoryItem(GameInventoryItem.Create(template));
+        }
+
+        [Test]
+        public void PlayerLedGroupDealsRoundRobinAndHoldsThePlayersShareForLook()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Level = 10;
+            LootBot bot = Bot();
+            bot.Name = "Gamebot";
+            LootBot helper = Bot(true);
+            Group group = GroupOf(player, bot, helper);
+
+            WorldInventoryItem first = Drop();
+            WorldInventoryItem second = Drop();
+            WorldInventoryItem third = Drop();
+            Assert.That(first.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            Assert.That(second.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Success));
+            Assert.That(third.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(first.ReservedFor, Is.SameAs(player));
+                Assert.That(third.ReservedFor, Is.SameAs(player));
+                Assert.That(player.Inventory, Is.Null);
+                Assert.That(bot.Inventory.AllItems, Has.Count.EqualTo(1));
+                Assert.That(bot.Inventory.AllItems, Does.Contain(second.Item));
+                Assert.That(helper.Inventory.AllItems, Is.Empty);
+            });
+        }
+
+        [Test]
+        public void RoundRobinSkipsAFullBotAndASpawnHelper()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            LootBot bot = Bot();
+            for (int i = 0; i < 40; i++)
+                Assert.That(bot.Inventory.AddItem(eInventorySlot.FirstEmptyBackpack, GameInventoryItem.Create(Pants())), Is.True);
+            LootBot helper = Bot(true);
+            Group group = GroupOf(player, bot, helper);
+
+            WorldInventoryItem drop = Drop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            WorldInventoryItem next = Drop();
+            Assert.That(next.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            Assert.That(drop.ReservedFor, Is.SameAs(player));
+            Assert.That(next.ReservedFor, Is.SameAs(player));
+            Assert.That(bot.Inventory.AllItems, Has.Count.EqualTo(40));
+            Assert.That(helper.Inventory.AllItems, Is.Empty);
+        }
+
+        [Test]
+        public void CompanionBotTakesItsTurnAndAnotherPlayerCannotTakeYours()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootPlayer other = Inert<LootPlayer>();
+            other.Inventory = new BotInventory();
+            LootBot companion = CompanionOf(player);
+            LootBot helper = Bot(true);
+            Group group = GroupOf(player, companion, helper, other);
+
+            WorldInventoryItem held = Drop();
+            WorldInventoryItem given = Drop();
+            Assert.That(held.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            Assert.That(given.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Success));
+            Assert.That(held.TryPickUp(other, group), Is.EqualTo(TryPickUpResult.Blocked));
+            Assert.That(held.TryPickUp(player, group), Is.EqualTo(TryPickUpResult.Success));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(player.Inventory.AllItems, Does.Contain(held.Item));
+                Assert.That(other.Inventory.AllItems, Is.Empty);
+                Assert.That(companion.Inventory.AllItems, Does.Contain(given.Item));
+                Assert.That(helper.Inventory.AllItems, Is.Empty);
+                Assert.That(held.ObjectState, Is.EqualTo(GameObject.eObjectState.Inactive));
+            });
+        }
+
+        [Test]
+        public void TwoGamebotsAlternateDrops()
+        {
+            LootBot first = Bot();
+            LootBot second = Bot();
+            Group group = GroupOf(first, second);
+            for (int i = 0; i < 4; i++)
+                Assert.That(Drop().TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Success));
+            Assert.That(first.Inventory.AllItems, Has.Count.EqualTo(2));
+            Assert.That(second.Inventory.AllItems, Has.Count.EqualTo(2));
+        }
+
+        [Test]
+        public void GroupCoinsSplitAcrossThePlayerAndTheGamebotOnly()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            LootBot bot = Bot();
+            var record = new OfflineWorldBotRecord { BotId = bot.DatabaseID, MoneyCopper = 0 };
+            Property(bot, nameof(GameBot.PersistentRecord), record);
+            AutonomousBotRegistry.Register(bot);
+            LootBot helper = Bot(true);
+            try
+            {
+                Group group = GroupOf(player, bot, helper);
+                var money = new GameMoney(10);
+                Assert.That(money.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Success));
+                Assert.That(player.GainedCopper + record.MoneyCopper, Is.EqualTo(10));
+                Assert.That(player.GainedCopper, Is.EqualTo(5));
+                Assert.That(record.MoneyCopper, Is.EqualTo(5));
+            }
+            finally
+            {
+                AutonomousBotRegistry.Unregister(bot);
+            }
+        }
+
+        [Test]
+        public void LookListsOnlyThePlayersShare()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            LootPlayer other = Inert<LootPlayer>();
+            WorldInventoryItem mine = Drop();
+            mine.Name = "mine";
+            mine.ReservedFor = player;
+            WorldInventoryItem theirs = Drop();
+            theirs.Name = "theirs";
+            theirs.ReservedFor = other;
+            WorldInventoryItem junk = Drop();
+            junk.Item.IsPickable = false;
+            junk.Name = "junk";
+            var coins = new GameMoney(3);
+            List<GameStaticItemTimed> listed = GroupLoot.LookList(player, new GameStaticItem[] { theirs, mine, junk, coins });
+
+            Assert.That(listed, Is.EqualTo(new GameStaticItemTimed[] { coins, mine }));
+            Assert.That(GroupLoot.Label(mine), Is.EqualTo("mine (your share)"));
+            Assert.That(GroupLoot.TryChoose(listed, "2", out GameStaticItemTimed chosen, out _), Is.True);
+            Assert.That(chosen, Is.SameAs(mine));
+            Assert.That(GroupLoot.TryChoose(listed, "theirs", out _, out string error), Is.False);
+            Assert.That(error, Does.Contain("named"));
+            Assert.That(GroupLoot.SplitCopper(10, 3).Sum(), Is.EqualTo(10));
         }
     }
 }
