@@ -89,6 +89,19 @@ In a playable folder:
 - **Keep the old releases.** v0.3–v0.36c stay available as legacy releases, and their branches
   and tags are not rewritten.
 
+## Assistants on this fork
+
+- **Claude Code** does the main development: features, redesigns, bot AI, client art, releases.
+- **Squire (Grok Bot)** takes small, well-scoped issues only: a bug with a clear cause, a typo,
+  text or config fix, a missing null check, a small command or setting tweak, or a docs fix.
+  - It works on branches named `squire/issue-<number>-<slug>` and opens **draft** PRs on this fork
+    only. It never merges, marks a PR ready, pushes to `main` or touches upstream.
+  - Its issue comments and PRs are signed "Squire - Grokbot". It may comment on an issue to record
+    what it found, or to hand a non-simple issue back to Claude with notes. It never closes or
+    relabels issues.
+  - Its PRs are tested by build and unit tests only ("tests only"). Review them like any other
+    change before merging.
+
 ## Useful facts
 
 - **Edition switch:**
