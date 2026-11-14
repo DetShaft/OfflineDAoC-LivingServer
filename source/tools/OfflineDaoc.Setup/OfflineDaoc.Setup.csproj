@@ -16,5 +16,6 @@
     <EmbeddedResource Include="data\killaloe_zone253_mobs.sql" />
     <EmbeddedResource Include="data\killaloe_zone253_keep_npcs.sql" />
     <EmbeddedResource Include="data\killaloe_zone253_keep_doors.sql" />
+    <EmbeddedResource Include="data\killaloe_zone253_keep_pads.sql" />
   </ItemGroup>
 </Project>
