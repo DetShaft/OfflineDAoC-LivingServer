@@ -106,13 +106,45 @@ class KillaloeTerrainTests(unittest.TestCase):
 
 
 class KillaloeKeepTests(unittest.TestCase):
-    def test_keep_fixtures_are_realm_border_keeps_not_front_keeps(self):
+    def test_portal_keeps_share_the_captured_lvl4_layout(self):
         import killaloe_keeps as kk
-        self.assertEqual(kk.KEEP_FIXTURES[1][0], 'borderkeep1')
-        self.assertEqual(kk.KEEP_FIXTURES[2][0], 'n-borderkeep1')
-        self.assertEqual(kk.KEEP_FIXTURES[3][0], 'hborderkeep1')
-        self.assertEqual(kk.KEEP_FIXTURES[414][0], 'hborderkeep1')
-        self.assertTrue(all('frontkeep' not in stem for stem, _ in kk.KEEP_FIXTURES.values()))
+        self.assertEqual(len(kk.PORTAL_KEEPS), 3)
+        self.assertEqual(kk.PORTAL_PIECES, kk.PORTAL_KEEPS[0]['pieces'])
+        self.assertEqual(kk.PORTAL_PIECES, kk.PORTAL_KEEPS[1]['pieces'])
+        self.assertEqual(kk.PORTAL_PIECES, kk.PORTAL_KEEPS[2]['pieces'])
+        skins = [s for s, *_ in kk.PORTAL_PIECES]
+        self.assertEqual(skins.count(24), 1)
+        self.assertEqual(skins.count(29), 1)
+        self.assertEqual(skins.count(27), 4)
+        self.assertEqual(skins.count(23), 2)
+        self.assertEqual(skins.count(21), 4)
+        self.assertNotIn(30, skins)
+
+    def test_dun_killaloe_has_mainkeep_gatehouse_short_walls_and_corner_towers(self):
+        import killaloe_keeps as kk
+        skins = [s for s, *_ in kk.DUN_PIECES]
+        self.assertEqual(skins.count(30), 1)
+        self.assertEqual(skins.count(24), 1)
+        self.assertEqual(skins.count(21), 5)
+        self.assertEqual(skins.count(27), 4)
+        self.assertNotIn(29, skins)
+        self.assertNotIn(23, skins)
+
+    def test_border_keeps_are_not_the_live_layout(self):
+        import killaloe_keeps as kk
+        self.assertTrue(all(stem not in kk.PIECE_STEMS for stem in kk.BORDER_STEMS))
+        self.assertNotIn('frontkeep', ''.join(kk.PIECE_STEMS))
+
+    def test_component_grid_places_albion_gatehouse_from_the_0x69_pad(self):
+        import killaloe_keeps as kk
+        alb = kk.PORTAL_KEEPS[0]
+        x, y = kk.component_xy(alb['x'], alb['y'], alb['heading'], -2, -3)
+        self.assertAlmostEqual(x, 545157.57, places=1)
+        self.assertAlmostEqual(y, 581815.49, places=1)
+        pos = kk.fixture_pos(alb['x'], alb['y'], alb['z'])
+        self.assertAlmostEqual(pos[0], 513.4, places=4)
+        self.assertAlmostEqual(pos[1], 207.2, places=4)
+        self.assertAlmostEqual(pos[2], 1448.6, places=4)
 
 
 if __name__ == '__main__':

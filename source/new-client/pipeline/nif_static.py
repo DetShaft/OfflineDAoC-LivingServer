@@ -295,7 +295,8 @@ def climb_shapes(nif):
 
 def collidee_shapes(nif):
     """[(shape, data, model matrix)] under the collidee node: every shape, hidden or not (the client hides the whole
-    subtree for drawing and tests it for collision)."""
+    subtree for drawing and tests it for collision). NF keep NIFs (mainKeep_lvl4) put a 12-triangle placeholder in
+    the first 'collidee' and the undamaged walls in '!collidee_static'; include that node when present."""
     sp = spec()
     node, parent_m = find_collidee(nif)
     out = []
@@ -313,6 +314,20 @@ def collidee_shapes(nif):
             walk(c, m)
     if node is not None:
         walk(node, parent_m)
+    extra = []
+    def find_static(b, pm):
+        if b is None:
+            return
+        m = local_matrix(b) @ pm
+        if (b.get('name') or '').lower() == '!collidee_static':
+            extra.append((b, m))
+            return
+        for c in b.get('children') or []:
+            find_static(c, m)
+    for r in nif.roots:
+        find_static(r, np.identity(4))
+    for b, m in extra:
+        walk(b, m)
     return out
 
 
