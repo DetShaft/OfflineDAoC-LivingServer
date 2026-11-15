@@ -214,6 +214,67 @@ def node_keep_visible(name, realm):
     return True
 
 
+# The lvl4 NF pieces are one NIF per piece, textured for Albion. The client swaps the realm prefix of each texture
+# name for the keep's realm. The cake (roof and topper) texture is spelt midcake for Midgard.
+_REALM_TEX_PREFIX = {1: "alb_", 2: "mid_", 3: "hib_"}
+_REALM_CAKE = {1: "alb_cake", 2: "midcake", 3: "hib_cake"}
+_LM_REALM = re.compile(r"_(alb|mid|hib)_cake_(dam|un)_", re.I)
+
+
+def realm_texture(name, realm, available=None):
+    """The realm's version of one texture name, or the name unchanged when the realm has no texture of its own.
+
+    available: lower-case names that exist (converted or in the client). None: assume every realm name exists."""
+    low = (name or "").lower()
+    if not low:
+        return name
+    want = None
+    if low in ("alb_cake", "midcake", "mid_cake", "hib_cake"):
+        want = _REALM_CAKE[realm]
+    elif _LM_REALM.search(low):
+        # lightmaps: the realm's undamaged map (the damaged one darkens walls that were never hit)
+        want = _LM_REALM.sub("_%s_cake_un_" % _REALM_TEX_PREFIX[realm][:3], low)
+    elif low.startswith(("alb_", "mid_", "hib_")):
+        want = _REALM_TEX_PREFIX[realm] + low[4:]
+    if want is None or want == low:
+        return name
+    for suffix in ("__x2", "__d2"):
+        if want.endswith(suffix) and available is not None:
+            base_ok = want[:-len(suffix)] in available or want in available
+            return want if base_ok else name
+    if available is not None and want not in available:
+        return name
+    return want
+
+
+def realm_material(spec, realm, available=None):
+    """One nif_materials spec for a realm keep, drawn undamaged.
+
+    The NF pieces' vertex colours are near black (0.00 to 0.08): the client uses them to place the damage decal,
+    not as light, so multiplying the wall texture by them drew every keep black (owner screenshots 2026-11-15).
+    The damage decal slot goes too: these keeps are drawn undamaged."""
+    out = dict(spec)
+    slots = {}
+    for slot, value in (spec.get("slots") or {}).items():
+        if slot == "decal" and str((value or {}).get("tex", "")).lower() == "damage":
+            continue
+        v = dict(value)
+        v["tex"] = realm_texture(v.get("tex", ""), realm, available)
+        slots[slot] = v
+    out["slots"] = slots
+    out["vertex_colors"] = False
+    return out
+
+
+def realm_texture_names(stems_used, realms):
+    """Every texture name the realm copies may ask for, to convert from the client before the copies are written."""
+    names = set()
+    for name in stems_used:
+        for realm in realms:
+            names.add(realm_texture(name, realm, None).lower())
+    return names
+
+
 def rotate_pose_yaw(pose, deg):
     """Rotate a 4x3 Godot pose (9 basis + 3 origin) about +Y at its origin."""
     a = math.radians(deg)
@@ -242,8 +303,9 @@ def ensure_door_swing(doors):
     return doors
 
 
-def filter_keep_gltf(src, dest, realm):
-    """Write a realm-skinned copy: other-realm cakes and damaged overlays are dropped."""
+def filter_keep_gltf(src, dest, realm, available=None):
+    """Write a realm-skinned copy: other-realm cakes and damaged overlays are dropped, and the materials take the
+    realm's own textures (realm_material). available: texture names that exist for the zone (None: assume all)."""
     doc = json.loads(src.read_text(encoding="utf-8"))
     nodes = doc.get("nodes") or []
 
@@ -270,6 +332,14 @@ def filter_keep_gltf(src, dest, realm):
     extras = doc.setdefault("extras", {})
     extras["nif_doors"] = ensure_door_swing(list(extras.get("nif_doors") or []))
     extras["keep_realm"] = realm
+    extras["nif_materials"] = [realm_material(spec, realm, available) for spec in extras.get("nif_materials") or []]
+    for image in doc.get("images") or []:
+        uri = image.get("uri") or ""
+        folder, _, file_name = uri.rpartition("/")
+        stem, dot, ext = file_name.rpartition(".")
+        if dot:
+            image["uri"] = "%s/%s.%s" % (folder, realm_texture(stem, realm, available), ext) if folder else \
+                "%s.%s" % (realm_texture(stem, realm, available), ext)
     dest.write_text(json.dumps(doc, separators=(",", ":")), encoding="utf-8")
     visible = [nodes[i].get("name") or "" for i in roots]
     return {"doors": extras.get("nif_doors") or [], "roots": visible}
