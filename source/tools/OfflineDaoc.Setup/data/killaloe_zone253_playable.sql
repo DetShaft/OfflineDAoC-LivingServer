@@ -74,7 +74,11 @@ DELETE FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND G
 -- Fix Speed 8180. Set roam where the dump stored -1.
 
 UPDATE Mob SET Z=8208, Speed=180, AggroLevel=200, RoamingRange=200, NPCTemplateID=-1 WHERE Mob_ID='100032783' AND PackageID='offline-killaloe-zone253';
-UPDATE Mob SET Z=9888, Speed=180, AggroLevel=0, RoamingRange=120, NPCTemplateID=-1 WHERE Mob_ID='100032784' AND PackageID='offline-killaloe-zone253';
+-- Large rat 100032784 dump XY is 60906,21544. Field pack stays on dump XY so the
+-- Albion-Dun path still has its cats. Client to_local subtracts 8192, so this rat
+-- displays at 52714,13352. Snap Z to heights.f32 there (11512), not the cliff height
+-- at dump XY (9888), which hung it in canyon air.
+UPDATE Mob SET Z=11512, Speed=180, AggroLevel=0, RoamingRange=120, NPCTemplateID=-1 WHERE Mob_ID='100032784' AND PackageID='offline-killaloe-zone253';
 UPDATE Mob SET Z=8816, Speed=180, AggroLevel=200, RoamingRange=120, NPCTemplateID=-1 WHERE Mob_ID='100032785' AND PackageID='offline-killaloe-zone253';
 UPDATE Mob SET Z=7920, Speed=180, AggroLevel=200, RoamingRange=250, NPCTemplateID=-1 WHERE Mob_ID='100032786' AND PackageID='offline-killaloe-zone253';
 UPDATE Mob SET Z=7920, Speed=180, AggroLevel=200, RoamingRange=250, NPCTemplateID=-1 WHERE Mob_ID='100032787' AND PackageID='offline-killaloe-zone253';

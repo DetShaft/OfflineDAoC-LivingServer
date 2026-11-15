@@ -171,7 +171,7 @@ namespace DOL.UnitTests
             Assert.That(reader.GetInt32(26), Is.EqualTo(0), "Keep doors are not eRealm.Door.");
             Assert.That(reader.GetInt32(27), Is.GreaterThanOrEqualTo(KillaloeZone253Seeds.ZoneSectorOffset),
                 "Keep staff include region 253's 8192 zone offset so they sit on the keep meshes.");
-            Assert.That(reader.GetInt32(28), Is.EqualTo(9888), "The cliff-top large rat sits on the heightmap at its own XY, not in canyon air.");
+            Assert.That(reader.GetInt32(28), Is.EqualTo(11512), "The large rat sits on the heightmap at its displayed XY (dump minus 8192), not on the distant cliffs.");
             Assert.That(reader.GetInt32(29), Is.EqualTo(31731), "Field pack stays on dump X/Y so the Albion-Dun mesh path still has its OpenDAoC spawns.");
             Assert.That(reader.GetInt32(30), Is.EqualTo(59217));
             Assert.That(reader.GetInt32(31), Is.EqualTo(0), "Realm-enhancement clerics are gone.");

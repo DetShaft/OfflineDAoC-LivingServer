@@ -200,6 +200,12 @@ namespace DOL.GS.DatabaseUpdate
             if (fieldOverflow != 0)
                 throw new InvalidOperationException("Killaloe field pack must stay inside 0..65536; the 8192 keep-mesh offset is keep staff only.");
 
+            int ratZ = ScalarInt(connection, """
+                SELECT Z FROM Mob WHERE Mob_ID='100032784' AND PackageID='offline-killaloe-zone253'
+                """);
+            if (ratZ != 11512)
+                throw new InvalidOperationException("The large rat must sit on the heightmap at dump-minus-8192, not on the distant cliffs.");
+
             RecordMigration(connection, PlayableMigrationId,
                 "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, keep X/Y include region 253's 8192 zone offset, field pack stays on dump X/Y.",
                 guards);

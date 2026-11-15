@@ -105,5 +105,15 @@ class KillaloeTerrainTests(unittest.TestCase):
         self.assertNotIn('524288', text)
 
 
+class KillaloeKeepTests(unittest.TestCase):
+    def test_keep_fixtures_are_realm_border_keeps_not_front_keeps(self):
+        import killaloe_keeps as kk
+        self.assertEqual(kk.KEEP_FIXTURES[1][0], 'borderkeep1')
+        self.assertEqual(kk.KEEP_FIXTURES[2][0], 'n-borderkeep1')
+        self.assertEqual(kk.KEEP_FIXTURES[3][0], 'hborderkeep1')
+        self.assertEqual(kk.KEEP_FIXTURES[414][0], 'hborderkeep1')
+        self.assertTrue(all('frontkeep' not in stem for stem, _ in kk.KEEP_FIXTURES.values()))
+
+
 if __name__ == '__main__':
     unittest.main()
