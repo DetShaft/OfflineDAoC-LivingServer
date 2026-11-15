@@ -40,12 +40,13 @@ UPDATE Mob SET ClassType='DOL.GS.Keeps.GateKeeperOut'
 DELETE FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Region=253
   AND (Name LIKE '%Enter Gatekeeper%' OR Name LIKE '%Exit Gatekeeper%');
 
--- Siege and bounty merchants must load as merchants with a trade list.
-UPDATE Mob SET ClassType='DOL.GS.GameMerchant', ItemsListTemplateID='SiegeMerchantAlb'
+-- Siege and bounty merchants must load as merchants with a trade list. The siege merchants sell battleground siege
+-- tokens priced for the bracket and send an engineer with whoever hands one in (GameBattlegroundSiegeMerchant).
+UPDATE Mob SET ClassType='DOL.GS.GameBattlegroundSiegeMerchant', ItemsListTemplateID='SiegeMerchantAlb'
  WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Merchant' AND Realm=1;
-UPDATE Mob SET ClassType='DOL.GS.GameMerchant', ItemsListTemplateID='SiegeMerchantMid'
+UPDATE Mob SET ClassType='DOL.GS.GameBattlegroundSiegeMerchant', ItemsListTemplateID='SiegeMerchantMid'
  WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Merchant' AND Realm=2;
-UPDATE Mob SET ClassType='DOL.GS.GameMerchant', ItemsListTemplateID='SiegeMerchantHib'
+UPDATE Mob SET ClassType='DOL.GS.GameBattlegroundSiegeMerchant', ItemsListTemplateID='SiegeMerchantHib'
  WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Merchant' AND Realm=3;
 UPDATE Mob SET ClassType='DOL.GS.GameBountyMerchant', ItemsListTemplateID='AlbBountyMerchant'
  WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Bounty Merchant' AND Realm=1;

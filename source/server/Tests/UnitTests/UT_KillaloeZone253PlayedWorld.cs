@@ -149,7 +149,7 @@ namespace DOL.UnitTests
                     (SELECT Y FROM Mob WHERE Mob_ID='100032792' AND PackageID='offline-killaloe-zone253'),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Guild='Realm Enhancement'),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
-                        AND ClassType IN ('DOL.GS.GameMerchant','DOL.GS.GameBountyMerchant')
+                        AND ClassType IN ('DOL.GS.GameMerchant','DOL.GS.GameBattlegroundSiegeMerchant','DOL.GS.GameBountyMerchant')
                         AND ItemsListTemplateID IS NOT NULL AND ItemsListTemplateID <> ''),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
                         AND ClassType='DOL.GS.GameHastener'

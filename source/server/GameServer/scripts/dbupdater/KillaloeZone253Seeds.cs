@@ -136,7 +136,7 @@ namespace DOL.GS.DatabaseUpdate
             int merchants = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
                 WHERE PackageID='offline-killaloe-keep-253'
-                  AND ClassType IN ('DOL.GS.GameMerchant','DOL.GS.GameBountyMerchant')
+                  AND ClassType IN ('DOL.GS.GameMerchant','DOL.GS.GameBattlegroundSiegeMerchant','DOL.GS.GameBountyMerchant')
                   AND ItemsListTemplateID IS NOT NULL AND ItemsListTemplateID <> ''
                 """);
             if (merchants < 1)
