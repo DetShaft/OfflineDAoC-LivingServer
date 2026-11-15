@@ -195,7 +195,7 @@ def node_keep_visible(name, realm):
     """True if this converted keep-piece node is the undamaged lvl4 mesh for realm."""
     n = name or ""
     low = n.lower()
-    if low.startswith("collision") or low.startswith("door"):
+    if low.startswith("collision") or low.startswith("door") or low.startswith("gatestatic"):
         return True
     if _MAX_LEFTOVER.match(n.strip()):
         return False
@@ -306,14 +306,51 @@ def ensure_door_swing(doors):
     return doors
 
 
+_DAMAGED_LIGHTMAP = re.compile(r"_cake_dam_", re.I)
+
+
+def damaged_material_indices(doc):
+    """glTF material indices whose NIF material is lit by a damaged-cake lightmap ('_lm_gatehouse_alb_cake_dam_01').
+    The damaged toppers are named like the undamaged ones ('!Tiers_4_Alb_topper:9' sits under '!visible_damaged',
+    '!Tiers_4_Alb_topper01:6' under '!visible_undamaged'), so only their lightmap tells them apart. Drawing both
+    made the wall roofs flicker (owner's play test, 2026-11-15)."""
+    specs = (doc.get("extras") or {}).get("nif_materials") or []
+    out = set()
+    for i, mat in enumerate(doc.get("materials") or []):
+        name = mat.get("name") or ""
+        if not name.startswith("nifmat:"):
+            continue
+        try:
+            spec = specs[int(name.split(":", 1)[1])]
+        except (ValueError, IndexError):
+            continue
+        slots = spec.get("slots") or {}
+        if any(_DAMAGED_LIGHTMAP.search((slots.get(k) or {}).get("tex") or "") for k in ("dark", "detail")):
+            out.add(i)
+    return out
+
+
+def node_uses_only(doc, node, mats):
+    """True if node draws a mesh and every primitive of it uses one of mats."""
+    if not mats or node.get("mesh") is None:
+        return False
+    prims = (doc.get("meshes") or [])[node["mesh"]].get("primitives") or []
+    return bool(prims) and all(p.get("material") in mats for p in prims)
+
+
 def filter_keep_gltf(src, dest, realm, available=None):
     """Write a realm-skinned copy: other-realm cakes and damaged overlays are dropped, and the materials take the
     realm's own textures (realm_material). available: texture names that exist for the zone (None: assume all)."""
     doc = json.loads(src.read_text(encoding="utf-8"))
     nodes = doc.get("nodes") or []
 
+    damaged_mats = damaged_material_indices(doc)
+    damaged_nodes = set((doc.get("extras") or {}).get("nif_damaged_nodes") or [])
+
     def keep_idx(i):
-        if i < 0 or i >= len(nodes):
+        if i < 0 or i >= len(nodes) or i in damaged_nodes:
+            return False
+        if node_uses_only(doc, nodes[i], damaged_mats):
             return False
         return node_keep_visible(nodes[i].get("name") or "", realm)
 
