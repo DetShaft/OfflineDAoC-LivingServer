@@ -1388,7 +1388,7 @@ namespace DOL.GS.ServerProperties
 		/// <summary>
 		/// Whether releasing in a battleground should teleport the player to the portal keep
 		/// </summary>
-		[ServerProperty("pvp", "bg_release_to_portal_keep", "Whether releasing in a battleground should teleport the player to the portal keep", false)]
+		[ServerProperty("pvp", "bg_release_to_portal_keep", "Whether releasing in a battleground should teleport the player to the portal keep. A normal /release inside a battleground always uses the realm portal keep; /release bind still uses the bind stone.", true)]
 		public static bool BG_RELEASE_TO_PORTAL_KEEP;
 
 		#endregion

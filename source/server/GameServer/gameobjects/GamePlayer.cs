@@ -1445,19 +1445,8 @@ namespace DOL.GS
             }
             else if (releaseCommand is eReleaseType.Normal)
             {
-                // Check for NF or battleground (RvR release).
-                if (CurrentRegionID is 163)
-                    releaseCommand = eReleaseType.NewFrontiers;
-                else
-                {
-                    DbBattleground battleground = GameServer.KeepManager.GetBattleground(CurrentRegionID);
-
-                    // Battlegrounds caps.
-                    if (Properties.BG_RELEASE_TO_PORTAL_KEEP && battleground != null && Level <= battleground.MaxLevel)
-                        releaseCommand = eReleaseType.Battleground;
-                    else
-                        releaseCommand = eReleaseType.Bind;
-                }
+                bool zoneIsBattleground = CurrentZone != null && CurrentZone.IsBG;
+                releaseCommand = BattlegroundRelease.ChooseNormalRelease(CurrentRegionID, zoneIsBattleground);
             }
 
             if (!forced)
@@ -1594,26 +1583,19 @@ namespace DOL.GS
                 case eReleaseType.Battleground:
                 {
                     bool foundPortalKeep = false;
-                    DbBattleground battleground = GameServer.KeepManager.GetBattleground(CurrentRegionID);
-
-                    if (battleground != null && Properties.BG_RELEASE_TO_PORTAL_KEEP)
+                    foreach (AbstractGameKeep keep in GameServer.KeepManager.GetKeepsOfRegion(CurrentRegionID))
                     {
-                        // Use the friendly portal keep in the current region. There should be only one.
-                        foreach (AbstractGameKeep keep in GameServer.KeepManager.GetKeepsOfRegion(CurrentRegionID))
-                        {
-                            if (!keep.IsPortalKeep || keep.OriginalRealm != Realm)
-                                continue;
+                        if (!BattlegroundRelease.IsFriendlyPortalKeep(keep.IsPortalKeep, keep.Name, keep.OriginalRealm, Realm))
+                            continue;
 
-                            relRegion = keep.CurrentRegion.ID;
-                            relX = keep.X;
-                            relY = keep.Y;
-                            relZ = keep.Z;
-                            foundPortalKeep = true;
-                            break;
-                        }
+                        relRegion = keep.CurrentRegion.ID;
+                        relX = keep.X;
+                        relY = keep.Y;
+                        relZ = keep.Z;
+                        foundPortalKeep = true;
+                        break;
                     }
 
-                    // Fall back to bind.
                     if (!foundPortalKeep)
                         ValidateAndGetBind(out relRegion, out relX, out relY, out relZ, out relHeading);
 

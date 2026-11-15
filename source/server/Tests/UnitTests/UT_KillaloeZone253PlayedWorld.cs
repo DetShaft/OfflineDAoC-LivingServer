@@ -119,18 +119,31 @@ namespace DOL.UnitTests
                     (SELECT Y FROM Area WHERE Region=253 AND Description='Albion Portal Keep'),
                     (SELECT Realm FROM Keep WHERE KeepID=33 AND Region=253),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
-                        AND ClassType='DOL.GS.Keeps.GameKeepGuard'),
+                        AND (ClassType LIKE 'DOL.GS.Keeps.Guard%' OR ClassType LIKE 'DOL.GS.Keeps.GateKeeper%')),
                     (SELECT AggroLevel FROM Mob WHERE Name='Shadow in the Trees' AND PackageID='offline-killaloe-zone253'),
                     (SELECT RoamingRange FROM Mob WHERE Name='Shadow in the Trees' AND PackageID='offline-killaloe-zone253'),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND NPCTemplateID=-1),
                     (SELECT COUNT(*) FROM Door WHERE Door_ID LIKE 'offline-killaloe-door-%' AND Realm=6),
                     (SELECT MIN(X) FROM Mob WHERE PackageID='offline-killaloe-keep-253'),
-                    (SELECT Z FROM Mob WHERE Mob_ID='100032784' AND PackageID='offline-killaloe-zone253')
+                    (SELECT Z FROM Mob WHERE Mob_ID='100032784' AND PackageID='offline-killaloe-zone253'),
+                    (SELECT X FROM Mob WHERE Mob_ID='100032792' AND PackageID='offline-killaloe-zone253'),
+                    (SELECT Y FROM Mob WHERE Mob_ID='100032792' AND PackageID='offline-killaloe-zone253'),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Guild='Realm Enhancement'),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
+                        AND ClassType IN ('DOL.GS.GameMerchant','DOL.GS.GameBountyMerchant')
+                        AND ItemsListTemplateID IS NOT NULL AND ItemsListTemplateID <> ''),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
+                        AND ClassType='DOL.GS.GameHastener'
+                        AND Name IN ('Minstrel of Albion','Skald of Midgard','Bard of Hibernia')),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
+                        AND ClassType IN ('DOL.GS.AlbionTeleporter','DOL.GS.MidgardTeleporter','DOL.GS.HiberniaTeleporter')
+                        AND Guild IN ('Channeler','Stor Gothi')),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND (X>65536 OR Y>65536))
                 """;
             using var reader = verify.ExecuteReader();
             Assert.That(reader.Read(), Is.True);
             Assert.That(reader.GetInt32(0), Is.EqualTo(KillaloeZone253Seeds.ExpectedFieldSpawnCount));
-            Assert.That(reader.GetInt32(1), Is.EqualTo(KillaloeZone253Seeds.ExpectedKeepNpcCount));
+            Assert.That(reader.GetInt32(1), Is.EqualTo(KillaloeZone253Seeds.ExpectedPlayableKeepNpcCount));
             Assert.That(reader.GetInt32(2), Is.EqualTo(KillaloeZone253Seeds.ExpectedKeepDoorCount));
             Assert.That(reader.GetInt32(3), Is.EqualTo(28728));
             Assert.That(reader.GetInt32(4), Is.EqualTo(66136));
@@ -151,7 +164,7 @@ namespace DOL.UnitTests
             Assert.That(reader.GetInt32(19), Is.EqualTo(28728));
             Assert.That(reader.GetInt32(20), Is.EqualTo(66136));
             Assert.That(reader.GetInt32(21), Is.EqualTo(2), "Dun Killaloe is Midgard-owned.");
-            Assert.That(reader.GetInt32(22), Is.GreaterThan(0), "Keep combat staff load as GameKeepGuard.");
+            Assert.That(reader.GetInt32(22), Is.GreaterThan(0), "Keep combat staff load as realm-class keep guards.");
             Assert.That(reader.GetInt32(23), Is.EqualTo(80), "Shadow in the Trees is aggressive.");
             Assert.That(reader.GetInt32(24), Is.EqualTo(350));
             Assert.That(reader.GetInt32(25), Is.EqualTo(KillaloeZone253Seeds.ExpectedFieldSpawnCount));
@@ -159,6 +172,13 @@ namespace DOL.UnitTests
             Assert.That(reader.GetInt32(27), Is.GreaterThanOrEqualTo(KillaloeZone253Seeds.ZoneSectorOffset),
                 "Keep staff include region 253's 8192 zone offset so they sit on the keep meshes.");
             Assert.That(reader.GetInt32(28), Is.EqualTo(9888), "The cliff-top large rat sits on the heightmap at its own XY, not in canyon air.");
+            Assert.That(reader.GetInt32(29), Is.EqualTo(31731), "Field pack stays on dump X/Y so the Albion-Dun mesh path still has its OpenDAoC spawns.");
+            Assert.That(reader.GetInt32(30), Is.EqualTo(59217));
+            Assert.That(reader.GetInt32(31), Is.EqualTo(0), "Realm-enhancement clerics are gone.");
+            Assert.That(reader.GetInt32(32), Is.GreaterThan(0), "Siege and bounty merchants have a trade list.");
+            Assert.That(reader.GetInt32(33), Is.EqualTo(3), "Each portal keep hastener is that realm's bard.");
+            Assert.That(reader.GetInt32(34), Is.GreaterThan(0), "Captured channelers load as realm teleporters. Hibernia uses Channeler, not Grove Tender.");
+            Assert.That(reader.GetInt32(35), Is.EqualTo(0), "Field pack must not receive the keep-mesh 8192 offset.");
         }
     }
 }

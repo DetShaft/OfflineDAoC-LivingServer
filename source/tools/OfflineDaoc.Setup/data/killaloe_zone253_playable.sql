@@ -13,12 +13,60 @@ UPDATE Door SET Realm=2 WHERE Door_ID LIKE 'offline-killaloe-door-%' AND Interna
 UPDATE Door SET Realm=3 WHERE Door_ID LIKE 'offline-killaloe-door-%' AND InternalID BETWEEN 253203000 AND 253203999;
 UPDATE Door SET Realm=2 WHERE Door_ID LIKE 'offline-killaloe-door-%' AND InternalID BETWEEN 253138000 AND 253138999;
 
--- Combat keep staff become GameKeepGuard so they attach to the keep area and count as guards.
--- Peaceful keep NPCs (hastener, named civilians) stay GameNPC.
-UPDATE Mob SET ClassType='DOL.GS.Keeps.GameKeepGuard'
+-- Combat keep staff use realm-class guards so AUTOMODEL picks Albion/Midgard/Hibernia races,
+-- not DefaultCharacterClass's all-race list. Do not undo Dun Killaloe Realm=2.
+UPDATE Mob SET ClassType='DOL.GS.Keeps.GuardFighter'
  WHERE PackageID='offline-killaloe-keep-253' AND Region=253
-   AND (Flags=0 OR Name LIKE '%Gatekeeper%' OR Name LIKE '%PosternKeeper%' OR Name LIKE 'Captain %'
-        OR Name LIKE '% Commander' OR Name='Jarl Killaloe' OR Name='Huscarl');
+   AND (Name IN ('Knight Commander','Viking Jarl','Champion','Huscarl','Albion Commander','Midgard Commander','Hibernia Commander')
+        OR Name LIKE 'Captain %');
+UPDATE Mob SET ClassType='DOL.GS.Keeps.GuardArcher'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253
+   AND Name IN ('Bowman Commander','Master Hunter','Master Ranger');
+UPDATE Mob SET ClassType='DOL.GS.Keeps.GuardCaster'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253
+   AND Name IN ('Master Wizard','Master of Runes','Master Eldritch');
+UPDATE Mob SET ClassType='DOL.GS.Keeps.GuardLord'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Name='Jarl Killaloe';
+UPDATE Mob SET ClassType='DOL.GS.Keeps.GateKeeperIn'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253
+   AND (Name LIKE '%Enter Gatekeeper%' OR Name LIKE '%Enter PosternKeeper%');
+UPDATE Mob SET ClassType='DOL.GS.Keeps.GateKeeperOut'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253
+   AND (Name LIKE '%Exit Gatekeeper%' OR Name LIKE '%Exit PosternKeeper%');
+
+-- Siege and bounty merchants must load as merchants with a trade list.
+UPDATE Mob SET ClassType='DOL.GS.GameMerchant', ItemsListTemplateID='SiegeMerchantAlb'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Merchant' AND Realm=1;
+UPDATE Mob SET ClassType='DOL.GS.GameMerchant', ItemsListTemplateID='SiegeMerchantMid'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Merchant' AND Realm=2;
+UPDATE Mob SET ClassType='DOL.GS.GameMerchant', ItemsListTemplateID='SiegeMerchantHib'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Merchant' AND Realm=3;
+UPDATE Mob SET ClassType='DOL.GS.GameBountyMerchant', ItemsListTemplateID='AlbBountyMerchant'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Bounty Merchant' AND Realm=1;
+UPDATE Mob SET ClassType='DOL.GS.GameBountyMerchant', ItemsListTemplateID='MidBountyStore'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Bounty Merchant' AND Realm=2;
+UPDATE Mob SET ClassType='DOL.GS.GameBountyMerchant', ItemsListTemplateID='HibBountyMerchant'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Bounty Merchant' AND Realm=3;
+
+-- Hastener becomes the realm bard. Captured models already match GuardTemplateMgr (244/22/1910).
+UPDATE Mob SET ClassType='DOL.GS.GameHastener', Name='Minstrel of Albion', Guild='Hastener', Model=244
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Name='Hastener' AND Realm=1;
+UPDATE Mob SET ClassType='DOL.GS.GameHastener', Name='Skald of Midgard', Guild='Hastener', Model=22
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Name='Hastener' AND Realm=2;
+UPDATE Mob SET ClassType='DOL.GS.GameHastener', Name='Bard of Hibernia', Guild='Hastener', Model=1910
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Name='Hastener' AND Realm=3;
+
+-- Channeler: captured Prydwen Keep Channeler. Hibernia town templates in this client are
+-- Channeler Glasny, not Grove Tender, so Hibernia uses Channeler.
+UPDATE Mob SET ClassType='DOL.GS.AlbionTeleporter', Guild='Channeler'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild LIKE '%Keep Channeler%' AND Realm=1;
+UPDATE Mob SET ClassType='DOL.GS.MidgardTeleporter', Guild='Stor Gothi'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild LIKE '%Keep Channeler%' AND Realm=2;
+UPDATE Mob SET ClassType='DOL.GS.HiberniaTeleporter', Guild='Channeler'
+ WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild LIKE '%Keep Channeler%' AND Realm=3;
+
+-- Owner does not want realm-enhancement clerics live yet.
+DELETE FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Realm Enhancement';
 
 -- Field pack: drop OpenDAoC templates that ReplaceMobValues and zero AggroLevel.
 -- Snap Z to zone 253 heights.f32 at the dump XY. Do not drop a cliff spawn into a nearby
@@ -100,8 +148,12 @@ UPDATE Mob SET Z=8328, Speed=180, AggroLevel=200, RoamingRange=200, NPCTemplateI
 UPDATE Mob SET Z=7920, Speed=180, AggroLevel=200, RoamingRange=250, NPCTemplateID=-1 WHERE Mob_ID='100032855' AND PackageID='offline-killaloe-zone253';
 UPDATE Mob SET Z=8080, Speed=180, AggroLevel=200, RoamingRange=200, NPCTemplateID=-1 WHERE Mob_ID='100032856' AND PackageID='offline-killaloe-zone253';
 
--- Region 253's zone starts at sector 1,1. Add that 8192 so client to_local matches keep meshes.
-UPDATE Mob SET X=X+8192, Y=Y+8192 WHERE PackageID IN ('offline-killaloe-zone253','offline-killaloe-keep-253')
+-- Region 253's zone starts at sector 1,1. Add that 8192 to keep staff, doors and Keep
+-- rows so client to_local matches keep meshes. Do not add it to the OpenDAoC field pack:
+-- those dump X/Y, once the client subtracts 8192, sit on the Albion-portal to Dun Killaloe
+-- mesh path (forest cat 100032792 displays 7.7 m off that road). Offsetting the field pack
+-- moved it 204 m off the road, which emptied the path after the keep-mesh start.
+UPDATE Mob SET X=X+8192, Y=Y+8192 WHERE PackageID='offline-killaloe-keep-253'
  AND Region=253 AND X BETWEEN 0 AND 65536 AND Y BETWEEN 0 AND 65536;
 UPDATE Door SET X=X+8192, Y=Y+8192 WHERE Door_ID LIKE 'offline-killaloe-door-%'
  AND X BETWEEN 0 AND 65536 AND Y BETWEEN 0 AND 65536;

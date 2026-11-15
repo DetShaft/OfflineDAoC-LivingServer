@@ -19,6 +19,7 @@ namespace DOL.GS.DatabaseUpdate
     {
         public const int ExpectedFieldSpawnCount = 74;
         public const int ExpectedKeepNpcCount = 105;
+        public const int ExpectedPlayableKeepNpcCount = 102;
         public const int ExpectedKeepDoorCount = 17;
         /// <summary>Region 253 zone OffsetX/Y is 1. Captured X/Y are zone-local; add this so they match the client meshes.</summary>
         public const int ZoneSectorOffset = 8192;
@@ -109,12 +110,52 @@ namespace DOL.GS.DatabaseUpdate
             if (dunRealm != 2)
                 throw new InvalidOperationException($"Dun Killaloe Realm is {dunRealm}; captured Midgard staff need Realm 2.");
 
+            int keepRows = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Region=253
+                """);
+            if (keepRows != ExpectedPlayableKeepNpcCount)
+                throw new InvalidOperationException($"Killaloe keep pack has {keepRows:N0} rows after playable fixes; expected {ExpectedPlayableKeepNpcCount:N0}.");
+
+            int enhancement = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE PackageID='offline-killaloe-keep-253' AND Guild='Realm Enhancement'
+                """);
+            if (enhancement != 0)
+                throw new InvalidOperationException("Realm-enhancement clerics must not stay in Killaloe.");
+
             int guards = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
-                WHERE PackageID='offline-killaloe-keep-253' AND ClassType='DOL.GS.Keeps.GameKeepGuard'
+                WHERE PackageID='offline-killaloe-keep-253'
+                  AND (ClassType LIKE 'DOL.GS.Keeps.Guard%' OR ClassType LIKE 'DOL.GS.Keeps.GateKeeper%')
                 """);
             if (guards < 1)
-                throw new InvalidOperationException("Killaloe keep combat staff must load as GameKeepGuard.");
+                throw new InvalidOperationException("Killaloe keep combat staff must load as realm-class keep guards.");
+
+            int merchants = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE PackageID='offline-killaloe-keep-253'
+                  AND ClassType IN ('DOL.GS.GameMerchant','DOL.GS.GameBountyMerchant')
+                  AND ItemsListTemplateID IS NOT NULL AND ItemsListTemplateID <> ''
+                """);
+            if (merchants < 1)
+                throw new InvalidOperationException("Killaloe siege and bounty merchants must load as merchants with a trade list.");
+
+            int bards = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE PackageID='offline-killaloe-keep-253' AND ClassType='DOL.GS.GameHastener'
+                  AND Name IN ('Minstrel of Albion','Skald of Midgard','Bard of Hibernia')
+                """);
+            if (bards != 3)
+                throw new InvalidOperationException("Each portal keep hastener must become that realm's bard.");
+
+            int channelers = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE PackageID='offline-killaloe-keep-253'
+                  AND ClassType IN ('DOL.GS.AlbionTeleporter','DOL.GS.MidgardTeleporter','DOL.GS.HiberniaTeleporter')
+                  AND Guild IN ('Channeler','Stor Gothi')
+                """);
+            if (channelers < 1)
+                throw new InvalidOperationException("Captured keep channelers must load as realm teleporters. Hibernia uses Channeler, not Grove Tender.");
 
             int jarlSpot = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
@@ -144,8 +185,23 @@ namespace DOL.GS.DatabaseUpdate
             if (templates != ExpectedFieldSpawnCount)
                 throw new InvalidOperationException("Killaloe field spawns must drop the OpenDAoC templates that zero AggroLevel.");
 
+            int fieldCat = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE Mob_ID='100032792' AND PackageID='offline-killaloe-zone253'
+                  AND Region=253 AND X=31731 AND Y=59217
+                """);
+            if (fieldCat != 1)
+                throw new InvalidOperationException("Killaloe field pack must stay on dump X/Y so the Albion-Dun mesh path still has its OpenDAoC spawns.");
+
+            int fieldOverflow = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE PackageID='offline-killaloe-zone253' AND (X>65536 OR Y>65536 OR X<0 OR Y<0)
+                """);
+            if (fieldOverflow != 0)
+                throw new InvalidOperationException("Killaloe field pack must stay inside 0..65536; the 8192 keep-mesh offset is keep staff only.");
+
             RecordMigration(connection, PlayableMigrationId,
-                "Killaloe playable: Midgard owns Dun Killaloe, keep combat staff are GameKeepGuard, field spawns sit on the heightmap with dump aggro and roam, door realm is the keep's realm, X/Y include region 253's 8192 zone offset so they match the keep meshes.",
+                "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, keep X/Y include region 253's 8192 zone offset, field pack stays on dump X/Y.",
                 guards);
         }
 
