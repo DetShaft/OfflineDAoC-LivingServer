@@ -20,6 +20,8 @@ namespace DOL.GS.DatabaseUpdate
         public const int ExpectedFieldSpawnCount = 74;
         public const int ExpectedKeepNpcCount = 105;
         public const int ExpectedKeepDoorCount = 17;
+        /// <summary>Region 253 zone OffsetX/Y is 1. Captured X/Y are zone-local; add this so they match the client meshes.</summary>
+        public const int ZoneSectorOffset = 8192;
         public const string FieldSpawnsMigrationId = "killaloe-zone253-spawns-v1";
         public const string KeepObjectsMigrationId = "killaloe-zone253-keep-objects-v1";
         public const string KeepPadsMigrationId = "killaloe-zone253-keep-pads-v1";
@@ -99,7 +101,8 @@ namespace DOL.GS.DatabaseUpdate
 
         private static void ApplyPlayableFixes(SQLiteConnection connection)
         {
-            foreach (string statement in SplitSqlStatements(LoadEmbeddedText("killaloe_zone253_playable.sql"), skipArea: true))
+            bool hasArea = TableExists(connection, "Area");
+            foreach (string statement in SplitSqlStatements(LoadEmbeddedText("killaloe_zone253_playable.sql"), skipArea: !hasArea))
                 Execute(connection, statement);
 
             int dunRealm = ScalarInt(connection, "SELECT Realm FROM Keep WHERE Region=253 AND KeepID=33");
@@ -116,10 +119,15 @@ namespace DOL.GS.DatabaseUpdate
             int jarlSpot = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
                 WHERE PackageID='offline-killaloe-keep-253' AND Name='Jarl Killaloe'
-                  AND Region=253 AND X=32924 AND Y=31537
+                  AND Region=253 AND X=41116 AND Y=39729
                 """);
             if (jarlSpot != 1)
                 throw new InvalidOperationException("Playable fixes must not retarget keep NPCs onto Abermenai.");
+
+            int dunSpot = ScalarInt(connection,
+                "SELECT COUNT(*) FROM Keep WHERE Region=253 AND KeepID=33 AND X=40971 AND Y=40804");
+            if (dunSpot != 1)
+                throw new InvalidOperationException("Dun Killaloe must sit at zone-local 32779,32612 plus region 253's 8192 offset.");
 
             int hibKeepGates = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Door
@@ -137,7 +145,7 @@ namespace DOL.GS.DatabaseUpdate
                 throw new InvalidOperationException("Killaloe field spawns must drop the OpenDAoC templates that zero AggroLevel.");
 
             RecordMigration(connection, PlayableMigrationId,
-                "Killaloe playable: Midgard owns Dun Killaloe, keep combat staff are GameKeepGuard, field spawns sit on the heightmap with dump aggro and roam, door realm is the keep's realm.",
+                "Killaloe playable: Midgard owns Dun Killaloe, keep combat staff are GameKeepGuard, field spawns sit on the heightmap with dump aggro and roam, door realm is the keep's realm, X/Y include region 253's 8192 zone offset so they match the keep meshes.",
                 guards);
         }
 

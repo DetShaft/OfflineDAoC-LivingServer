@@ -123,37 +123,42 @@ namespace DOL.UnitTests
                     (SELECT AggroLevel FROM Mob WHERE Name='Shadow in the Trees' AND PackageID='offline-killaloe-zone253'),
                     (SELECT RoamingRange FROM Mob WHERE Name='Shadow in the Trees' AND PackageID='offline-killaloe-zone253'),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND NPCTemplateID=-1),
-                    (SELECT COUNT(*) FROM Door WHERE Door_ID LIKE 'offline-killaloe-door-%' AND Realm=6)
+                    (SELECT COUNT(*) FROM Door WHERE Door_ID LIKE 'offline-killaloe-door-%' AND Realm=6),
+                    (SELECT MIN(X) FROM Mob WHERE PackageID='offline-killaloe-keep-253'),
+                    (SELECT Z FROM Mob WHERE Mob_ID='100032784' AND PackageID='offline-killaloe-zone253')
                 """;
             using var reader = verify.ExecuteReader();
             Assert.That(reader.Read(), Is.True);
             Assert.That(reader.GetInt32(0), Is.EqualTo(KillaloeZone253Seeds.ExpectedFieldSpawnCount));
             Assert.That(reader.GetInt32(1), Is.EqualTo(KillaloeZone253Seeds.ExpectedKeepNpcCount));
             Assert.That(reader.GetInt32(2), Is.EqualTo(KillaloeZone253Seeds.ExpectedKeepDoorCount));
-            Assert.That(reader.GetInt32(3), Is.EqualTo(20536));
-            Assert.That(reader.GetInt32(4), Is.EqualTo(57944));
+            Assert.That(reader.GetInt32(3), Is.EqualTo(28728));
+            Assert.That(reader.GetInt32(4), Is.EqualTo(66136));
             Assert.That(reader.GetInt32(5), Is.EqualTo(8288));
-            Assert.That(reader.GetInt32(6), Is.EqualTo(60657));
-            Assert.That(reader.GetInt32(7), Is.EqualTo(35209));
-            Assert.That(reader.GetInt32(8), Is.EqualTo(10963));
-            Assert.That(reader.GetInt32(9), Is.EqualTo(13279));
-            Assert.That(reader.GetInt32(10), Is.EqualTo(32779));
-            Assert.That(reader.GetInt32(11), Is.EqualTo(32612));
+            Assert.That(reader.GetInt32(6), Is.EqualTo(68849));
+            Assert.That(reader.GetInt32(7), Is.EqualTo(43401));
+            Assert.That(reader.GetInt32(8), Is.EqualTo(19155));
+            Assert.That(reader.GetInt32(9), Is.EqualTo(21471));
+            Assert.That(reader.GetInt32(10), Is.EqualTo(40971));
+            Assert.That(reader.GetInt32(11), Is.EqualTo(40804));
             Assert.That(reader.GetInt32(12), Is.EqualTo(8768));
             Assert.That(reader.GetInt32(13), Is.EqualTo(37301), "Region 252 pads stay on Thidranki.");
             Assert.That(reader.GetInt32(14), Is.EqualTo(0), "Abermenai Door InternalIDs must not load beside Killaloe doors.");
             Assert.That(reader.GetInt32(15), Is.EqualTo(0), "No invented Hibernia keep gate.");
-            Assert.That(reader.GetInt32(16), Is.EqualTo(32924), "Keep NPCs stay on the captured Killaloe spots.");
-            Assert.That(reader.GetInt32(17), Is.EqualTo(31537));
+            Assert.That(reader.GetInt32(16), Is.EqualTo(41116), "Keep NPCs stay on the captured Killaloe spots, plus region 253's 8192 offset.");
+            Assert.That(reader.GetInt32(17), Is.EqualTo(39729));
             Assert.That(reader.GetInt32(18), Is.EqualTo(4));
-            Assert.That(reader.GetInt32(19), Is.EqualTo(20536));
-            Assert.That(reader.GetInt32(20), Is.EqualTo(57944));
+            Assert.That(reader.GetInt32(19), Is.EqualTo(28728));
+            Assert.That(reader.GetInt32(20), Is.EqualTo(66136));
             Assert.That(reader.GetInt32(21), Is.EqualTo(2), "Dun Killaloe is Midgard-owned.");
             Assert.That(reader.GetInt32(22), Is.GreaterThan(0), "Keep combat staff load as GameKeepGuard.");
             Assert.That(reader.GetInt32(23), Is.EqualTo(80), "Shadow in the Trees is aggressive.");
             Assert.That(reader.GetInt32(24), Is.EqualTo(350));
             Assert.That(reader.GetInt32(25), Is.EqualTo(KillaloeZone253Seeds.ExpectedFieldSpawnCount));
             Assert.That(reader.GetInt32(26), Is.EqualTo(0), "Keep doors are not eRealm.Door.");
+            Assert.That(reader.GetInt32(27), Is.GreaterThanOrEqualTo(KillaloeZone253Seeds.ZoneSectorOffset),
+                "Keep staff include region 253's 8192 zone offset so they sit on the keep meshes.");
+            Assert.That(reader.GetInt32(28), Is.EqualTo(9888), "The cliff-top large rat sits on the heightmap at its own XY, not in canyon air.");
         }
     }
 }

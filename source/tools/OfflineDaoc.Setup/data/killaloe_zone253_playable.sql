@@ -1,6 +1,8 @@
 -- Killaloe playable follow-up. Applied on the next GameServer start.
 -- Does not retarget NPCs onto Abermenai pads. Does not invent a Hibernia keep gate.
 -- Does not copy Thidranki placeholder guards.
+-- Region 253 zone offset is 1,1 (8192). Captured X/Y are zone-local 0..65536 (retail 237 minus 524288).
+-- Fixtures live in that local square. The client subtracts 8192, so staff stored as local sit 204 m off the keeps.
 
 -- Dun Killaloe starts Midgard-owned (captured staff are Midgard). Portal keeps already have a realm.
 UPDATE Keep SET Realm=2, OriginalRealm=2 WHERE Region=253 AND KeepID=33;
@@ -19,7 +21,9 @@ UPDATE Mob SET ClassType='DOL.GS.Keeps.GameKeepGuard'
         OR Name LIKE '% Commander' OR Name='Jarl Killaloe' OR Name='Huscarl');
 
 -- Field pack: drop OpenDAoC templates that ReplaceMobValues and zero AggroLevel.
--- Snap Z to zone 253 heights.f32. Fix Speed 8180. Set roam where the dump stored -1.
+-- Snap Z to zone 253 heights.f32 at the dump XY. Do not drop a cliff spawn into a nearby
+-- valley while leaving X/Y on the peak: that hangs the mob in canyon air between the cliffs.
+-- Fix Speed 8180. Set roam where the dump stored -1.
 
 UPDATE Mob SET Z=8208, Speed=180, AggroLevel=200, RoamingRange=200, NPCTemplateID=-1 WHERE Mob_ID='100032783' AND PackageID='offline-killaloe-zone253';
 UPDATE Mob SET Z=9888, Speed=180, AggroLevel=0, RoamingRange=120, NPCTemplateID=-1 WHERE Mob_ID='100032784' AND PackageID='offline-killaloe-zone253';
@@ -95,3 +99,16 @@ UPDATE Mob SET Z=7920, Speed=180, AggroLevel=200, RoamingRange=250, NPCTemplateI
 UPDATE Mob SET Z=8328, Speed=180, AggroLevel=200, RoamingRange=200, NPCTemplateID=-1 WHERE Mob_ID='100032854' AND PackageID='offline-killaloe-zone253';
 UPDATE Mob SET Z=7920, Speed=180, AggroLevel=200, RoamingRange=250, NPCTemplateID=-1 WHERE Mob_ID='100032855' AND PackageID='offline-killaloe-zone253';
 UPDATE Mob SET Z=8080, Speed=180, AggroLevel=200, RoamingRange=200, NPCTemplateID=-1 WHERE Mob_ID='100032856' AND PackageID='offline-killaloe-zone253';
+
+-- Region 253's zone starts at sector 1,1. Add that 8192 so client to_local matches keep meshes.
+UPDATE Mob SET X=X+8192, Y=Y+8192 WHERE PackageID IN ('offline-killaloe-zone253','offline-killaloe-keep-253')
+ AND Region=253 AND X BETWEEN 0 AND 65536 AND Y BETWEEN 0 AND 65536;
+UPDATE Door SET X=X+8192, Y=Y+8192 WHERE Door_ID LIKE 'offline-killaloe-door-%'
+ AND X BETWEEN 0 AND 65536 AND Y BETWEEN 0 AND 65536;
+UPDATE Keep SET X=X+8192, Y=Y+8192 WHERE Region=253 AND X BETWEEN 0 AND 65536 AND Y BETWEEN 0 AND 65536;
+-- Area rows are not reset by the pad SQL on later starts; pin them to the offset spots.
+UPDATE Area SET X=28728, Y=66136, Z=8288 WHERE Region=253 AND X IN (37301, 20536, 28728) AND Y IN (52362, 57944, 66136);
+UPDATE Area SET X=68849, Y=43401, Z=8288 WHERE Region=253 AND X IN (54053, 60657, 68849) AND Y IN (24680, 35209, 43401);
+UPDATE Area SET X=19155, Y=21471, Z=8288 WHERE Region=253 AND X IN (18362, 10963, 19155) AND Y IN (18257, 13279, 21471);
+UPDATE Area SET X=40971, Y=40804, Z=8768 WHERE Region=253 AND X IN (33089, 32779, 40971) AND Y IN (38271, 32612, 40804);
+
