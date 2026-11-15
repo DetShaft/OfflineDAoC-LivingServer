@@ -71,13 +71,16 @@ PORTAL_KEEPS = [
     {"id": 0x038A, "name": "Hibernia Portal Keep", "x": 535251, "y": 537567, "heading": 0x0135, "realm": 3, "z": PORTAL_Z, "pieces": PORTAL_PIECES},
 ]
 
-# Dun pad from captured gatehouse-door midpoint, keep heading 0 from Keep Gate 0x0000.
-# Gatehouse rel (-4,-3), heading 0: keep = door_mid - component offset at heading 0.
+# Dun pad: OpenDAoC's keep row 138 (region 237), heading 0. The capture has no 0x69 for it. Checked against the
+# captured doors: the gatehouse Keep Gate and the main keep's Keep Gate land within 16 units of their door rows
+# once each model's door offset is added (gatehouse door001 at model 376,779; mainkeep Door001 at 603,431). The
+# earlier pad (557435, 557562) took the gate door midpoint as the piece origin, which put the whole keep about
+# 750 units south-east of its staff and doors (owner screenshots 2026-11-15).
 DUN_KEEP = {
     "id": 0x008A,
     "name": "Dun Killaloe",
-    "x": 557435,
-    "y": 557562,
+    "x": 557067,
+    "y": 556900,
     "heading": 0,
     "realm": 2,
     "z": DUN_Z,
