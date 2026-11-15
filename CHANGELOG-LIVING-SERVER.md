@@ -8,20 +8,58 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
-## Beta 1.1.18 (in development)
+## Beta 1.1.18 — 2026-11-15
 
-**Abermenai and Murdaigean portal keeps are guarded (#75).** A battleground keep loads only its doors from the keep
-tables; its guards are world NPC rows, and the world has them at each realm's portal keep in Thidranki and Caledonia but
-none at the portal keeps in Abermenai (levels 15-19) and Murdaigean (25-29). Those keeps stood empty, so enemies could
-camp the realm entrances. Each realm's portal keep stands at the same spot in all four battlegrounds, so at server start
-a guardless one now gets the guards of its realm's portal keep in Thidranki or Caledonia (hastener, fighters and
-casters), at the same places. They are not saved to the database. The server log names each filled keep with a
-`BG_PORTAL_GUARDS` line. The central keeps, the battleground monsters and the teleporters are unchanged. Tests only: not
+**The 15-19 battleground is Killaloe (#83).** Abermenai was the Uthgard name. The zone stays region 253. On startup
+the server renames the region, its zone, keeps, areas and teleporter labels. Bots say Killaloe and still understand the
+old word. When the retail Killaloe files are present, the new-client zone build borrows that ground into zone 253
+without the retail offset; those files and the generated zone are not in this package. The classic-client map file
+can still say Abermenai until that local file is edited. Tests only: not yet seen in game.
+
+**Killaloe has its field spawns, keep staff and doors (#85, #86).** A fresh world now seeds Killaloe's 74 OpenDAoC
+field mobs, 105 captured keep NPCs and 17 keep doors as region 253, and moves the four keep pads onto the captured
+Killaloe spots so KeepArea covers that pack. Hibernia's keep gate was not in the capture and is not invented. The
+NPCs and doors stay where they were captured; they are not moved back onto the old Abermenai pads. Tests only: not
 yet seen in game.
 
-## Beta 1.1.17 — 2026-11-13
+**Murdaigean portal keeps get guards; Killaloe's staff is left alone (#75).** A battleground keep loads only its doors
+from the keep tables; its guards are world NPC rows. Thidranki and Caledonia have them at each realm's portal keep;
+Murdaigean (25-29) did not. At server start a guardless portal keep gets copies of its realm's portal keep guards from
+another battleground, at the same places. They are not saved. Killaloe (15-19) is skipped: its keep staff are ordinary
+world NPCs, so the keep's guard count stays 0, and copying Thidranki placeholders onto the new pads would stack them
+on the captured staff. The server log names each filled keep with a `BG_PORTAL_GUARDS` line. Tests only: not yet seen
+in game.
 
-**Group loot is looked over and shared (#72).** In a group, each drop takes a turn across you, a companion bot, and any gamebots with you. A /spawn helper still gets nothing until you friend it and it becomes a gamebot. Your turn stays on the corpse: `/look` lists it, `/look take` puts the one you choose in your bag. Solo kills still follow `/autoloot`. A companion keeps its share in the backpack it is wearing now. A gamebot keeps its share, and can have eight things listed on the Realm Exchange, still only when it stops at a task break. Coins are split once across you and gamebots that can hold them. Tests only: not yet seen in game.
+**Dead bots of your realm can be targeted for a resurrection (#65).** In the new client a dead companion or gamebot
+could not be clicked or kept as a target, so a resurrection could not be cast on it. The server already keeps that
+body. A dead bot of your realm can now be selected, stays targeted when it dies, and a click on the lying body picks
+it. Monster corpses, enemy-realm bodies and a body the server has removed stay untargetable. Tests only: not yet seen
+in game.
+
+**Realm Exchange: deposit one bag at a suggested price (#74).** Listing a bag meant dragging each piece and typing a
+copper price. **Deposit this bag** lists the gear in the backpack bag that is open, at a suggested price the player
+can still change. Dragging a single piece into the chest stores it and tells you the suggestion; it goes on sale when
+you set a price. Bots use the same formula, ask between 65% and 100% of it, and will not pay more than the unshifted
+suggestion. Tests only: not yet seen in game.
+
+**Group loot is looked over and shared (#72).** In a group, each drop takes a turn across you, a companion bot, and any
+gamebots with you. A /spawn helper still gets nothing until you friend it and it becomes a gamebot. Your turn stays on
+the corpse: `/look` lists it, `/look take` puts the one you choose in your bag. Solo kills still follow `/autoloot`. A
+companion keeps its share in the backpack it is wearing now. A gamebot keeps its share, and can have eight things listed
+on the Realm Exchange, still only when it stops at a task break. Coins are split once across you and gamebots that can
+hold them. Tests only: not yet seen in game.
+
+**Launcher Changelog tab (#68).** The launcher has a Changelog tab that shows Living Server release notes from the same
+GitHub releases feed the update checker uses. If the fetch fails it falls back to a local cache when one is present.
+Tests only: not yet seen in game.
+
+**The nav builder can take one zone's ground from heights.f32 (#84).** OpenDAoC-BuildNav still reads classic
+`terrain.pcx` by default. `--heights=253=<path to heights.f32>` uses the new client's height file for that zone so a
+Killaloe rebuild is not baked from Abermenai's classic ground. A missing river list is treated as no rivers, so the
+build continues and writes the nav file. Tests only: the builder was not run against an install for this change.
+([docs/RELEASE-NOTES-1.1.18.md](docs/RELEASE-NOTES-1.1.18.md))
+
+## Beta 1.1.17 — 2026-11-13
 
 **LFG bots come to you (#55).** Inviting a bot from the find-group window when it was far away answered "too far away to
 join you. Meet up first." A same-realm gamebot with a fresh LFG ad, or waiting solo on group matchmaking, and not in a
