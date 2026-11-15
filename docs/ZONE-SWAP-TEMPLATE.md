@@ -65,11 +65,27 @@ killaloe_zone253_*.sql` on every start, for fresh and already-played worlds. `RE
 `killaloe_zone253_playable.sql` adds the zone offset, fixes classes, merchants and doors, and deletes the old
 zone's own spawns (those with no PackageID). Asserts in the same file fail the start if a step drifts.
 
-## 5. Bot pathing (still open)
+## 5. Bot pathing
 
-The server navmesh `runtime/server/navmesh/zone253.nav` must come from the new ground (OpenDAoC-BuildNav
-`--heights=253=<heights.f32>`, see its README). It must also include the new keep pieces and doors. On
-2026-11-15 none of Killaloe's 17 keep doors could register with pathfinding (server.log `DoorMgr` warnings).
+The server navmesh `runtime/server/navmesh/zoneNNN.nav` must be built from what the new client draws. The
+classic client's files for that zone id belong to the old zone, so OpenDAoC-BuildNav gets three overrides:
+
+1. `navmesh_zone_input.py --zone-json <zoneNNN>/zone.json --retail-zone <retail>/frontiers/zones/zoneRRR
+   --nif-dirs "<retail>/zones/nifs;<retail>/frontiers/NIFS" --out <folder>` writes `fixtures.csv` and
+   `nifs.csv` from zone.json (every drawn fixture: trees with their trunk radius, bridges, keep pieces at
+   their pads mapped back to the realmless retail NIF, so their doors and collision come in). It copies
+   `bound.csv`, `sector.dat` and `water.pcx` from the retail zone. It leaves out `terrain.pcx`.
+2. Build BuildNav on Windows (`dotnet build -c Release`) from a git archive of the branch
+   (`OpenDAoC-BuildNav` and `OpenDAoC-Core` side by side), and copy `runtime/server/lib/Detour.dll` to
+   `<output>/base/lib/`.
+3. Run with `base\` on PATH, because BuildNav starts `RecastDemo.exe` by bare name:
+   `OpenDAoC-BuildNav.exe --daoc=<classic client> --zones=NNN --heights=NNN=<zoneNNN>/heights.f32
+   --zone-files=NNN=<folder> --nif-dirs="<retail>/zones/nifs;<retail>/frontiers/NIFS"`.
+   The log names the override folder. The `.doors` file next to the mesh lists the doors it found (Killaloe:
+   18). The server doesn't read that file. It matches its own door rows to the mesh's door polygons.
+4. Back up the live `zoneNNN.nav` and copy the new one in while the server is stopped.
+
+Killaloe (2026-11-15) took 78 seconds and gave a 28.9 MB mesh.
 
 ## 6. Verify in game
 
