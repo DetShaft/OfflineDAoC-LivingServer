@@ -66,6 +66,10 @@
         <EmbeddedResource Include=".\bots\autonomous\data\dungeon_navigation_points.json" />
         <EmbeddedResource Include=".\bots\autonomous\data\darkness_falls_raid_event_mobs.json" />
         <EmbeddedResource Include=".\bots\autonomous\data\darkness_falls_navigation_proofs.json" />
+        <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_mobs.sql" Link="data\killaloe_zone253_mobs.sql" />
+        <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_keep_npcs.sql" Link="data\killaloe_zone253_keep_npcs.sql" />
+        <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_keep_doors.sql" Link="data\killaloe_zone253_keep_doors.sql" />
+        <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_keep_pads.sql" Link="data\killaloe_zone253_keep_pads.sql" />
         <TranslationFiles Include=".\language\**\*.txt" />
         <APIDocs Include=".\API\docs\*" />
         <Content Include="API\docs\index.css" />
