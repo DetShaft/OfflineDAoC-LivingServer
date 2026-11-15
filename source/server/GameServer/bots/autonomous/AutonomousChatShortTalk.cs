@@ -39,7 +39,7 @@ public static class AutonomousChatShortTalk
         "groups", "grps", "party", "inv", "invite", "duo", "trio", "fg", "lfguild", "lf", "forming", "puller", "pullers");
     private static readonly HashSet<string> RvrWords = Set("rvr", "frontier", "relic", "relics", "emain", "hadrians",
         "hadrian", "odins", "mg", "amg", "hmg", "mmg", "milegate", "stealther", "stealthers", "rps", "rp", "rr", "thid", "thidranki",
-        "abermenai", "murdaigean", "caledonia", "cathal", "bg", "battleground", "siege", "realmpoints", "zerg", "zergs", "zerging",
+        "killaloe", "abermenai", "murdaigean", "caledonia", "cathal", "bg", "battleground", "siege", "realmpoints", "zerg", "zergs", "zerging",
         "benowyc", "berkstead", "boldiam", "bledmeer", "crauchon", "crimthainn", "nottmoor", "glenlock", "renaris", "erasleigh",
         "sursbrooke", "hurbury", "blendrake", "arvakr", "fensalir", "hlidskialf", "nottmoor", "bolg", "ailline", "behnn", "scathaig");
     private static readonly HashSet<string> DungeonWords = Set("dungeon", "dungeons", "tomb", "cave", "caves", "caverns",

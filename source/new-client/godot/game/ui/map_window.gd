@@ -152,14 +152,16 @@ func _show(what: Dictionary, picked: bool) -> void:
 	match String(what.get("kind", "")):
 		"region":
 			var r := _region(int(what.id))
-			title = String(r.get("name", ""))
+			title = ZoneLoader.place_name(int(what.id), String(r.get("name", "")))
 			pic = String(r.get("map", ""))
 		"area":
 			var a: Dictionary = (_zone(int(what.id)).get("areas", []) as Array)[int(what.area)]
-			title = String(a.get("name", "")) if String(a.get("name", "")) != "" else String(_zone(int(what.id)).get("name", ""))
+			var zname := ZoneLoader.place_name(int(what.id), String(_zone(int(what.id)).get("name", "")))
+			title = String(a.get("name", "")) if String(a.get("name", "")) != "" else zname
+			title = ZoneLoader.place_name(0, title)
 			pic = String(a.get("map", ""))
 		_:
-			title = String(_zone(int(what.id)).get("name", ""))
+			title = ZoneLoader.place_name(int(what.id), String(_zone(int(what.id)).get("name", "")))
 			pic = String(_zone(int(what.id)).get("map", ""))
 	_title.text = title.to_upper()
 	_view.texture = _texture(pic)
@@ -417,7 +419,7 @@ class MapView extends Control:
 			var z := _zone_under(event.position)
 			if z != _hover:
 				_hover = z
-				tooltip_text = String(w._zone(z).get("name", "")) if z >= 0 else ""
+				tooltip_text = ZoneLoader.place_name(z, String(w._zone(z).get("name", ""))) if z >= 0 else ""
 				queue_redraw()
 		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			var z := _zone_under(event.position)

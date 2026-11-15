@@ -191,7 +191,7 @@ static func class_display(abbrev: String) -> String:
 static func zone_display(zone: Variant) -> String:
 	var s := str(zone).strip_edges()
 	if not s.is_valid_int():
-		return s                                   # already a name
+		return ZoneLoader.place_name(0, s)         # already a name; Abermenai is Killaloe
 	var id := int(s)
 	if id <= 0 or id == 255:
 		return ""
@@ -201,11 +201,11 @@ static func zone_display(zone: Variant) -> String:
 		if ix is Dictionary:
 			for k in ix:
 				if ix[k] is Dictionary and str(k).is_valid_int():
-					_zone_names[int(k)] = String(ix[k].get("name", ""))
+					_zone_names[int(k)] = ZoneLoader.place_name(int(k), String(ix[k].get("name", "")))
 		if _zone_names.is_empty():
 			_zone_names[-1] = ""                   # no index: don't look again
 	var n := String(_zone_names.get(id, ""))
-	return n if not n.is_empty() else "Zone %d" % id
+	return ZoneLoader.place_name(id, n if not n.is_empty() else "Zone %d" % id)
 
 
 func _apply_filters() -> void:

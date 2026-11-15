@@ -88,14 +88,14 @@ says "today").
 - Later internet phrases: change my mind, fight me, vibes, love language, no thoughts, lifestyle, salty,
   the meta, i felt that, pog, based, no cap, sus, gg ez, main character, "o/" (do not add new ones).
 - Out-of-era content: Trials of Atlantis (Atlantis, artifacts, master levels, ML), New Frontiers (towers,
-  Molvik, Leirvik, Proving Grounds, Lion's Den, Hills of Claret, Killaloe, Braemar, Wilton), Catacombs
+  Molvik, Leirvik, Proving Grounds, Lion's Den, Hills of Claret, Braemar, Wilton), Catacombs
   (champion levels, CL, catacombs classes), Mythic, real websites, EverQuest by name (the builder bans it),
   World of Warcraft.
 - Promises the server can't keep: a bot must not say it is inviting, trading or coming unless the line is
   written for a kind whose code does that (say "pst me", "inv me", "i might be free later" instead).
 
 ## World facts you can use
-- Battlegrounds in this world: Abermenai 15-19, Thidranki 20-24, Murdaigean 25-29, Caledonia 30-35,
+- Battlegrounds in this world: Killaloe 15-19, Thidranki 20-24, Murdaigean 25-29, Caledonia 30-35,
   Cathal Valley 45-49.
 - Capitals: Camelot (Albion), Jordheim (Midgard), Tir na Nog (Hibernia). Starter towns: Cotswold,
   Prydwen Keep, Humberton (alb); Mularn, Audliten, Huginfell (mid); Mag Mell, Tir na mBeo, Ardee (hib).

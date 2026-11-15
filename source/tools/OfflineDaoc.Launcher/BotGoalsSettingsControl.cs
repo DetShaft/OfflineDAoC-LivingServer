@@ -57,7 +57,7 @@ internal sealed class BotGoalsSettingsControl : UserControl
         body.Controls.Add(table);
         body.Controls.Add(new Label { AutoSize = true, MaximumSize = new Size(850, 0),
             Text = "Levels 1–19 cannot do RvR. Saved settings replace forced PvE after RvR, allowing back-to-back RvR.\n" +
-                "Battlegrounds % sends bots to the battleground of their level: Abermenai 15–19, Thidranki 20–24, Murdaigean 25–29,\n" +
+                "Battlegrounds % sends bots to the battleground of their level: Killaloe 15–19, Thidranki 20–24, Murdaigean 25–29,\n" +
                 "Caledonia 30–35. Bots outside those levels (1–14 and 36–49) do solo or group PvE with that share instead. Level 50 cannot.\n" +
                 "Percentages are population targets, not exact head counts at every moment. Existing allowed tasks finish normally.\n" +
                 "Group-only bots wait for a complete eight-member role roster; they never fall back to a 0% goal.\n" +

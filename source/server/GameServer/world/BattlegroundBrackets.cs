@@ -4,10 +4,11 @@ using DOL.Database;
 namespace DOL.GS
 {
     /// <summary>
-    /// The four classic battlegrounds and their level brackets (patch 1.60 values; the Battleground table
-    /// wins where it has a row). One owner for teleporters, bot goals and camp access, so a player and a
-    /// bot see exactly the same rule. Level is the only limit (owner, 2026-10-07): the period realm point
-    /// caps are deliberately not applied to players or bots.
+        /// The four battlegrounds and their level brackets. The 15-19 battleground is Killaloe
+        /// (region 253; the keeps and portals stay on the shared layout). The Battleground table
+        /// wins on min and max level where it has a row. One owner for teleporters, bot goals and
+        /// camp access, so a player and a bot see exactly the same rule. Level is the only limit
+        /// (owner, 2026-10-07): the period realm point caps are deliberately not applied.
     /// </summary>
     public static class BattlegroundBrackets
     {
@@ -15,7 +16,7 @@ namespace DOL.GS
 
         private static readonly Bracket[] Period =
         {
-            new("Abermenai", "Dun Abermenai", 253, 15, 19),
+            new("Killaloe", "Dun Killaloe", 253, 15, 19),
             new("Thidranki", "Thidranki Faste", 252, 20, 24),
             new("Murdaigean", "Dun Murdaigean", 251, 25, 29),
             new("Caledonia", "Caer Caledon", 250, 30, 35),

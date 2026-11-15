@@ -9,6 +9,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from assets_pipeline import CLIENT, ROOT
 from daoc_mpk import read_mpk
+import killaloe_terrain
 
 
 def main():
@@ -24,7 +25,10 @@ def main():
         if 'region' not in kv:
             continue
         num = lambda k, d=0: int(re.match(r'-?\d+', kv.get(k, str(d))).group(0)) if re.match(r'-?\d+', kv.get(k, str(d))) else d
-        out[str(zid)] = {'name': kv.get('name', f'zone{zid:03d}'), 'region': num('region'),
+        # Zone 253 keeps the offsets in this file (0, 0). Killaloe's retail offset of 64, 64 is not copied:
+        # the keeps sit in 0..65536, and 64 sectors would start the ground at 524288.
+        name = killaloe_terrain.PLACE_NAME if zid == killaloe_terrain.BATTLEGROUND_ZONE else kv.get('name', f'zone{zid:03d}')
+        out[str(zid)] = {'name': name, 'region': num('region'),
                          'x': num('region_offset_x'), 'y': num('region_offset_y'), 'w': num('width', 8), 'h': num('height', 8),
                          'type': num('type'), 'built': (ROOT / f'godot/content/zones/zone{zid:03d}/zone.json').exists()}
     f = ROOT / 'godot/content/zones/zones_index.json'

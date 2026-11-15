@@ -30,6 +30,7 @@ sys.path.insert(0, str(HERE))
 from daoc_mpk import read_mpk
 from assets_pipeline import CLIENT, ROOT
 from texture_index import TextureIndex
+import killaloe_terrain
 import nif_static
 import alpha_bleed
 import tone_restore
@@ -105,6 +106,9 @@ def clutter_items(grass_csv):
 
 
 def zone_name(zone_id):
+    # Region 253 is Killaloe. zones.dat on the offline client still says Abermenai; the player does not.
+    if zone_id == killaloe_terrain.BATTLEGROUND_ZONE:
+        return killaloe_terrain.PLACE_NAME
     name = re.search(r'^\s*name\s*=\s*(.+?)\s*$', zone_section(zone_id), re.M)
     return name.group(1) if name else f'zone{zone_id:03d}'
 
@@ -650,8 +654,9 @@ HOUSING_ZONES = {13, 114, 213}                         # Caerwent / Erikstaad / 
 
 def client_zonejump(zdir, zone_id):
     """The zone's zonejump.csv as the client has it: its csvNNN.mpk copy when there is one (the patched tables - owner
-    2026-10-17: Delling Crater's Tuscaran Glacier entrance and Abermenai's three realm exits are only there, so the
-    zone-in spots were missing), else None (datNNN.mpk's own)."""
+    2026-10-17: Delling Crater's Tuscaran Glacier entrance and the 15-19 battleground's three realm exits
+    (zone 253's csv; the place is Killaloe) are only there, so the zone-in spots were missing), else None
+    (datNNN.mpk's own)."""
     p = zdir / f'csv{zone_id:03d}.mpk'
     if not p.exists():
         return None
@@ -786,6 +791,34 @@ def build(zone_id, upscale=True):
     if 'dungeon.place' in dat:
         return build_dungeon(zone_id, upscale, zdir, out, dat, sector)
 
+    # Zone 253 is Killaloe. Its own folder has heights in the dat and no painted ground. Borrow retail
+    # zone 237's height, water, sector and ground archives. Fixtures and the csv exits stay zone 253.
+    # The retail region offset (64, 64) is not applied: the keeps are in 0..65536, and that offset
+    # would put the ground at 524288.
+    ground_dir, ground_id, clutter_zone = zdir, zone_id, zone_id
+    if zone_id == killaloe_terrain.BATTLEGROUND_ZONE:
+        borrowed = killaloe_terrain.terrain_folder()
+        applied = False
+        if borrowed is not None:
+            src_path = borrowed / f'dat{killaloe_terrain.TERRAIN_ZONE:03d}.mpk'
+            try:
+                src = read_mpk(str(src_path))
+            except (OSError, ValueError, KeyError) as error:
+                print('could not read', src_path, type(error).__name__, error)
+                src = {}
+            if all(key in src for key in killaloe_terrain.NEEDED_IN_DAT):
+                for key in killaloe_terrain.BORROWED_DAT:
+                    if key in src:
+                        dat[key] = src[key]
+                sector = sector_ini(src['sector.dat'])
+                ground_dir, ground_id = borrowed, killaloe_terrain.TERRAIN_ZONE
+                clutter_zone = killaloe_terrain.TERRAIN_ZONE
+                applied = True
+                print(f'zone {zone_id}: ground from {borrowed} (retail zone {ground_id}); '
+                      f'fixtures and exits stay zone {zone_id}')
+        if not applied:
+            print(killaloe_terrain.missing_message())
+
     # terrain
     h = heights(dat, sector)
     (h * M).astype('<f4').tofile(out / 'heights.f32')
@@ -798,11 +831,11 @@ def build(zone_id, upscale=True):
     tile_sets = {}
     gdir = out / 'terrain' / 'original'
     gdir.mkdir(parents=True, exist_ok=True)
-    for set_name, archive, prefix, ext in (('tex165', f'tex{zone_id:03d}.mpk', 'tex', 'bmp'),
-                                           ('lod', f'lod{zone_id:03d}.mpk', 'lod', 'dds')):
-        if not (zdir / archive).exists():
+    for set_name, archive, prefix, ext in (('tex165', f'tex{ground_id:03d}.mpk', 'tex', 'bmp'),
+                                           ('lod', f'lod{ground_id:03d}.mpk', 'lod', 'dds')):
+        if not (ground_dir / archive).exists():
             continue
-        tiles = read_mpk(str(zdir / archive))
+        tiles = read_mpk(str(ground_dir / archive))
         if f'{prefix}00-00.{ext}' not in tiles:                # some zones ship the painted ground as .dds
             ext = next((k.rsplit('.', 1)[1] for k in tiles if k.startswith(f'{prefix}00-00.')), ext)
         first = Image.open(io.BytesIO(tiles[f'{prefix}00-00.{ext}']))
@@ -827,19 +860,22 @@ def build(zone_id, upscale=True):
     # Catacombs-era ground blend (what the current client draws): per patch, a base texture and up to 8 layers laid
     # over it by weight maps, ending with the zone colour map (see terrain_splat.py; verified against the lod bake)
     splat = None
-    if (zdir / f'ter{zone_id:03d}.mpk').exists():
+    if (ground_dir / f'ter{ground_id:03d}.mpk').exists():
         import terrain_splat
         sdir = out / 'splat'
         sdir.mkdir(exist_ok=True)
         splat = {'patches': {}}
-        for (px, py), layers in sorted(terrain_splat.decode(zone_id).items()):
+        for (px, py), layers in sorted(terrain_splat.decode(ground_id, ground_dir / f'ter{ground_id:03d}.mpk').items()):
             if len(layers) > 9:
                 print(f'WARNING patch {px},{py}: {len(layers)} ground layers, engine draws base + 8')
             over = layers[1:9]
             files = []
             for k in range(0, 8, 4):
-                chans = [over[i]['weight'] if i < len(over) else np.zeros((128, 128), np.float32) for i in range(k, k + 4)]
-                img = Image.fromarray((np.clip(np.stack(chans, axis=2), 0, 1) * 255).astype(np.uint8), 'RGBA')
+                # Missing overlays used to be 128x128 zeros. Killaloe's maps are another size, so the
+                # next image (the patch's second four channels, or the next patch) died in np.stack
+                # (owner, 2026-11-14). Fit every channel to the size this patch's maps already use.
+                chans = [over[i]['weight'] if i < len(over) else None for i in range(k, k + 4)]
+                img = terrain_splat.pack_weights(chans)
                 name = f'patch_{px:02d}_{py:02d}_w{k // 4}.png'
                 save_if_changed(img, sdir / name)
                 files.append(f'splat/{name}')
@@ -851,7 +887,7 @@ def build(zone_id, upscale=True):
     # ground clutter (grass tufts, flowers, pebbles): zones/textures/grass_<realm>[exp].csv + its sprite sheet,
     # placed by grassmap.pcx (value / 10 = group) and densemap.pcx (0-255 density per 256-unit cell)
     clutter = None
-    realm, expansion = clutter_realm(zone_id)
+    realm, expansion = clutter_realm(clutter_zone)
     grass_name = f'grass_{realm}{"exp" if expansion else ""}' if realm else None
     grass_csv = CLIENT / 'zones/textures' / f'{grass_name}.csv' if grass_name else None
     if grass_csv and grass_csv.exists() and 'grassmap.pcx' in dat:
@@ -1000,7 +1036,7 @@ def build(zone_id, upscale=True):
     # close-up ground grain: the zone's most used tiling ground texture (ter<id>.mpk textures.csv), shaded in by
     # the terrain material at a few metres per repeat
     detail = None
-    ter = zdir / f'ter{zone_id:03d}.mpk'
+    ter = ground_dir / f'ter{ground_id:03d}.mpk'
     if ter.exists():
         rows = read_csv(read_mpk(str(ter)).get('textures.csv', b''))[1:]
         counts = {}
@@ -1050,6 +1086,10 @@ def build(zone_id, upscale=True):
             'texture_sets': {'original': 'textures/original',
                              **({'x4plus': 'textures/x4plus'} if upscale or (out / 'textures/x4plus').exists() else {})},
             'terrain_detail': detail, 'ground_splat': splat, 'clutter': clutter, 'water_maps': water_maps, 'lights': lights, 'missing_textures': missing, 'warnings': warnings}
+    if ground_id != zone_id:
+        # stitch_zone_edges checks the interior against the zones.dat placement. This ground is another zone's
+        # (Killaloe is retail 237 at offset 64, 64) and that offset was not applied.
+        zone['terrain_from'] = ground_id
     (out / 'zone.json').write_text(json.dumps(zone, indent=1), encoding='utf-8')
     import stitch_zone_edges                                # the far edges from the neighbour zones (seamless borders)
     stitch_zone_edges.stitch([zone_id])

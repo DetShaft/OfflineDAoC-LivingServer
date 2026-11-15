@@ -13,6 +13,14 @@ const VIEW_RANGE_MAX_M := 900.0        # ...and at most this far (trees, buildin
 static var view_mult := 1.0
 const TERRAIN_SHADER := preload("res://game/terrain.gdshader")
 const WATER_SHADER := preload("res://game/water.gdshader")
+## The 15-19 battleground. Content built before the rename still says Abermenai; the player sees Killaloe.
+const KILLALOE_ZONE := 253
+
+
+static func place_name(zone_id: int, stored: String = "") -> String:
+	if zone_id == KILLALOE_ZONE:
+		return "Killaloe"
+	return stored.replace("Abermenai", "Killaloe").replace("abermenai", "killaloe")
 
 var info: Dictionary
 var dir: String
@@ -45,6 +53,7 @@ func terrain_sets() -> Array:
 func load_zone(content_dir: String, terrain_set_name := "blend", texture_set_name := "x4plus") -> void:
 	dir = content_dir
 	info = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("zone.json")))
+	info["name"] = place_name(int(info.get("id", 0)), String(info.get("name", "")))
 	city = bool(info.get("city", false))
 	terrain_set = "" if terrain_sets().is_empty() else (terrain_set_name if terrain_sets().has(terrain_set_name) else terrain_sets()[0])
 	texture_set = texture_set_name if info.texture_sets.has(texture_set_name) else "original"

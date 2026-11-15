@@ -1,35 +1,35 @@
-# Battleground talk by bracket: Abermenai 15-19, Thidranki 20-24, Murdaigean 25-29, Caledonia 30-35,
+# Battleground talk by bracket: Killaloe 15-19, Thidranki 20-24, Murdaigean 25-29, Caledonia 30-35,
 # Cathal Valley 45-49 (world database). "We're there now" lines need in_rvr; the rest are plans and
 # memories. Adds to rvr.lines (topic battlegrounds). New writing (see docs/bot-voices).
 
-# ---------------- Abermenai 15-19 ----------------
+# ---------------- Killaloe 15-19 ----------------
 @kind rvr
 @topic battlegrounds
 @who *
 @levels 15-19
 @needs in_battleground
-@needs in_battleground, at:abermenai
-first time in abermenai, everyone is tiny and furious
+@needs in_battleground, at:killaloe
+first time in killaloe, everyone is tiny and furious
 @needs in_battleground
-@needs in_battleground, at:abermenai
-{enemy} group heading for the abermenai keep, anyone near?
+@needs in_battleground, at:killaloe
+{enemy} group heading for the killaloe keep, anyone near?
 @needs in_battleground
-@needs in_battleground, at:abermenai
-abermenai keep is ours for now, stay close to the door
+@needs in_battleground, at:killaloe
+killaloe keep is ours for now, stay close to the door
 @needs in_battleground
 @needs
 @invites lfg
 @about place
-abermenai later? want to try rvr before 20
+killaloe later? want to try rvr before 20
 @about
 @invites
 @invites ask
 @about place
-is abermenai busy tonight? never been
+is killaloe busy tonight? never been
 @about
 @invites complaint
 @about place
-abermenai twinks in full crafted gear at 18, why
+killaloe twinks in full crafted gear at 18, why
 @about
 
 # ---------------- Thidranki 20-24 ----------------

@@ -210554,9 +210554,9 @@
    "mood": "",
    "weight": 1.0,
    "invites": "chat",
-   "text": "abermenai was the first place i ever saw an albion army",
+   "text": "killaloe was the first place i ever saw an albion army",
    "about": true,
-   "id": "2987bdac2422"
+   "id": "bdf4efe2ce21"
   },
   {
    "kind": "rvr",
@@ -210573,10 +210573,10 @@
    "mood": "",
    "weight": 0.5,
    "invites": "chat",
-   "text": "abermenai taught me more about fighting than any trainer in camelot",
+   "text": "killaloe taught me more about fighting than any trainer in camelot",
    "about": true,
-   "family": "0bce98c9f6",
-   "id": "12ef64d6f865"
+   "family": "4ea60c5c45",
+   "id": "d6202db791b3"
   },
   {
    "kind": "rvr",
@@ -210593,10 +210593,10 @@
    "mood": "",
    "weight": 0.5,
    "invites": "chat",
-   "text": "abermenai showed me more about fighting than any trainer in camelot",
+   "text": "killaloe showed me more about fighting than any trainer in camelot",
    "about": true,
-   "family": "0bce98c9f6",
-   "id": "ce6ce878f22e"
+   "family": "4ea60c5c45",
+   "id": "f9234e6791c0"
   },
   {
    "kind": "rvr",
@@ -210615,7 +210615,7 @@
    "invites": "chat",
    "text": "thidranki taught me more about fighting than any trainer in camelot",
    "about": true,
-   "family": "0bce98c9f6",
+   "family": "4ea60c5c45",
    "id": "5341cc88146a"
   },
   {
@@ -210635,7 +210635,7 @@
    "invites": "chat",
    "text": "thidranki showed me more about fighting than any trainer in camelot",
    "about": true,
-   "family": "0bce98c9f6",
+   "family": "4ea60c5c45",
    "id": "91f4deed6113"
   },
   {
@@ -229854,10 +229854,10 @@
    "mood": "",
    "weight": 0.5,
    "invites": "chat",
-   "text": "abermenai taught me more about fighting than any trainer in jordheim",
+   "text": "killaloe taught me more about fighting than any trainer in jordheim",
    "about": true,
-   "family": "eca63948b2",
-   "id": "c2b7aed947c9"
+   "family": "a6123609c5",
+   "id": "0ddcc03cf7bb"
   },
   {
    "kind": "rvr",
@@ -229874,10 +229874,10 @@
    "mood": "",
    "weight": 0.5,
    "invites": "chat",
-   "text": "abermenai showed me more about fighting than any trainer in jordheim",
+   "text": "killaloe showed me more about fighting than any trainer in jordheim",
    "about": true,
-   "family": "eca63948b2",
-   "id": "9d2166b3ccbe"
+   "family": "a6123609c5",
+   "id": "285679d493b5"
   },
   {
    "kind": "rvr",
@@ -229896,7 +229896,7 @@
    "invites": "chat",
    "text": "thidranki taught me more about fighting than any trainer in jordheim",
    "about": true,
-   "family": "eca63948b2",
+   "family": "a6123609c5",
    "id": "fb6fb34d71d9"
   },
   {
@@ -229916,7 +229916,7 @@
    "invites": "chat",
    "text": "thidranki showed me more about fighting than any trainer in jordheim",
    "about": true,
-   "family": "eca63948b2",
+   "family": "a6123609c5",
    "id": "d0a1b1c40b42"
   },
   {
@@ -248372,9 +248372,9 @@
    "mood": "",
    "weight": 1.0,
    "invites": "chat",
-   "text": "abermenai was the first place i ever saw a hibernian army",
+   "text": "killaloe was the first place i ever saw a hibernian army",
    "about": true,
-   "id": "22fb1e566d62"
+   "id": "b1de6da63944"
   },
   {
    "kind": "rvr",
@@ -248391,10 +248391,10 @@
    "mood": "",
    "weight": 0.5,
    "invites": "chat",
-   "text": "abermenai taught me more about fighting than any trainer in tir na nog",
+   "text": "killaloe taught me more about fighting than any trainer in tir na nog",
    "about": true,
-   "family": "00e058ef86",
-   "id": "6e880fea34ec"
+   "family": "c0f0711d0b",
+   "id": "c526e6562281"
   },
   {
    "kind": "rvr",
@@ -248411,10 +248411,10 @@
    "mood": "",
    "weight": 0.5,
    "invites": "chat",
-   "text": "abermenai showed me more about fighting than any trainer in tir na nog",
+   "text": "killaloe showed me more about fighting than any trainer in tir na nog",
    "about": true,
-   "family": "00e058ef86",
-   "id": "9a47b4c5f83d"
+   "family": "c0f0711d0b",
+   "id": "ca311ac13a5f"
   },
   {
    "kind": "rvr",
@@ -248433,7 +248433,7 @@
    "invites": "chat",
    "text": "murdaigean taught me more about fighting than any trainer in tir na nog",
    "about": true,
-   "family": "00e058ef86",
+   "family": "c0f0711d0b",
    "id": "975a67e7672d"
   },
   {
@@ -248453,7 +248453,7 @@
    "invites": "chat",
    "text": "murdaigean showed me more about fighting than any trainer in tir na nog",
    "about": true,
-   "family": "00e058ef86",
+   "family": "c0f0711d0b",
    "id": "7a2faf51510f"
   },
   {
@@ -250890,14 +250890,14 @@
    ],
    "needs": [
     "in_battleground",
-    "at:abermenai"
+    "at:killaloe"
    ],
    "intent": "",
    "mood": "",
    "weight": 1.0,
    "invites": "chat",
-   "text": "first time in abermenai, everyone is tiny and furious",
-   "id": "1b1da7c18410"
+   "text": "first time in killaloe, everyone is tiny and furious",
+   "id": "ce229b2d1a4f"
   },
   {
    "kind": "rvr",
@@ -250911,14 +250911,14 @@
    ],
    "needs": [
     "in_battleground",
-    "at:abermenai"
+    "at:killaloe"
    ],
    "intent": "",
    "mood": "",
    "weight": 1.0,
    "invites": "ask_anyone",
-   "text": "{enemy} group heading for the abermenai keep, anyone near?",
-   "id": "37e78bca70f2"
+   "text": "{enemy} group heading for the killaloe keep, anyone near?",
+   "id": "f277b7e57391"
   },
   {
    "kind": "rvr",
@@ -250932,14 +250932,14 @@
    ],
    "needs": [
     "in_battleground",
-    "at:abermenai"
+    "at:killaloe"
    ],
    "intent": "",
    "mood": "",
    "weight": 1.0,
    "invites": "chat",
-   "text": "abermenai keep is ours for now, stay close to the door",
-   "id": "5b956ddb9926"
+   "text": "killaloe keep is ours for now, stay close to the door",
+   "id": "4c7672db754e"
   },
   {
    "kind": "rvr",
@@ -250956,9 +250956,9 @@
    "mood": "",
    "weight": 1.0,
    "invites": "lfg",
-   "text": "abermenai later? want to try rvr before 20",
+   "text": "killaloe later? want to try rvr before 20",
    "about": true,
-   "id": "4d2873af0d94"
+   "id": "7f2d3dff152e"
   },
   {
    "kind": "rvr",
@@ -250975,9 +250975,9 @@
    "mood": "",
    "weight": 1.0,
    "invites": "ask",
-   "text": "is abermenai busy tonight? never been",
+   "text": "is killaloe busy tonight? never been",
    "about": true,
-   "id": "cdbd2f9a7245"
+   "id": "1cf526f230a2"
   },
   {
    "kind": "rvr",
@@ -250994,9 +250994,9 @@
    "mood": "",
    "weight": 1.0,
    "invites": "complaint",
-   "text": "abermenai twinks in full crafted gear at 18, why",
+   "text": "killaloe twinks in full crafted gear at 18, why",
    "about": true,
-   "id": "d3efe3e37f1a"
+   "id": "253ec50bbba9"
   },
   {
    "kind": "rvr",

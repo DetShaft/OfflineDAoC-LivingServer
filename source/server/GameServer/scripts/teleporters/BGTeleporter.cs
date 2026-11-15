@@ -24,9 +24,9 @@ namespace DOL.GS.Scripts
 			if (!base.Interact(player)) return false;
 			TurnTo(player.X, player.Y);
 			player.Out.SendMessage("Hello " + player.Name + "! I can teleport you to:\n\n" +
-				"[AbermenaiAlb], [ThidrankiAlb], [MurdaigeanAlb], [CaledoniaAlb]\n\n" +
-				"[AbermenaiMid], [ThidrankiMid], [MurdaigeanMid], [CaledoniaMid]\n\n" +
-				"[AbermenaiHib], [ThidrankiHib], [MurdaigeanHib], [CaledoniaHib]", eChatType.CT_Say,eChatLoc.CL_PopupWindow);
+				"[KillaloeAlb], [ThidrankiAlb], [MurdaigeanAlb], [CaledoniaAlb]\n\n" +
+				"[KillaloeMid], [ThidrankiMid], [MurdaigeanMid], [CaledoniaMid]\n\n" +
+				"[KillaloeHib], [ThidrankiHib], [MurdaigeanHib], [CaledoniaHib]", eChatType.CT_Say,eChatLoc.CL_PopupWindow);
 			return true;
 		}
 		public override bool WhisperReceive(GameLiving source, string str)
@@ -38,7 +38,7 @@ namespace DOL.GS.Scripts
 			switch(str)
 			{
 				//alb
-                case "AbermenaiAlb":    
+                case "KillaloeAlb":    
                     if (!t.InCombat)
                     {
 	                    t.MoveTo(253, 38113, 53507, 4160, 3268);
@@ -70,7 +70,7 @@ namespace DOL.GS.Scripts
 	                else { t.Client.Out.SendMessage("You can't port while in combat.", eChatType.CT_Say, eChatLoc.CL_PopupWindow); }
 	                break;
                 //mid
-                case "AbermenaiMid":    
+                case "KillaloeMid":    
 	                if (!t.InCombat)
 	                {
 		                t.MoveTo(253, 53568, 23643, 4530, 3268);
@@ -102,7 +102,7 @@ namespace DOL.GS.Scripts
 	                else { t.Client.Out.SendMessage("You can't port while in combat.", eChatType.CT_Say, eChatLoc.CL_PopupWindow); }
 	                break;
                 //hib
-				case "AbermenaiHib":    
+				case "KillaloeHib":    
 					if (!t.InCombat)
 					{
 						t.MoveTo(253, 17367, 18248, 4320, 3268);

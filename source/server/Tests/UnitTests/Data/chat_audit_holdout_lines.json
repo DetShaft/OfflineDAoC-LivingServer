@@ -44,7 +44,7 @@
 {"text": "is lough derg worth it at 40 or nah", "channel": "guild", "expect": "answer_opinion", "note": "opinion"},
 {"text": "how good is the si stuff anyway, worth buying the expansion", "channel": "guild", "expect": "answer_opinion", "note": "opinion on SI"},
 {"text": "ppl say spiritmasters are useless in groups, agree?", "channel": "faction", "expect": "answer_opinion", "note": "agree/disagree with reason"},
-{"text": "anyone think caledonia is better than abermenai for rps", "channel": "guild", "expect": "answer_opinion", "note": "opinion"},
+{"text": "anyone think caledonia is better than killaloe for rps", "channel": "guild", "expect": "answer_opinion", "note": "opinion"},
 {"text": "ludwych or campacorentin for my next lvl", "channel": "guild", "expect": "answer_choice", "note": "pick one"},
 {"text": "should i go hero or champion", "channel": "faction", "expect": "answer_choice", "note": "pick one with reason"},
 {"text": "tir na nog or mag mell first for a new toon", "channel": "faction", "expect": "answer_choice", "note": "mag mell"},
