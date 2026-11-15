@@ -19,7 +19,9 @@ namespace DOL.GS.DatabaseUpdate
     {
         public const int ExpectedFieldSpawnCount = 74;
         public const int ExpectedKeepNpcCount = 105;
-        public const int ExpectedPlayableKeepNpcCount = 97;
+        public const int ExpectedPlayableKeepNpcCount = 93;
+        public const int ExpectedExtraFieldSpawnCount = 73;
+        public const string ExtraFieldPackageId = "offline-killaloe-zone253-extra";
         public const int ExpectedKeepDoorCount = 17;
         /// <summary>Region 253 zone OffsetX/Y is 1. Captured X/Y are zone-local; add this so they match the client meshes.</summary>
         public const int ZoneSectorOffset = 8192;
@@ -144,9 +146,10 @@ namespace DOL.GS.DatabaseUpdate
                 SELECT COUNT(*) FROM Mob
                 WHERE PackageID='offline-killaloe-keep-253' AND ClassType='DOL.GS.GameHastener'
                   AND Name IN ('Minstrel of Albion','Skald of Midgard','Bard of Hibernia')
+                  AND Model IN (39,160,390) AND EquipmentTemplateID IN ('MinstrelOfAlbion','SkaldOfMidgard','BardOfHibernia')
                 """);
             if (bards != 3)
-                throw new InvalidOperationException("Each portal keep hastener must become that realm's bard.");
+                throw new InvalidOperationException("Each portal keep hastener must become that realm's bard, with a bard's model and gear (not the live ids 244/22/1910).");
 
             int channelers = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
@@ -214,13 +217,21 @@ namespace DOL.GS.DatabaseUpdate
 
             int enterGatekeepers = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
-                WHERE PackageID='offline-killaloe-keep-253' AND Name LIKE '%Enter Gatekeeper%'
+                WHERE PackageID='offline-killaloe-keep-253' AND (Name LIKE '%Enter Gatekeeper%' OR Name LIKE '%Exit Gatekeeper%')
                 """);
             if (enterGatekeepers != 0)
-                throw new InvalidOperationException("Killaloe Enter Gatekeepers must be gone; the keep doors are the entrance.");
+                throw new InvalidOperationException("Killaloe Enter and Exit Gatekeepers must be gone; the keep doors are the way in and out.");
+
+            int extras = ScalarInt(connection, $"SELECT COUNT(*) FROM Mob WHERE PackageID='{ExtraFieldPackageId}' AND Region=253");
+            if (extras != ExpectedExtraFieldSpawnCount)
+                throw new InvalidOperationException($"Killaloe has {extras:N0} extra field spawns; expected {ExpectedExtraFieldSpawnCount:N0} (one per field-pack mob but the Shadow).");
+
+            int parked = ScalarInt(connection, $"SELECT COUNT(*) FROM Mob WHERE Region=253 AND PackageID IN ('offline-killaloe-zone253','{ExtraFieldPackageId}') AND RoamingRange < 300");
+            if (parked != 0)
+                throw new InvalidOperationException($"{parked:N0} Killaloe field mob(s) roam less than 300 units.");
 
             RecordMigration(connection, PlayableMigrationId,
-                "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, Enter Gatekeepers removed so the doors are the entrance, keep X/Y and the field pack include region 253's 8192 zone offset, Abermenai's buried spawns removed.",
+                "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, Enter and Exit Gatekeepers removed so the doors are the way in and out, bards use bard models, one extra of each field mob, field mobs roam 300-450 units, keep X/Y and the field pack include region 253's 8192 zone offset, Abermenai's buried spawns removed.",
                 guards);
         }
 

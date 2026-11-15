@@ -153,12 +153,15 @@ namespace DOL.UnitTests
                         AND ItemsListTemplateID IS NOT NULL AND ItemsListTemplateID <> ''),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
                         AND ClassType='DOL.GS.GameHastener'
-                        AND Name IN ('Minstrel of Albion','Skald of Midgard','Bard of Hibernia')),
+                        AND Name IN ('Minstrel of Albion','Skald of Midgard','Bard of Hibernia')
+                        AND Model IN (39,160,390)),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
                         AND ClassType IN ('DOL.GS.AlbionTeleporter','DOL.GS.MidgardTeleporter','DOL.GS.HiberniaTeleporter')
                         AND Guild IN ('Channeler','Stor Gothi')),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND (X>73728 OR Y>73728 OR X<8192 OR Y<8192)),
-                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Name LIKE '%Enter Gatekeeper%')
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Name LIKE '%Gatekeeper%'),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253-extra' AND Region=253),
+                    (SELECT MIN(RoamingRange) FROM Mob WHERE PackageID IN ('offline-killaloe-zone253','offline-killaloe-zone253-extra'))
                 """;
             using var reader = verify.ExecuteReader();
             Assert.That(reader.Read(), Is.True);
@@ -196,10 +199,12 @@ namespace DOL.UnitTests
             Assert.That(reader.GetInt32(30), Is.EqualTo(67409));
             Assert.That(reader.GetInt32(31), Is.EqualTo(0), "Realm-enhancement clerics are gone.");
             Assert.That(reader.GetInt32(32), Is.GreaterThan(0), "Siege and bounty merchants have a trade list.");
-            Assert.That(reader.GetInt32(33), Is.EqualTo(3), "Each portal keep hastener is that realm's bard.");
+            Assert.That(reader.GetInt32(33), Is.EqualTo(3), "Each portal keep hastener is that realm's bard, with a bard's model.");
             Assert.That(reader.GetInt32(34), Is.GreaterThan(0), "Captured channelers load as realm teleporters. Hibernia uses Channeler, not Grove Tender.");
             Assert.That(reader.GetInt32(35), Is.EqualTo(0), "The field pack sits inside zone 253 (8192..73728).");
-            Assert.That(reader.GetInt32(36), Is.EqualTo(0), "Enter Gatekeepers are gone; the keep doors are the entrance.");
+            Assert.That(reader.GetInt32(36), Is.EqualTo(0), "Enter and Exit Gatekeepers are gone; the keep doors are the way in and out.");
+            Assert.That(reader.GetInt32(37), Is.EqualTo(KillaloeZone253Seeds.ExpectedExtraFieldSpawnCount), "One extra of each field mob.");
+            Assert.That(reader.GetInt32(38), Is.GreaterThanOrEqualTo(300), "Field mobs roam.");
         }
     }
 }
