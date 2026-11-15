@@ -135,6 +135,11 @@ def is_piece_model(file_name):
     return nif_like.startswith("killaloe:border") or nif_like.startswith("killaloe:n-border") or nif_like.startswith("killaloe:hborder")
 
 
+def is_abermenai_keep_model(file_name):
+    """Abermenai's realm front keeps (bfrontkeep1/2, nfrontkeep1, hfrontkeep/2): replaced by the live lvl4 pieces."""
+    return "frontkeep" in Path(file_name or "").stem.lower()
+
+
 def ensure_piece_models(zone, zone_dir, pieces, written):
     zone["models"] = [m for m in zone["models"]
                       if not is_piece_model(m.get("file")) and not str(m.get("nif") or "").startswith("killaloe:")]
@@ -168,7 +173,10 @@ def patch_zone(dest_zone):
     pieces = kk.all_piece_fixtures()
     written = write_realm_models(dest_zone, pieces)
     index = ensure_piece_models(zone, dest_zone, pieces, written)
-    old_ids = set(kk.OLD_KEEP_FIXTURE_IDS)
+    # Abermenai's keep fixtures (its frontkeep NIFs), when the zone was built with zone 253's own props. Killaloe's
+    # props (csv237) have no keep, and their ids 1-3 are the rope bridges, so fixtures go by model, not by id.
+    old_models = {i for i, m in enumerate(zone["models"]) if is_abermenai_keep_model(m.get("file"))}
+    old_ids = set(kk.OLD_KEEP_FIXTURE_IDS) if old_models else set()
     keep_names = (
         "Albion Portal Keep", "Midgard Portal Keep", "Hibernia Portal Keep", "Dun Killaloe",
     )
@@ -176,7 +184,7 @@ def patch_zone(dest_zone):
     for f in zone["fixtures"]:
         fid = int(f.get("id") or 0)
         name = str(f.get("name") or "")
-        if fid in old_ids or 5001 <= fid <= 5100:
+        if f.get("m") in old_models or 5001 <= fid <= 5100:
             continue
         if any(name.startswith(prefix) for prefix in keep_names):
             continue

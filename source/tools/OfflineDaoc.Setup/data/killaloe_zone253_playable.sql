@@ -74,7 +74,7 @@ UPDATE Mob SET ClassType='DOL.GS.HiberniaTeleporter', Guild='Channeler'
 DELETE FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Guild='Realm Enhancement';
 
 -- Field pack: drop OpenDAoC templates that ReplaceMobValues and zero AggroLevel.
--- Snap Z to zone 253 heights.f32 at the dump XY. Do not drop a cliff spawn into a nearby
+-- Snap Z to zone 253 heights.f32 at the dump XY read as zone-local (the +8192 spot set below). Do not drop a cliff spawn into a nearby
 -- valley while leaving X/Y on the peak: that hangs the mob in canyon air between the cliffs.
 -- Fix Speed 8180. Set roam where the dump stored -1.
 
@@ -157,13 +157,21 @@ UPDATE Mob SET Z=8328, Speed=180, AggroLevel=200, RoamingRange=200, NPCTemplateI
 UPDATE Mob SET Z=7920, Speed=180, AggroLevel=200, RoamingRange=250, NPCTemplateID=-1 WHERE Mob_ID='100032855' AND PackageID='offline-killaloe-zone253';
 UPDATE Mob SET Z=8080, Speed=180, AggroLevel=200, RoamingRange=200, NPCTemplateID=-1 WHERE Mob_ID='100032856' AND PackageID='offline-killaloe-zone253';
 
--- Region 253's zone starts at sector 1,1. Add that 8192 to keep staff, doors and Keep
--- rows so client to_local matches keep meshes. Do not add it to the OpenDAoC field pack:
--- those dump X/Y, once the client subtracts 8192, sit on the Albion-portal to Dun Killaloe
--- mesh path (forest cat 100032792 displays 7.7 m off that road). Offsetting the field pack
--- moved it 204 m off the road, which emptied the path after the keep-mesh start.
+-- Region 253's zone starts at sector 1,1. Add that 8192 to keep staff, doors, Keep rows and
+-- the OpenDAoC field pack, so the client's to_local (minus 8192) matches the zone. The field
+-- Z values above were read from heights.f32 at the dump X/Y taken as zone-local, which is
+-- already the +8192 spot: with the offset, 73 of the 74 field spawns stand within 200 units
+-- of the ground (median 0). Without it, 33 were buried up to 5,000 units under cliffs, and
+-- the rest stood about 200 m from where OpenDAoC put them (checked 2026-11-15 on the owner's world).
 UPDATE Mob SET X=X+8192, Y=Y+8192 WHERE PackageID='offline-killaloe-keep-253'
  AND Region=253 AND X BETWEEN 0 AND 65536 AND Y BETWEEN 0 AND 65536;
+UPDATE Mob SET X=X+8192, Y=Y+8192 WHERE PackageID='offline-killaloe-zone253'
+ AND Region=253 AND X BETWEEN 0 AND 65536 AND Y BETWEEN 0 AND 65536;
+
+-- Abermenai's own spawns (no PackageID): its field mobs and the Renegade guards of its
+-- centre keep. They stand at Abermenai's ground height (Z 2,900 to 4,900), all buried under
+-- Killaloe's (Z 7,900 and up), and Killaloe has none of them.
+DELETE FROM Mob WHERE Region=253 AND (PackageID IS NULL OR PackageID='');
 UPDATE Door SET X=X+8192, Y=Y+8192 WHERE Door_ID LIKE 'offline-killaloe-door-%'
  AND X BETWEEN 0 AND 65536 AND Y BETWEEN 0 AND 65536;
 UPDATE Keep SET X=X+8192, Y=Y+8192 WHERE Region=253 AND X BETWEEN 0 AND 65536 AND Y BETWEEN 0 AND 65536;

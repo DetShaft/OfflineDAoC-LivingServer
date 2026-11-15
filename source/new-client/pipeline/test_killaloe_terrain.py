@@ -27,10 +27,18 @@ class KillaloeTerrainTests(unittest.TestCase):
             self.assertFalse(origin <= x < origin + 65536)
             self.assertFalse(origin <= y < origin + 65536)
 
-    def test_borrowed_dat_does_not_replace_exits_or_fixtures(self):
-        self.assertEqual(set(kt.BORROWED_DAT) & set(kt.KEPT_FROM_BATTLEGROUND), set())
+    def test_borrowed_dat_has_the_ground(self):
         for key in kt.NEEDED_IN_DAT:
             self.assertIn(key, kt.BORROWED_DAT)
+
+    def test_killaloe_props_come_from_csv237_and_abermenai_exits_go(self):
+        for key in ('fixtures.csv', 'nifs.csv', 'lights.csv'):
+            self.assertIn(key, kt.BORROWED_CSV)
+        for key in kt.NEEDED_IN_CSV:
+            self.assertIn(key, kt.BORROWED_CSV)
+        self.assertEqual(kt.CSV_ARCHIVE, 'csv237.mpk')
+        self.assertIn('zonejump.csv', kt.DROPPED_FROM_BATTLEGROUND)
+        self.assertEqual(set(kt.BORROWED_CSV) & set(kt.DROPPED_FROM_BATTLEGROUND), set())
 
     def test_frontiers_zone_237_wins_over_a_zones_copy(self):
         import tempfile

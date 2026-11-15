@@ -68,6 +68,10 @@ namespace DOL.UnitTests
                             ('door', 2, 3720, 39059, 33659, 3901, 253000302, 2545, 'abermenai-center-2', 0, 0),
                             ('door', 2, 4318, 18865, 19257, 1469, 253041601, 51000, 'abermenai-hib-1', 0, 1),
                             ('door', 2, 4320, 18470, 18807, 3591, 253041602, 51000, 'abermenai-hib-2', 0, 1);
+                        INSERT INTO Mob (Name, X, Y, Z, Region, Mob_ID) VALUES
+                            ('Renegade Guardian', 33836, 39721, 3724, 253, 'abermenai-renegade-1'),
+                            ('boogey spawn', 20533, 37663, 2960, 253, 'abermenai-boogey-1'),
+                            ('Renegade Guardian', 33836, 39721, 3724, 252, 'thidranki-keeps-its-own');
                         INSERT INTO Area (Description, Region, X, Y, Z) VALUES
                             ('Albion Portal Keep', 253, 37301, 52362, 3944),
                             ('Albion Portal Keep', 252, 37301, 52362, 3944);
@@ -77,6 +81,7 @@ namespace DOL.UnitTests
 
                 KillaloeZone253Seeds.Apply(connection);
                 AssertPack(connection);
+                AssertAbermenaiSpawnsGone(connection);
                 KillaloeZone253Seeds.Apply(connection);
                 AssertPack(connection);
             }
@@ -85,6 +90,20 @@ namespace DOL.UnitTests
                 SQLiteConnection.ClearAllPools();
                 try { File.Delete(path); } catch (IOException) { }
             }
+        }
+
+        private static void AssertAbermenaiSpawnsGone(SQLiteConnection connection)
+        {
+            using var verify = connection.CreateCommand();
+            verify.CommandText = """
+                SELECT
+                    (SELECT COUNT(*) FROM Mob WHERE Region=253 AND (PackageID IS NULL OR PackageID='')),
+                    (SELECT COUNT(*) FROM Mob WHERE Mob_ID='thidranki-keeps-its-own')
+                """;
+            using var reader = verify.ExecuteReader();
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.GetInt32(0), Is.EqualTo(0), "Abermenai's own spawns, buried under Killaloe's ground, are removed.");
+            Assert.That(reader.GetInt32(1), Is.EqualTo(1), "Other battlegrounds keep their spawns.");
         }
 
         private static void AssertPack(SQLiteConnection connection)
@@ -138,7 +157,7 @@ namespace DOL.UnitTests
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
                         AND ClassType IN ('DOL.GS.AlbionTeleporter','DOL.GS.MidgardTeleporter','DOL.GS.HiberniaTeleporter')
                         AND Guild IN ('Channeler','Stor Gothi')),
-                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND (X>65536 OR Y>65536)),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND (X>73728 OR Y>73728 OR X<8192 OR Y<8192)),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Name LIKE '%Enter Gatekeeper%')
                 """;
             using var reader = verify.ExecuteReader();
@@ -172,14 +191,14 @@ namespace DOL.UnitTests
             Assert.That(reader.GetInt32(26), Is.EqualTo(0), "Keep doors are not eRealm.Door.");
             Assert.That(reader.GetInt32(27), Is.GreaterThanOrEqualTo(KillaloeZone253Seeds.ZoneSectorOffset),
                 "Keep staff include region 253's 8192 zone offset so they sit on the keep meshes.");
-            Assert.That(reader.GetInt32(28), Is.EqualTo(11512), "The large rat sits on the heightmap at its displayed XY (dump minus 8192), not on the distant cliffs.");
-            Assert.That(reader.GetInt32(29), Is.EqualTo(31731), "Field pack stays on dump X/Y so the Albion-Dun mesh path still has its OpenDAoC spawns.");
-            Assert.That(reader.GetInt32(30), Is.EqualTo(59217));
+            Assert.That(reader.GetInt32(28), Is.EqualTo(11512), "The large rat keeps the ground Z of its zone-local spot.");
+            Assert.That(reader.GetInt32(29), Is.EqualTo(39923), "The field pack takes region 253's 8192 zone offset, like the keep staff.");
+            Assert.That(reader.GetInt32(30), Is.EqualTo(67409));
             Assert.That(reader.GetInt32(31), Is.EqualTo(0), "Realm-enhancement clerics are gone.");
             Assert.That(reader.GetInt32(32), Is.GreaterThan(0), "Siege and bounty merchants have a trade list.");
             Assert.That(reader.GetInt32(33), Is.EqualTo(3), "Each portal keep hastener is that realm's bard.");
             Assert.That(reader.GetInt32(34), Is.GreaterThan(0), "Captured channelers load as realm teleporters. Hibernia uses Channeler, not Grove Tender.");
-            Assert.That(reader.GetInt32(35), Is.EqualTo(0), "Field pack must not receive the keep-mesh 8192 offset.");
+            Assert.That(reader.GetInt32(35), Is.EqualTo(0), "The field pack sits inside zone 253 (8192..73728).");
             Assert.That(reader.GetInt32(36), Is.EqualTo(0), "Enter Gatekeepers are gone; the keep doors are the entrance.");
         }
     }

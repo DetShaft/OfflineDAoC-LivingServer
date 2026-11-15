@@ -188,23 +188,29 @@ namespace DOL.GS.DatabaseUpdate
             int fieldCat = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
                 WHERE Mob_ID='100032792' AND PackageID='offline-killaloe-zone253'
-                  AND Region=253 AND X=31731 AND Y=59217
+                  AND Region=253 AND X=39923 AND Y=67409
                 """);
             if (fieldCat != 1)
-                throw new InvalidOperationException("Killaloe field pack must stay on dump X/Y so the Albion-Dun mesh path still has its OpenDAoC spawns.");
+                throw new InvalidOperationException("Killaloe field pack must take region 253's 8192 zone offset, like the keep staff.");
 
             int fieldOverflow = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
-                WHERE PackageID='offline-killaloe-zone253' AND (X>65536 OR Y>65536 OR X<0 OR Y<0)
+                WHERE PackageID='offline-killaloe-zone253' AND (X>73728 OR Y>73728 OR X<8192 OR Y<8192)
                 """);
             if (fieldOverflow != 0)
-                throw new InvalidOperationException("Killaloe field pack must stay inside 0..65536; the 8192 keep-mesh offset is keep staff only.");
+                throw new InvalidOperationException("Killaloe field pack must sit inside zone 253 (8192..73728).");
+
+            int abermenaiLeftovers = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob WHERE Region=253 AND (PackageID IS NULL OR PackageID='')
+                """);
+            if (abermenaiLeftovers != 0)
+                throw new InvalidOperationException($"Region 253 still has {abermenaiLeftovers:N0} Abermenai spawn(s) buried under Killaloe's ground.");
 
             int ratZ = ScalarInt(connection, """
                 SELECT Z FROM Mob WHERE Mob_ID='100032784' AND PackageID='offline-killaloe-zone253'
                 """);
             if (ratZ != 11512)
-                throw new InvalidOperationException("The large rat must sit on the heightmap at dump-minus-8192, not on the distant cliffs.");
+                throw new InvalidOperationException("The large rat keeps the Z of its zone-local spot (the ground there).");
 
             int enterGatekeepers = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
@@ -214,7 +220,7 @@ namespace DOL.GS.DatabaseUpdate
                 throw new InvalidOperationException("Killaloe Enter Gatekeepers must be gone; the keep doors are the entrance.");
 
             RecordMigration(connection, PlayableMigrationId,
-                "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, Enter Gatekeepers removed so the doors are the entrance, keep X/Y include region 253's 8192 zone offset, field pack stays on dump X/Y.",
+                "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, Enter Gatekeepers removed so the doors are the entrance, keep X/Y and the field pack include region 253's 8192 zone offset, Abermenai's buried spawns removed.",
                 guards);
         }
 
