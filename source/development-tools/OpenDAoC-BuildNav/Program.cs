@@ -155,6 +155,21 @@ namespace CEM
             var zones = GetZonesToBuild().Distinct().Shuffle().ToArray();
             if (!TryUseClientHeights(zones))
                 return false;
+            try
+            {
+                CEM.Client.ZoneFileOverrides.Use(Arguments.ZoneFiles, Arguments.NifDirs);
+            }
+            catch (ArgumentException ex)
+            {
+                Log.Error(ex.Message);
+                return false;
+            }
+            foreach (Zone2 zone in zones)
+            {
+                if (zone != null && CEM.Client.ZoneFileOverrides.Overrides(zone.ID))
+                    Log.Normal("Zone {0} ({1}) reads its fixtures, NIF list, bounds and water from {2} first.", zone.ID, zone.Name,
+                        CEM.Client.ZoneFileOverrides.FilePath(zone.ID, "fixtures.csv") ?? "its override folder");
+            }
             Log.Normal("-----------------------------------------------------------------------------");
             Log.Normal("Building recast navmeshes!");
             Log.Normal("We will be creating {0} zones today. Right here. Right now.", zones.Length);
@@ -201,6 +216,8 @@ namespace CEM
                 RecastBuildAll = false;
                 NormalPriority = false;
                 Heights = "";
+                ZoneFiles = "";
+                NifDirs = "";
             }
 
             [Argument("config", Description = "Configuration File to use")]
@@ -223,6 +240,12 @@ namespace CEM
 
             [Argument("heights", Description = "One zone's ground from heights.f32: <zone>=<path>")]
             public string Heights { get; set; }
+
+            [Argument("zone-files", Description = "One zone's csv/dat files from a folder first: <zone>=<folder>")]
+            public string ZoneFiles { get; set; }
+
+            [Argument("nif-dirs", Description = "Extra NIF folders (loose .nif or .npk), ';'-separated")]
+            public string NifDirs { get; set; }
 
             [Argument("all", Description = "Build All Regions")]
             public bool RecastBuildAll { get; set; }
