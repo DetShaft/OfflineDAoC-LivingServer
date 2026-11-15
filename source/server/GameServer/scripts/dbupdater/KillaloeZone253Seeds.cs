@@ -19,7 +19,7 @@ namespace DOL.GS.DatabaseUpdate
     {
         public const int ExpectedFieldSpawnCount = 74;
         public const int ExpectedKeepNpcCount = 105;
-        public const int ExpectedPlayableKeepNpcCount = 102;
+        public const int ExpectedPlayableKeepNpcCount = 97;
         public const int ExpectedKeepDoorCount = 17;
         /// <summary>Region 253 zone OffsetX/Y is 1. Captured X/Y are zone-local; add this so they match the client meshes.</summary>
         public const int ZoneSectorOffset = 8192;
@@ -206,8 +206,15 @@ namespace DOL.GS.DatabaseUpdate
             if (ratZ != 11512)
                 throw new InvalidOperationException("The large rat must sit on the heightmap at dump-minus-8192, not on the distant cliffs.");
 
+            int enterGatekeepers = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE PackageID='offline-killaloe-keep-253' AND Name LIKE '%Enter Gatekeeper%'
+                """);
+            if (enterGatekeepers != 0)
+                throw new InvalidOperationException("Killaloe Enter Gatekeepers must be gone; the keep doors are the entrance.");
+
             RecordMigration(connection, PlayableMigrationId,
-                "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, keep X/Y include region 253's 8192 zone offset, field pack stays on dump X/Y.",
+                "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, Enter Gatekeepers removed so the doors are the entrance, keep X/Y include region 253's 8192 zone offset, field pack stays on dump X/Y.",
                 guards);
         }
 

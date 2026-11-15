@@ -146,6 +146,55 @@ class KillaloeKeepTests(unittest.TestCase):
         self.assertAlmostEqual(pos[1], 207.2, places=4)
         self.assertAlmostEqual(pos[2], 1448.6, places=4)
 
+    def test_realm_skins_hide_other_cakes_and_damage(self):
+        import killaloe_keeps as kk
+        self.assertTrue(kk.node_keep_visible('!Tiers_4_alb UN:6', 1))
+        self.assertFalse(kk.node_keep_visible('!Tiers_4_mid01 UN:6', 1))
+        self.assertFalse(kk.node_keep_visible('!Tiers_4_hib01 UN:6', 1))
+        self.assertTrue(kk.node_keep_visible('!Tiers_4_MidToppers01:6', 2))
+        self.assertFalse(kk.node_keep_visible('!Tiers_4_Alb_topper01:6', 2))
+        self.assertFalse(kk.node_keep_visible('!Tiers_4_alb DAM:9', 1))
+        self.assertFalse(kk.node_keep_visible('vi-siege-tower:0', 1))
+        self.assertTrue(kk.node_keep_visible('vis undamaged:0', 1))
+        self.assertTrue(kk.node_keep_visible('collision_0', 3))
+        self.assertTrue(kk.node_keep_visible('doorcol0_1', 1))
+        self.assertFalse(kk.node_keep_visible('Editable Mesh', 1))
+        self.assertFalse(kk.node_keep_visible('!Tiers_1_-undamaged:4', 1))
+        self.assertTrue(kk.node_keep_visible('!Tiers_2-3-4_facade_undamaged:4', 1))
+
+    def test_dun_mainkeep_is_the_midgard_lvl4_keep(self):
+        import killaloe_keeps as kk
+        rows = kk.all_piece_fixtures()
+        dun = [r for r in rows if r['name'].startswith('Dun Killaloe')]
+        mains = [r for r in dun if r['stem'] == 'mainkeep_lvl4']
+        self.assertEqual(len(mains), 1)
+        self.assertEqual(mains[0]['realm'], 2)
+        self.assertEqual(mains[0]['realm_stem'], 'mainkeep_lvl4_mid')
+        self.assertEqual(mains[0]['door_ids'], {1: 253138002})
+        self.assertTrue(all(r['stem'] != 'borderkeep1' for r in dun))
+        self.assertNotIn('straighttower_lvl4', [r['stem'] for r in dun])
+
+    def test_portal_gatehouse_door_ids_match_the_capture(self):
+        import killaloe_keeps as kk
+        rows = kk.all_piece_fixtures()
+        alb = next(r for r in rows if r['name'] == 'Albion Portal Keep Gatehouse')
+        hib = next(r for r in rows if r['name'] == 'Hibernia Portal Keep Gatehouse')
+        self.assertEqual(alb['door_ids'][1], 253201001)
+        self.assertNotIn(1, hib['door_ids'])
+        self.assertEqual(hib['door_ids'][2], 253203002)
+        self.assertEqual(kk.realm_stem('gatehouse_lvl4', 1), 'gatehouse_lvl4_alb')
+
+    def test_door_swing_splits_a_stuck_double_leaf(self):
+        import killaloe_keeps as kk
+        pose = [-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, 2.0]
+        doors = [
+            {'group': 'door001', 'closed': pose, 'open': pose},
+            {'group': 'door001', 'closed': pose, 'open': pose},
+        ]
+        kk.ensure_door_swing(doors)
+        self.assertNotEqual(doors[0]['open'], doors[0]['closed'])
+        self.assertNotEqual(doors[1]['open'], doors[0]['open'])
+
 
 if __name__ == '__main__':
     unittest.main()

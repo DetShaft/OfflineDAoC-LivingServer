@@ -138,7 +138,8 @@ namespace DOL.UnitTests
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
                         AND ClassType IN ('DOL.GS.AlbionTeleporter','DOL.GS.MidgardTeleporter','DOL.GS.HiberniaTeleporter')
                         AND Guild IN ('Channeler','Stor Gothi')),
-                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND (X>65536 OR Y>65536))
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND (X>65536 OR Y>65536)),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Name LIKE '%Enter Gatekeeper%')
                 """;
             using var reader = verify.ExecuteReader();
             Assert.That(reader.Read(), Is.True);
@@ -179,6 +180,7 @@ namespace DOL.UnitTests
             Assert.That(reader.GetInt32(33), Is.EqualTo(3), "Each portal keep hastener is that realm's bard.");
             Assert.That(reader.GetInt32(34), Is.GreaterThan(0), "Captured channelers load as realm teleporters. Hibernia uses Channeler, not Grove Tender.");
             Assert.That(reader.GetInt32(35), Is.EqualTo(0), "Field pack must not receive the keep-mesh 8192 offset.");
+            Assert.That(reader.GetInt32(36), Is.EqualTo(0), "Enter Gatekeepers are gone; the keep doors are the entrance.");
         }
     }
 }

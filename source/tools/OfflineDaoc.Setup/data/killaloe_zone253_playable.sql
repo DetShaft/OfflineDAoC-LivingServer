@@ -29,10 +29,15 @@ UPDATE Mob SET ClassType='DOL.GS.Keeps.GuardLord'
  WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Name='Jarl Killaloe';
 UPDATE Mob SET ClassType='DOL.GS.Keeps.GateKeeperIn'
  WHERE PackageID='offline-killaloe-keep-253' AND Region=253
-   AND (Name LIKE '%Enter Gatekeeper%' OR Name LIKE '%Enter PosternKeeper%');
+   AND Name LIKE '%Enter PosternKeeper%';
 UPDATE Mob SET ClassType='DOL.GS.Keeps.GateKeeperOut'
  WHERE PackageID='offline-killaloe-keep-253' AND Region=253
    AND (Name LIKE '%Exit Gatekeeper%' OR Name LIKE '%Exit PosternKeeper%');
+
+-- The keep doors are the entrance. Drop the teleport-in Enter Gatekeepers.
+-- Do not invent a Hibernia keep gate. Do not move remaining staff.
+DELETE FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Region=253
+  AND Name LIKE '%Enter Gatekeeper%';
 
 -- Siege and bounty merchants must load as merchants with a trade list.
 UPDATE Mob SET ClassType='DOL.GS.GameMerchant', ItemsListTemplateID='SiegeMerchantAlb'

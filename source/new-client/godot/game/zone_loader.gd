@@ -13,14 +13,6 @@ const VIEW_RANGE_MAX_M := 900.0        # ...and at most this far (trees, buildin
 static var view_mult := 1.0
 const TERRAIN_SHADER := preload("res://game/terrain.gdshader")
 const WATER_SHADER := preload("res://game/water.gdshader")
-## The 15-19 battleground. Content built before the rename still says Abermenai; the player sees Killaloe.
-const KILLALOE_ZONE := 253
-
-
-static func place_name(zone_id: int, stored: String = "") -> String:
-	if zone_id == KILLALOE_ZONE:
-		return "Killaloe"
-	return stored.replace("Abermenai", "Killaloe").replace("abermenai", "killaloe")
 
 var info: Dictionary
 var dir: String
@@ -53,7 +45,6 @@ func terrain_sets() -> Array:
 func load_zone(content_dir: String, terrain_set_name := "blend", texture_set_name := "x4plus") -> void:
 	dir = content_dir
 	info = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("zone.json")))
-	info["name"] = place_name(int(info.get("id", 0)), String(info.get("name", "")))
 	city = bool(info.get("city", false))
 	terrain_set = "" if terrain_sets().is_empty() else (terrain_set_name if terrain_sets().has(terrain_set_name) else terrain_sets()[0])
 	texture_set = texture_set_name if info.texture_sets.has(texture_set_name) else "original"
@@ -561,8 +552,10 @@ func _build_fixtures() -> void:
 				add_child(ps)
 		if not parts.doors.is_empty():
 			for i in xforms.size():
-				var fid := int((per_model[m][i] as Dictionary).get("id", -1))
-				_make_doors(parts, xforms[i], int(info.get("id", 0)) * 1000000 + fid * 100 if fid > 0 else -1)
+				var fx: Dictionary = per_model[m][i]
+				var fid := int(fx.get("id", -1))
+				var base := int(info.get("id", 0)) * 1000000 + fid * 100 if fid > 0 else -1
+				_make_doors(parts, xforms[i], base, fx.get("door_ids", {}))
 		for part in parts.meshes:
 			for c in cells:
 				var mm := MultiMesh.new()
@@ -668,8 +661,9 @@ var door_by_id := {}                         # the client's door id -> [ZoneDoor
 ## base: the client's door id of this placed object without the piece - zone x 1,000,000 + fixtures.csv ID x 100
 ## (DoorRequestHandler: fixture = id / 100 % 10000, piece = id % 100); the piece is the door group's number
 ## ("door001" = 1, both leaves of a double door share it). -1: not a zone fixture (no server door).
-func _make_doors(parts: Dictionary, at: Transform3D, base := -1) -> void:
+func _make_doors(parts: Dictionary, at: Transform3D, base := -1, id_map: Variant = {}) -> void:
 	var by_group := {}
+	var ids: Dictionary = id_map if id_map is Dictionary else {}
 	for spec in parts.door_specs:
 		var k := int(spec.id)
 		if not parts.doors.has(k):
@@ -694,11 +688,17 @@ func _make_doors(parts: Dictionary, at: Transform3D, base := -1) -> void:
 		d.sound_flag = _door_flag()
 		var g := String(spec.get("group", spec.name))
 		var digits := RegEx.create_from_string("(\\d+)\\s*$").search(g)
-		if base >= 0 and digits:
-			d.door_id = base + int(digits.get_string(1))
-			if not door_by_id.has(d.door_id):
-				door_by_id[d.door_id] = []
-			(door_by_id[d.door_id] as Array).append(d)
+		if digits:
+			var piece := int(digits.get_string(1))
+			var mapped: Variant = ids.get(piece, ids.get(str(piece), null))
+			if mapped != null:
+				d.door_id = int(mapped)
+			elif base >= 0:
+				d.door_id = base + piece
+			if d.door_id >= 0:
+				if not door_by_id.has(d.door_id):
+					door_by_id[d.door_id] = []
+				(door_by_id[d.door_id] as Array).append(d)
 		if by_group.has(g):
 			var other: ZoneDoor = by_group[g]
 			d.partner = other
