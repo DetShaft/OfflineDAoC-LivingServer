@@ -48,17 +48,17 @@ namespace DOL.UnitTests
                         );
                         CREATE TABLE Keep (
                             KeepID INTEGER, Name TEXT, Region INTEGER, X INTEGER, Y INTEGER, Z INTEGER,
-                            Heading INTEGER, Realm INTEGER
+                            Heading INTEGER, Realm INTEGER, OriginalRealm INTEGER
                         );
                         CREATE TABLE Area (
                             Description TEXT, Region INTEGER, X INTEGER, Y INTEGER, Z INTEGER
                         );
-                        INSERT INTO Keep (KeepID, Name, Region, X, Y, Z, Heading, Realm) VALUES
-                            (37, 'Albion Portal Keep', 253, 37301, 52362, 3944, 2035, 1),
-                            (36, 'Midgard Portal Keep', 253, 54053, 24680, 4320, 346, 2),
-                            (35, 'Hibernia Portal Keep', 253, 18362, 18257, 4320, 3517, 3),
-                            (33, 'Dun Abermenai', 253, 33089, 38271, 3720, 2915, 0),
-                            (14, 'Albion Portal Keep', 252, 37301, 52362, 3944, 2035, 1);
+                        INSERT INTO Keep (KeepID, Name, Region, X, Y, Z, Heading, Realm, OriginalRealm) VALUES
+                            (37, 'Albion Portal Keep', 253, 37301, 52362, 3944, 2035, 1, 1),
+                            (36, 'Midgard Portal Keep', 253, 54053, 24680, 4320, 346, 2, 2),
+                            (35, 'Hibernia Portal Keep', 253, 18362, 18257, 4320, 3517, 3, 3),
+                            (33, 'Dun Abermenai', 253, 33089, 38271, 3720, 2915, 0, 0),
+                            (14, 'Albion Portal Keep', 252, 37301, 52362, 3944, 2035, 1, 1);
                         INSERT INTO Door (Name, Type, Z, Y, X, Heading, InternalID, Health, Door_ID, IsPostern, State) VALUES
                             ('door', 2, 4010, 51689, 36923, 19, 253000101, 51000, 'abermenai-alb-1', 0, 1),
                             ('door', 2, 4010, 52085, 36927, 2088, 253000102, 51000, 'abermenai-alb-2', 0, 1),
@@ -113,9 +113,17 @@ namespace DOL.UnitTests
                     (SELECT X FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Name='Jarl Killaloe'),
                     (SELECT Y FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Name='Jarl Killaloe'),
                     (SELECT COUNT(*) FROM offline_world_migrations WHERE MigrationId IN
-                        ('killaloe-zone253-spawns-v1', 'killaloe-zone253-keep-objects-v1', 'killaloe-zone253-keep-pads-v1')),
+                        ('killaloe-zone253-spawns-v1', 'killaloe-zone253-keep-objects-v1',
+                         'killaloe-zone253-keep-pads-v1', 'killaloe-zone253-playable-v1')),
                     (SELECT X FROM Area WHERE Region=253 AND Description='Albion Portal Keep'),
-                    (SELECT Y FROM Area WHERE Region=253 AND Description='Albion Portal Keep')
+                    (SELECT Y FROM Area WHERE Region=253 AND Description='Albion Portal Keep'),
+                    (SELECT Realm FROM Keep WHERE KeepID=33 AND Region=253),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
+                        AND ClassType='DOL.GS.Keeps.GameKeepGuard'),
+                    (SELECT AggroLevel FROM Mob WHERE Name='Shadow in the Trees' AND PackageID='offline-killaloe-zone253'),
+                    (SELECT RoamingRange FROM Mob WHERE Name='Shadow in the Trees' AND PackageID='offline-killaloe-zone253'),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND NPCTemplateID=-1),
+                    (SELECT COUNT(*) FROM Door WHERE Door_ID LIKE 'offline-killaloe-door-%' AND Realm=6)
                 """;
             using var reader = verify.ExecuteReader();
             Assert.That(reader.Read(), Is.True);
@@ -137,9 +145,15 @@ namespace DOL.UnitTests
             Assert.That(reader.GetInt32(15), Is.EqualTo(0), "No invented Hibernia keep gate.");
             Assert.That(reader.GetInt32(16), Is.EqualTo(32924), "Keep NPCs stay on the captured Killaloe spots.");
             Assert.That(reader.GetInt32(17), Is.EqualTo(31537));
-            Assert.That(reader.GetInt32(18), Is.EqualTo(3));
+            Assert.That(reader.GetInt32(18), Is.EqualTo(4));
             Assert.That(reader.GetInt32(19), Is.EqualTo(20536));
             Assert.That(reader.GetInt32(20), Is.EqualTo(57944));
+            Assert.That(reader.GetInt32(21), Is.EqualTo(2), "Dun Killaloe is Midgard-owned.");
+            Assert.That(reader.GetInt32(22), Is.GreaterThan(0), "Keep combat staff load as GameKeepGuard.");
+            Assert.That(reader.GetInt32(23), Is.EqualTo(80), "Shadow in the Trees is aggressive.");
+            Assert.That(reader.GetInt32(24), Is.EqualTo(350));
+            Assert.That(reader.GetInt32(25), Is.EqualTo(KillaloeZone253Seeds.ExpectedFieldSpawnCount));
+            Assert.That(reader.GetInt32(26), Is.EqualTo(0), "Keep doors are not eRealm.Door.");
         }
     }
 }

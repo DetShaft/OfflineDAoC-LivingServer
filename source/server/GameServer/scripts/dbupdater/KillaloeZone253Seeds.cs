@@ -23,6 +23,7 @@ namespace DOL.GS.DatabaseUpdate
         public const string FieldSpawnsMigrationId = "killaloe-zone253-spawns-v1";
         public const string KeepObjectsMigrationId = "killaloe-zone253-keep-objects-v1";
         public const string KeepPadsMigrationId = "killaloe-zone253-keep-pads-v1";
+        public const string PlayableMigrationId = "killaloe-zone253-playable-v1";
 
         public static void ApplyToLiveDatabase()
         {
@@ -42,6 +43,7 @@ namespace DOL.GS.DatabaseUpdate
             EnsureMigrationsTable(connection);
             ApplyFieldSpawns(connection);
             ApplyKeepObjects(connection);
+            ApplyPlayableFixes(connection);
         }
 
         private static void ApplyFieldSpawns(SQLiteConnection connection)
@@ -93,6 +95,50 @@ namespace DOL.GS.DatabaseUpdate
             RecordMigration(connection, KeepObjectsMigrationId,
                 "Place live-captured Killaloe keep NPCs and doors into region 253 with retail offset 524288 already removed from X and Y. Move region 253 Keep rows onto those Killaloe spots and drop the Abermenai Door InternalIDs.",
                 npcs + doors);
+        }
+
+        private static void ApplyPlayableFixes(SQLiteConnection connection)
+        {
+            foreach (string statement in SplitSqlStatements(LoadEmbeddedText("killaloe_zone253_playable.sql"), skipArea: true))
+                Execute(connection, statement);
+
+            int dunRealm = ScalarInt(connection, "SELECT Realm FROM Keep WHERE Region=253 AND KeepID=33");
+            if (dunRealm != 2)
+                throw new InvalidOperationException($"Dun Killaloe Realm is {dunRealm}; captured Midgard staff need Realm 2.");
+
+            int guards = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE PackageID='offline-killaloe-keep-253' AND ClassType='DOL.GS.Keeps.GameKeepGuard'
+                """);
+            if (guards < 1)
+                throw new InvalidOperationException("Killaloe keep combat staff must load as GameKeepGuard.");
+
+            int jarlSpot = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE PackageID='offline-killaloe-keep-253' AND Name='Jarl Killaloe'
+                  AND Region=253 AND X=32924 AND Y=31537
+                """);
+            if (jarlSpot != 1)
+                throw new InvalidOperationException("Playable fixes must not retarget keep NPCs onto Abermenai.");
+
+            int hibKeepGates = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Door
+                WHERE Door_ID LIKE 'offline-killaloe-door-%'
+                  AND Name='Keep Gate' AND InternalID BETWEEN 253203000 AND 253203999
+                """);
+            if (hibKeepGates != 0)
+                throw new InvalidOperationException("Hibernia keep gate was not in the capture and must not be invented.");
+
+            int templates = ScalarInt(connection, """
+                SELECT COUNT(*) FROM Mob
+                WHERE PackageID='offline-killaloe-zone253' AND NPCTemplateID=-1
+                """);
+            if (templates != ExpectedFieldSpawnCount)
+                throw new InvalidOperationException("Killaloe field spawns must drop the OpenDAoC templates that zero AggroLevel.");
+
+            RecordMigration(connection, PlayableMigrationId,
+                "Killaloe playable: Midgard owns Dun Killaloe, keep combat staff are GameKeepGuard, field spawns sit on the heightmap with dump aggro and roam, door realm is the keep's realm.",
+                guards);
         }
 
         private static void RelocateKeepPads(SQLiteConnection connection)

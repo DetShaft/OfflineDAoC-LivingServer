@@ -70,6 +70,7 @@
         <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_keep_npcs.sql" Link="data\killaloe_zone253_keep_npcs.sql" />
         <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_keep_doors.sql" Link="data\killaloe_zone253_keep_doors.sql" />
         <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_keep_pads.sql" Link="data\killaloe_zone253_keep_pads.sql" />
+        <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_playable.sql" Link="data\killaloe_zone253_playable.sql" />
         <TranslationFiles Include=".\language\**\*.txt" />
         <APIDocs Include=".\API\docs\*" />
         <Content Include="API\docs\index.css" />
