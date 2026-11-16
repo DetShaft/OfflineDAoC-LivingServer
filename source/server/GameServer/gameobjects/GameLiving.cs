@@ -1628,9 +1628,13 @@ namespace DOL.GS
 
 		private void HandleControlledPetCombatMessageOnAttacked(AttackData ad)
 		{
+			// Bots play their own characters: their owner reads lines that name them, in others' combat, not the pet
+			// lines below ("Your Aldwin attacks ...", "You perform your ... perfectly!") - owner 2026-11-16.
 			if (ad.AttackType is eAttackType.Spell)
 			{
-				if (ad.Damage > 0 && this is GameNPC npc && npc.Brain is IControlledBrain controlledBrain)
+				if (ad.Damage > 0 && this is GameBot targetBot)
+					CombatLogAttribution.SendTargetLines(targetBot, ad);
+				else if (ad.Damage > 0 && this is GameNPC npc && npc.Brain is IControlledBrain controlledBrain)
 				{
 					GamePlayer player = controlledBrain.GetPlayerOwner();
 
@@ -1652,7 +1656,9 @@ namespace DOL.GS
 			}
 			else
 			{
-				if (ad.Attacker is GameNPC npc && npc.Brain is IControlledBrain brain)
+				if (ad.Attacker is GameBot attackerBot)
+					CombatLogAttribution.SendAttackerLines(attackerBot, ad);
+				else if (ad.Attacker is GameNPC npc && npc.Brain is IControlledBrain brain)
 				{
 					GamePlayer player = brain.GetPlayerOwner();
 
@@ -1717,7 +1723,9 @@ namespace DOL.GS
 					}
 				}
 
-				if (ad.Target is GameNPC npcTarget && npcTarget.Brain is IControlledBrain targetBrain)
+				if (ad.Target is GameBot attackedBot)
+					CombatLogAttribution.SendTargetLines(attackedBot, ad);
+				else if (ad.Target is GameNPC npcTarget && npcTarget.Brain is IControlledBrain targetBrain)
 				{
 					GamePlayer player = targetBrain.GetPlayerOwner();
 

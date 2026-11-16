@@ -176,7 +176,9 @@ namespace DOL.GS.Spells
                 if (brain != null)
                 {
                     GamePlayer owner = brain.GetPlayerOwner();
-                    if (owner != null)
+                    if (owner != null && target is GameBot)
+                        CombatLogAttribution.SendToOwner(owner, target.Name + " resists the effect!");
+                    else if (owner != null)
                     {
                         MessageToLiving(owner, "Your " + target.Name + " resists the effect!", eChatType.CT_SpellResisted);
                     }
