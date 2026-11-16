@@ -2543,7 +2543,9 @@ namespace DOL.GS.Spells
 				{
 					GamePlayer owner = npcTargetBrain.GetPlayerOwner();
 
-					if (owner != null)
+					if (owner != null && target is GameBot)
+						CombatLogAttribution.SendToOwner(owner, $"{target.Name} resists the effect!");
+					else if (owner != null)
 						MessageToLiving(owner, $"Your {target.Name} resists the effect!", eChatType.CT_SpellResisted);
 				}
 			}
@@ -2621,7 +2623,12 @@ namespace DOL.GS.Spells
 					 && (type is eChatType.CT_YouHit or eChatType.CT_SpellResisted or eChatType.CT_Spell))
 			{
 				GamePlayer playerOwner = npcCasterBrain.GetPlayerOwner();
-				playerOwner?.MessageToSelf(message, type);
+
+				// A bot plays its own character: its lines name it, in the owner's others' combat (owner 2026-11-16).
+				if (Caster is GameBot bot)
+					CombatLogAttribution.SendToOwner(playerOwner, CombatLogAttribution.ThirdPerson(bot, message));
+				else
+					playerOwner?.MessageToSelf(message, type);
 			}
 		}
 
