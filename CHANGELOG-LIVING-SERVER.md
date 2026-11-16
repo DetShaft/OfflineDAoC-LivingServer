@@ -10,6 +10,19 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.19 (in development)
 
+**Healers hold a safe spot in fights (#48).** Jay, 2026-11-16: a healer on healing duty stayed pinned to a spot
+behind the leader during a fight, so it ran around after the leader the whole time. Now a group's back-line support
+(Cleric, Druid, Healer, and now Shaman and Bard too) picks a post when the fight starts: out of the enemies' reach and
+within casting range of everyone in the group. If it already stands somewhere like that, it does not move at all. It
+holds the post while it watches the group, and moves only when an enemy comes close or a member gets too far away.
+This applies in your group and in gamebot groups.
+- **Idle combat is back on**, under a new setting name `bots / support_idle_combat_enabled` (a `False` saved under
+  1.1.16's `healer_idle_combat_enabled` does not carry over). When nobody needs healing, the back line nukes or debuffs
+  the group's target from its post. None of them walks toward the enemy.
+- **Shamans and Bards never melee as group support.** Shamans cast. Bards keep their instrument in hand and keep
+  singing through the fight, and only throw their instant damage spells. Friars and Wardens still melee.
+- Solo bots of these classes fight as before. Tests only: not yet seen in game.
+
 **Group gear is rolled for, need or greed, in a loot window (#72).** Jay, 2026-11-16: stopping to type `/look` for
 loot is not good design. When a weapon, armor piece, shield, instrument or jewel drops in a group with you in it, the
 server opens a roll and the new client opens a **Loot Rolls** window by itself: one row per drop with the piece's

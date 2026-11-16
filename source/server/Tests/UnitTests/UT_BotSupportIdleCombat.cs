@@ -301,16 +301,75 @@ namespace DOL.UnitTests
             Assert.That(healer.FollowTarget, Is.SameAs(player));
         }
 
+        // Issue #48 (Jay, 2026-11-16): Shamans and Bards hold the back line like the pure healers and never melee;
+        // Friars and Wardens still melee.
+
+        [Test]
+        public void ShamanAndBardHoldTheBackLineInAGroup_FriarAndWardenDoNot()
+        {
+            foreach (ICharacterClass backLine in new ICharacterClass[] { new ClassShaman(), new ClassBard() })
+                Assert.That(BotPartyRoles.IsSupport(PartyWith(backLine).Item2), Is.True, backLine.Name);
+            foreach (ICharacterClass melee in new ICharacterClass[] { new ClassFriar(), new ClassWarden() })
+                Assert.That(BotPartyRoles.IsSupport(PartyWith(melee).Item2), Is.False, melee.Name);
+        }
+
+        [Test]
+        public void SoloShamanIsNotSupport()
+        {
+            Bot shaman = MakeBot(new ClassShaman());
+            Assert.That(BotPartyRoles.IsSupport(shaman), Is.False, "a solo Shaman still levels by fighting");
+        }
+
+        [Test]
+        public void ShamanAsSupportDoesNotMeleeAnEnemyInReach()
+        {
+            var (player, shaman, enemy) = PartyWith(new ClassShaman());
+            player.Attacking = true;
+            player.TargetObject = enemy;
+            enemy.TestX = 100;
+
+            typeof(BotBrain).GetMethod("TrySupportIdleCombatAssist", Hidden).Invoke(B(shaman), null);
+
+            Assert.That(shaman.MeleeStarts, Is.Zero);
+        }
+
+        [Test]
+        public void BardAsSupportDoesNotMelee_AndHasNothingButInstantsToThrow()
+        {
+            var (player, bard, enemy) = PartyWith(new ClassBard());
+            player.Attacking = true;
+            player.TargetObject = enemy;
+            enemy.TestX = 100;
+            B(bard).SpellResult = true; // a cast-time nuke would be taken if the Bard looked for one
+
+            bool acted = (bool)typeof(BotBrain).GetMethod("TrySupportIdleCombatAssist", Hidden).Invoke(B(bard), null);
+
+            Assert.That(acted, Is.False, "no instant damage spell known");
+            Assert.That(bard.MeleeStarts, Is.Zero);
+            Assert.That(B(bard).LastSpellType, Is.Null, "a Bard only throws instants; it does not run the cast-time nuke check");
+        }
+
+        [Test]
+        public void IdleCombatSettingIsOnByDefaultUnderItsNewName()
+        {
+            FieldInfo field = typeof(Properties).GetField(nameof(Properties.HEALER_IDLE_COMBAT));
+            var attribute = field.GetCustomAttribute<ServerPropertyAttribute>();
+            Assert.That(attribute.Key, Is.EqualTo("support_idle_combat_enabled"));
+            Assert.That(attribute.DefaultValue, Is.EqualTo(true));
+        }
+
         private static void SetFollowTarget(GameNPC npc, GameLiving target) =>
             typeof(NpcMovementComponent).GetProperty(nameof(NpcMovementComponent.FollowTarget))!
                 .GetSetMethod(true)!.Invoke(npc.movementComponent, new object[] { target });
 
-        private (Player, Bot, Enemy) PartyWithHealer()
+        private (Player, Bot, Enemy) PartyWithHealer() => PartyWith(new ClassCleric());
+
+        private (Player, Bot, Enemy) PartyWith(ICharacterClass supportClass)
         {
             Player player = Actor<Player>();
             var group = new Group(player);
             Add(group, player);
-            Bot healer = MakeBot(new ClassCleric());
+            Bot healer = MakeBot(supportClass);
             Add(group, healer);
             healer.EnterPlayerLedGroup(player);
             Bot tank = MakeBot(new ClassPaladin());
