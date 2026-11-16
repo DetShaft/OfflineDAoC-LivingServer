@@ -1,0 +1,6 @@
+# The newest upstream (chris4aker/OfflineDAoC-LivingServer) main commit this fork has reviewed.
+# The upstream-drift workflow lists only upstream commits after this one. After reviewing new upstream
+# commits (take, cherry-pick or skip), replace the line below with the newest upstream main commit.
+# d4ec996 = upstream Beta 1.1.4 notes (#197). Its Setup base-files change was taken in #67; the edition
+# removal, README rewrite and 1.1.4 numbering were left out on purpose (issue #66).
+d4ec99644489d35238e1028e10c313296a197e01
