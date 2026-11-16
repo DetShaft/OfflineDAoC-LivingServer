@@ -30,6 +30,7 @@ stopped; they are used at the next start. The server keys (category `bots`) are:
 | Nemeses | `bot_living_nemesis` | False |
 | Bot schedule | `bot_schedule_mode` | `off` (also `session`, `clock`) |
 | Breaks and linkdeads | `bot_living_breaks` | False |
+| Bot alts | `bot_alts_enabled`, `bot_alts_main_share` | True, 0.25 (server keys only; not in the launcher tab yet) |
 | Body language | `bot_living_body_language` | False |
 | Beggars | `bot_living_beggars` | True |
 | Deeds and reputation | `bot_living_deeds` | True |
@@ -168,6 +169,25 @@ Each character gets at most one grats chain every 20 seconds. This is separate f
   15 minutes they count against the schedule, so logins wait for them (with 10% slack); after that
   they no longer hold back the bots whose turn it is, so the total can run above the schedule's
   number for a while, but never more than a quarter above it.
+
+### Bot alts (`bot_alts_enabled`, issue #57)
+Tests only: not yet seen in a played world.
+- A gamebot **player** is its first character plus the alts it rolls. Once every one of its characters is level
+  50, it rolls a new level-one alt in the same realm, with a new name, class and race. The alt starts like any new
+  gamebot: at a valid Classic/SI start for its race and class, with no armor and no coin. At most 3 alts are rolled
+  per roster refresh, and a player has at most 6 characters.
+- Only one of a player's characters is online at a time. Another one waits until it has logged out, which happens
+  only at a natural break, as with the schedule.
+- The player keeps one set of hours: the schedule (`clock` or `session`) is worked out for the player, not for each
+  character, so the number of bots online doesn't change. Alts add characters, not players.
+- Who plays is decided per two-hour block of your PC's clock. Most blocks go to the newest character below 50. In
+  `bot_alts_main_share` of them (0.25 by default) the player logs in one of its level-50s for RvR and end-game
+  content, taking turns when it has several.
+- All of a player's characters share its personality and traits.
+- Needs `bot_schedule_mode` `session` or `clock`. With the schedule off, the whole roster is always online, so
+  there is no time to share and no alts are rolled.
+- The server log has a `LIVING_SERVER_ALT` line for each new alt. In the roster (`offline_world_bots`), an alt's
+  `PlayerId` is its player's first character's `BotId`. First characters have 0 there.
 
 ### Breaks and linkdeads (`bot_living_breaks`)
 - **Breaks:** an idle bot (the same rules as logging out) now and then says "brb" and logs off for

@@ -2523,6 +2523,14 @@ namespace DOL.GS.ServerProperties
 		[ServerProperty("bots", "bot_living_breaks", "Server life: an idle bot now and then says brb and logs off for 5-25 minutes, and a bot grouped with you rarely goes linkdead for 30-90 seconds (the group hears about it) and comes back with an apology. Never during a fight, siege or relic march.", false)]
 		public static bool BOT_LIVING_BREAKS;
 
+		/// <summary>Level-50 gamebots roll a new low-level alt (issue #57, AutonomousBotAlts).</summary>
+		[ServerProperty("bots", "bot_alts_enabled", "Server life: once all of a gamebot player's characters are level 50, it rolls a new level-one alt in the same realm and plays it most of the time, so the leveling zones stay busy. Only one of a player's characters is online at a time and they share its personality and schedule. Needs bot_schedule_mode session or clock.", true)]
+		public static bool BOT_ALTS_ENABLED;
+
+		/// <summary>The share of a gamebot player's play blocks spent on one of its level-50s rather than its leveling alt.</summary>
+		[ServerProperty("bots", "bot_alts_main_share", "Server life: when bot alts are on, the share (0-1) of a gamebot player's two-hour play blocks it spends on one of its level-50 characters (RvR, end game) instead of its leveling alt.", 0.25)]
+		public static double BOT_ALTS_MAIN_SHARE;
+
 		/// <summary>Idle bots look around, emote, shift their feet, wave at you and cheer a ding nearby.</summary>
 		[ServerProperty("bots", "bot_living_body_language", "Server life: autonomous gamebots standing around in town, waiting for their group or resting look around, emote now and then (ponder, shrug, laugh, stretch their legs with a step or two in town), turn and wave at you when you walk up, and cheer when someone dings nearby. Only where a real player can see it; never in a fight. Bots cannot jump or sit (the game sends no such state for them).", false)]
 		public static bool BOT_LIVING_BODY_LANGUAGE;
