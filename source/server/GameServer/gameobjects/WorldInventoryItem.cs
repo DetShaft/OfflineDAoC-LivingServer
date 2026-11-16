@@ -19,6 +19,18 @@ namespace DOL.GS
         /// <summary>The group member whose round-robin turn this drop is. Null when anyone who owns it may take it.</summary>
         public GamePlayer ReservedFor { get; set; }
 
+        /// <summary>The need or greed roll this drop is waiting on. Nobody can pick it up until the roll ends.</summary>
+        public LootRoll PendingRoll { get; set; }
+
+        /// <summary>Runs an action with this drop's pickup lock held, as a pickup does.</summary>
+        public void WithPickUpLock(Action action)
+        {
+            lock (_pickUpLock)
+            {
+                action();
+            }
+        }
+
         public WorldInventoryItem() : base() { }
 
         public WorldInventoryItem(DbInventoryItem item) : this()

@@ -10,6 +10,27 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.19 (in development)
 
+**Group gear is rolled for, need or greed, in a loot window (#72).** Jay, 2026-11-16: stopping to type `/look` for
+loot is not good design. When a weapon, armor piece, shield, instrument or jewel drops in a group with you in it, the
+server opens a roll and the new client opens a **Loot Rolls** window by itself: one row per drop with the piece's
+level, type, slot, DPS and speed or AF, quality and bonuses, who already rolled Need, a countdown, and **NEED**,
+**GREED** and **PASS** buttons. Need beats Greed, and the highest 1-100 roll in the winning choice takes the piece.
+- **Bots answer at once.** A gamebot rolls Need when the piece is an upgrade it can wear: its class can use it, a
+  weapon fits its spec line, and it beats what it wears in that slot (the same check its own loot, merchant and
+  Realm Exchange decisions use). Otherwise it rolls Greed, and it passes with a full bag. A companion bot rolls Greed.
+  A `/spawn` helper is not in the roll.
+- **The roll ends when you answer**, or after 60 seconds, when a roll you did not answer counts as Greed, so a missed
+  window never loses a drop. A win goes straight to your backpack. With a full backpack the piece waits on the ground
+  for you alone. If everyone passes it stays on the ground for anyone.
+- **Everything else is still dealt in turn** (trophies, stacks, anything that is not gear), with no roll and no window.
+  Your turn now goes straight to your backpack while `/autoloot` is on, and waits on the ground with it off, where a
+  normal pickup or `/look take` gets it. A group of bots alone still deals everything in turn.
+- **The original client** has no window: the roll is a chat line, answered with `/loot need`, `/loot greed` or
+  `/loot pass` (add the roll's number when more than one is open; `/loot` lists them).
+
+Tests only: unit tests for the rolls and a headless check of the window's lines and answers. Not yet seen in game,
+and the window's layout has not been looked at on a screen.
+
 **New client: fewer hitches while you play.** The new client read each sound file from disk on the main thread
 the first time it played (a swing, a pain cry, a door, a zone sound), and the name plates re-read `settings.cfg` from
 disk once a second. Each read usually takes a few milliseconds, but in the owner's 2026-11-16 session, while the

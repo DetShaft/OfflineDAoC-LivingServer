@@ -134,10 +134,23 @@ namespace DOL.UnitTests
         {
             _previousServer = GameServer.Instance;
             GameServer.LoadTestDouble((LootServer)RuntimeHelpers.GetUninitializedObject(typeof(LootServer)));
+            _previousSchedule = GroupLootRolls.Schedule;
+            _previousDie = GroupLootRolls.Die;
+            GroupLootRolls.Reset();
+            GroupLootRolls.Schedule = static _ => { };
         }
 
         [TearDown]
-        public void TearDown() { GameServer.LoadTestDouble(_previousServer); }
+        public void TearDown()
+        {
+            GroupLootRolls.Reset();
+            GroupLootRolls.Schedule = _previousSchedule;
+            GroupLootRolls.Die = _previousDie;
+            GameServer.LoadTestDouble(_previousServer);
+        }
+
+        private Action<LootRoll> _previousSchedule;
+        private Func<int> _previousDie;
 
         private static void Field(Type type, object target, string name, object value)
         {
@@ -848,8 +861,38 @@ namespace DOL.UnitTests
             return new WorldInventoryItem(GameInventoryItem.Create(template));
         }
 
+        /// <summary>A trophy: not gear, so the group deals it in turn without a roll.</summary>
+        private static WorldInventoryItem Junk()
+        {
+            DbItemTemplate template = new()
+            {
+                Id_nb = Guid.NewGuid().ToString(), Name = "wolf fang", Realm = (int)eRealm.Hibernia, Level = 1,
+                Item_Type = 0, Object_Type = (int)eObjectType.GenericItem, Quality = 100, MaxCount = 1, PackSize = 1,
+                Price = 5, IsPickable = true
+            };
+            return new WorldInventoryItem(GameInventoryItem.Create(template));
+        }
+
+        /// <summary>Gear no test bot can wear, so a bot rolls Greed for it.</summary>
+        private static WorldInventoryItem HeroOnlyDrop()
+        {
+            DbItemTemplate template = Pants(10);
+            template.IsPickable = true;
+            template.AllowedClasses = ((int)eCharacterClass.Hero).ToString();
+            return new WorldInventoryItem(GameInventoryItem.Create(template));
+        }
+
+        private static void FillBackpack(LootBot bot)
+        {
+            for (int i = 0; i < 40; i++)
+                Assert.That(bot.Inventory.AddItem(eInventorySlot.FirstEmptyBackpack, GameInventoryItem.Create(Pants())), Is.True);
+        }
+
+        private static eLootChoice ChoiceOf(LootRoll roll, GameLiving member) =>
+            roll.Entries.Single(entry => entry.Member == member).Choice;
+
         [Test]
-        public void PlayerLedGroupDealsRoundRobinAndHoldsThePlayersShareForLook()
+        public void PlayerLedGroupDealsTrophiesRoundRobinAndHoldsAShareThePlayerCannotCarry()
         {
             LootPlayer player = Inert<LootPlayer>();
             player.Level = 10;
@@ -858,15 +901,16 @@ namespace DOL.UnitTests
             LootBot helper = Bot(true);
             Group group = GroupOf(player, bot, helper);
 
-            WorldInventoryItem first = Drop();
-            WorldInventoryItem second = Drop();
-            WorldInventoryItem third = Drop();
+            WorldInventoryItem first = Junk();
+            WorldInventoryItem second = Junk();
+            WorldInventoryItem third = Junk();
             Assert.That(first.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
             Assert.That(second.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Success));
             Assert.That(third.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
 
             Assert.Multiple(() =>
             {
+                Assert.That(first.PendingRoll, Is.Null);
                 Assert.That(first.ReservedFor, Is.SameAs(player));
                 Assert.That(third.ReservedFor, Is.SameAs(player));
                 Assert.That(player.Inventory, Is.Null);
@@ -881,14 +925,13 @@ namespace DOL.UnitTests
         {
             LootPlayer player = Inert<LootPlayer>();
             LootBot bot = Bot();
-            for (int i = 0; i < 40; i++)
-                Assert.That(bot.Inventory.AddItem(eInventorySlot.FirstEmptyBackpack, GameInventoryItem.Create(Pants())), Is.True);
+            FillBackpack(bot);
             LootBot helper = Bot(true);
             Group group = GroupOf(player, bot, helper);
 
-            WorldInventoryItem drop = Drop();
+            WorldInventoryItem drop = Junk();
             Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
-            WorldInventoryItem next = Drop();
+            WorldInventoryItem next = Junk();
             Assert.That(next.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
             Assert.That(drop.ReservedFor, Is.SameAs(player));
             Assert.That(next.ReservedFor, Is.SameAs(player));
@@ -897,20 +940,39 @@ namespace DOL.UnitTests
         }
 
         [Test]
-        public void CompanionBotTakesItsTurnAndAnotherPlayerCannotTakeYours()
+        public void ThePlayersTrophyTurnGoesStraightToTheBackpackAndTheCompanionTakesTheNext()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootBot companion = CompanionOf(player);
+            LootBot helper = Bot(true);
+            Group group = GroupOf(player, companion, helper);
+
+            WorldInventoryItem mine = Junk();
+            WorldInventoryItem given = Junk();
+            Assert.That(mine.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Success));
+            Assert.That(given.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Success));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(player.Inventory.AllItems, Does.Contain(mine.Item));
+                Assert.That(mine.ReservedFor, Is.Null);
+                Assert.That(companion.Inventory.AllItems, Does.Contain(given.Item));
+                Assert.That(helper.Inventory.AllItems, Is.Empty);
+            });
+        }
+
+        [Test]
+        public void AnotherPlayerCannotTakeAShareThatWaitsForYou()
         {
             LootPlayer player = Inert<LootPlayer>();
             player.Inventory = new BotInventory();
             LootPlayer other = Inert<LootPlayer>();
             other.Inventory = new BotInventory();
-            LootBot companion = CompanionOf(player);
-            LootBot helper = Bot(true);
-            Group group = GroupOf(player, companion, helper, other);
+            Group group = GroupOf(player, other);
 
-            WorldInventoryItem held = Drop();
-            WorldInventoryItem given = Drop();
-            Assert.That(held.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
-            Assert.That(given.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Success));
+            WorldInventoryItem held = Junk();
+            held.ReservedFor = player;
             Assert.That(held.TryPickUp(other, group), Is.EqualTo(TryPickUpResult.Blocked));
             Assert.That(held.TryPickUp(player, group), Is.EqualTo(TryPickUpResult.Success));
 
@@ -918,9 +980,254 @@ namespace DOL.UnitTests
             {
                 Assert.That(player.Inventory.AllItems, Does.Contain(held.Item));
                 Assert.That(other.Inventory.AllItems, Is.Empty);
-                Assert.That(companion.Inventory.AllItems, Does.Contain(given.Item));
-                Assert.That(helper.Inventory.AllItems, Is.Empty);
                 Assert.That(held.ObjectState, Is.EqualTo(GameObject.eObjectState.Inactive));
+            });
+        }
+
+        [Test]
+        public void GearInAPlayersGroupOpensARollAndBotsAnswerAtOnce()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootBot wearer = Bot();
+            LootBot full = Bot();
+            FillBackpack(full);
+            LootBot helper = Bot(true);
+            Group group = GroupOf(player, wearer, full, helper);
+
+            WorldInventoryItem drop = Drop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            LootRoll roll = drop.PendingRoll;
+            Assert.That(roll, Is.Not.Null);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(roll.Entries.Select(entry => entry.Member), Is.EqualTo(new GameLiving[] { player, wearer, full }));
+                Assert.That(ChoiceOf(roll, player), Is.EqualTo(eLootChoice.Waiting));
+                Assert.That(ChoiceOf(roll, wearer), Is.EqualTo(eLootChoice.Need), "An upgrade the bot can wear is a Need.");
+                Assert.That(ChoiceOf(roll, full), Is.EqualTo(eLootChoice.Pass), "A full bag passes.");
+                Assert.That(GroupLootRolls.WaitingOn(player), Is.EqualTo(new[] { roll }));
+                Assert.That(player.Inventory.AllItems, Is.Empty);
+                Assert.That(wearer.Inventory.AllItems, Is.Empty);
+                // Nobody can pick the drop up while the roll is open.
+                Assert.That(drop.TryPickUp(player, group), Is.EqualTo(TryPickUpResult.Blocked));
+                Assert.That(GroupLootRolls.StartLine(roll), Does.StartWith($"Loot roll #{roll.Id}: cloth pants | "));
+                Assert.That(GroupLootRolls.StartLine(roll), Does.Contain(" | 60 seconds | Need: Loot test bot | Greed: 0"));
+            });
+        }
+
+        [Test]
+        public void BotsRollGreedForGearTheyCannotWearAndAGroupOfBotsNeverRolls()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            LootBot bot = Bot();
+            Group group = GroupOf(player, bot);
+            WorldInventoryItem drop = HeroOnlyDrop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            Assert.That(ChoiceOf(drop.PendingRoll, bot), Is.EqualTo(eLootChoice.Greed));
+
+            Group bots = GroupOf(Bot(), Bot());
+            WorldInventoryItem dealt = Drop();
+            Assert.That(dealt.TryAutoPickUp(bots), Is.EqualTo(TryPickUpResult.Success));
+            Assert.That(dealt.PendingRoll, Is.Null);
+        }
+
+        [Test]
+        public void APlayersNeedBeatsABotsGreedWhateverTheDice()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootBot bot = Bot();
+            Group group = GroupOf(player, bot);
+            WorldInventoryItem drop = HeroOnlyDrop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            LootRoll roll = drop.PendingRoll;
+            Queue<int> dice = new(new[] { 1, 100 });
+            GroupLootRolls.Die = () => dice.Dequeue();
+
+            Assert.That(GroupLootRolls.Answer(player, roll.Id, eLootChoice.Need, out string error), Is.True, error);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(roll.Closed, Is.True);
+                Assert.That(roll.Winner, Is.SameAs(player));
+                Assert.That(player.Inventory.AllItems, Does.Contain(drop.Item));
+                Assert.That(bot.Inventory.AllItems, Is.Empty);
+                Assert.That(drop.PendingRoll, Is.Null);
+                Assert.That(GroupLootRolls.Open, Is.Empty);
+                Assert.That(GroupLootRolls.Answer(player, roll.Id, eLootChoice.Greed, out _), Is.False);
+            });
+        }
+
+        [Test]
+        public void ABotsNeedBeatsAPlayersGreed()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootBot bot = Bot();
+            Group group = GroupOf(player, bot);
+            WorldInventoryItem drop = Drop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            LootRoll roll = drop.PendingRoll;
+            Queue<int> dice = new(new[] { 1, 100 });
+            GroupLootRolls.Die = () => dice.Dequeue();
+
+            // An id of 0 answers the oldest roll waiting on the player.
+            Assert.That(GroupLootRolls.Answer(player, 0, eLootChoice.Greed, out string error), Is.True, error);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(roll.Winner, Is.SameAs(bot));
+                Assert.That(bot.Inventory.AllItems, Does.Contain(drop.Item));
+                Assert.That(player.Inventory.AllItems, Is.Empty);
+            });
+        }
+
+        [Test]
+        public void AnUnansweredRollCountsAsGreedAndTheHigherDieWins()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootBot bot = Bot();
+            Group group = GroupOf(player, bot);
+            WorldInventoryItem drop = HeroOnlyDrop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            LootRoll roll = drop.PendingRoll;
+            // The player is first in the group, so the first die is the player's.
+            Queue<int> dice = new(new[] { 90, 10 });
+            GroupLootRolls.Die = () => dice.Dequeue();
+
+            GroupLootRolls.Finish(roll);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ChoiceOf(roll, player), Is.EqualTo(eLootChoice.Greed));
+                Assert.That(roll.Winner, Is.SameAs(player));
+                Assert.That(player.Inventory.AllItems, Does.Contain(drop.Item));
+                Assert.That(bot.Inventory.AllItems, Is.Empty);
+            });
+
+            // Finishing twice gives nothing twice.
+            GroupLootRolls.Finish(roll);
+            Assert.That(player.Inventory.AllItems, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void AWinWithNoRoomWaitsOnTheGroundForTheWinnerAlone()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            LootPlayer other = Inert<LootPlayer>();
+            other.Inventory = new BotInventory();
+            Group group = GroupOf(player, other);
+            WorldInventoryItem drop = Drop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            LootRoll roll = drop.PendingRoll;
+
+            Assert.That(GroupLootRolls.Answer(player, roll.Id, eLootChoice.Need, out _), Is.True);
+            Assert.That(roll.Closed, Is.False, "The roll waits for every player.");
+            Assert.That(GroupLootRolls.Answer(player, roll.Id, eLootChoice.Pass, out string twice), Is.False);
+            Assert.That(twice, Does.Contain("already chose"));
+            Assert.That(GroupLootRolls.Answer(other, roll.Id, eLootChoice.Greed, out _), Is.True);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(roll.Winner, Is.SameAs(player));
+                Assert.That(drop.ReservedFor, Is.SameAs(player));
+                Assert.That(drop.PendingRoll, Is.Null);
+                Assert.That(other.Inventory.AllItems, Is.Empty);
+                Assert.That(drop.TryPickUp(other, group), Is.EqualTo(TryPickUpResult.Blocked));
+            });
+        }
+
+        [Test]
+        public void APlayerWhoLoggedOutCannotWinAndTheNextRollTakesTheDrop()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootBot bot = Bot();
+            Group group = GroupOf(player, bot);
+            WorldInventoryItem drop = HeroOnlyDrop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            LootRoll roll = drop.PendingRoll;
+            // The player would win the Greed roll, but is gone when the timer ends.
+            Queue<int> dice = new(new[] { 90, 10 });
+            GroupLootRolls.Die = () => dice.Dequeue();
+            player.ObjectState = GameObject.eObjectState.Inactive;
+
+            GroupLootRolls.Finish(roll);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(roll.Winner, Is.SameAs(bot));
+                Assert.That(bot.Inventory.AllItems, Does.Contain(drop.Item));
+                Assert.That(player.Inventory.AllItems, Is.Empty);
+                Assert.That(drop.ReservedFor, Is.Null);
+            });
+        }
+
+        [Test]
+        public void WhenEveryonePassesTheDropStaysFreeOnTheGround()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootBot full = Bot();
+            FillBackpack(full);
+            Group group = GroupOf(player, full);
+            WorldInventoryItem drop = Drop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            LootRoll roll = drop.PendingRoll;
+
+            Assert.That(GroupLootRolls.Answer(player, roll.Id, eLootChoice.Pass, out _), Is.True);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(roll.Closed, Is.True);
+                Assert.That(roll.Winner, Is.Null);
+                Assert.That(drop.ReservedFor, Is.Null);
+                Assert.That(drop.PendingRoll, Is.Null);
+                Assert.That(player.Inventory.AllItems, Is.Empty);
+                Assert.That(full.Inventory.AllItems, Has.Count.EqualTo(40));
+                Assert.That(drop.TryPickUp(player, group), Is.EqualTo(TryPickUpResult.Success));
+            });
+        }
+
+        [Test]
+        public void RankPutsNeedFirstAndNeverRepeatsARoll()
+        {
+            LootBot a = Bot();
+            LootBot b = Bot();
+            LootBot c = Bot();
+            LootBot d = Bot();
+            var entries = new List<LootRollEntry>
+            {
+                new() { Member = a, Choice = eLootChoice.Greed },
+                new() { Member = b, Choice = eLootChoice.Need },
+                new() { Member = c, Choice = eLootChoice.Pass },
+                new() { Member = d, Choice = eLootChoice.Need }
+            };
+
+            List<LootRollEntry> ranked = GroupLootRolls.Rank(entries, static () => 50);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ranked.Select(entry => entry.Choice),
+                    Is.EqualTo(new[] { eLootChoice.Need, eLootChoice.Need, eLootChoice.Greed }));
+                Assert.That(ranked[0].Roll, Is.GreaterThan(ranked[1].Roll));
+                Assert.That(ranked.Select(entry => entry.Roll), Is.All.InRange(1, 100));
+                Assert.That(entries[2].Roll, Is.Zero);
+            });
+        }
+
+        [Test]
+        public void OnlyGearIsRolledForAndItsSummaryNamesTheSlot()
+        {
+            WorldInventoryItem pants = Drop();
+            Assert.Multiple(() =>
+            {
+                Assert.That(GroupLootRolls.IsRollWorthy(pants.Item), Is.True);
+                Assert.That(GroupLootRolls.IsRollWorthy(Junk().Item), Is.False);
+                Assert.That(GroupLootRolls.IsRollWorthy(null), Is.False);
+                Assert.That(GroupLootRolls.Describe(pants.Item), Does.Contain("legs").And.Contain("AF 1").And.Contain("95% quality"));
             });
         }
 
