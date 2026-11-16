@@ -1140,6 +1140,32 @@ namespace DOL.UnitTests
         }
 
         [Test]
+        public void APlayerWhoLoggedOutCannotWinAndTheNextRollTakesTheDrop()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootBot bot = Bot();
+            Group group = GroupOf(player, bot);
+            WorldInventoryItem drop = HeroOnlyDrop();
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            LootRoll roll = drop.PendingRoll;
+            // The player would win the Greed roll, but is gone when the timer ends.
+            Queue<int> dice = new(new[] { 90, 10 });
+            GroupLootRolls.Die = () => dice.Dequeue();
+            player.ObjectState = GameObject.eObjectState.Inactive;
+
+            GroupLootRolls.Finish(roll);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(roll.Winner, Is.SameAs(bot));
+                Assert.That(bot.Inventory.AllItems, Does.Contain(drop.Item));
+                Assert.That(player.Inventory.AllItems, Is.Empty);
+                Assert.That(drop.ReservedFor, Is.Null);
+            });
+        }
+
+        [Test]
         public void WhenEveryonePassesTheDropStaysFreeOnTheGround()
         {
             LootPlayer player = Inert<LootPlayer>();

@@ -354,6 +354,10 @@ namespace DOL.GS
 
                 if (entry.Member is GamePlayer player)
                 {
+                    // A player who logged out or left the group since the drop cannot hold it,
+                    // and a reserved drop would be lost to everyone. The next roll takes it.
+                    if (player.ObjectState != GameObject.eObjectState.Active || !roll.Group.IsInTheGroup(player))
+                        continue;
                     winner = entry;
                     if (GiveToPlayer(player, drop))
                         break;
