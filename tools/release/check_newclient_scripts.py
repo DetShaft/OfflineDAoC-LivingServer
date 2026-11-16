@@ -47,12 +47,19 @@ SHIPPED = [
     "game/anim_lod.gd",
     "game/fig3_figure.gd",
     "game/npcs/npc_manager.gd",
+    "game/ui/options_window.gd",
+    "game/world_host/bot_view.gd",
+    "game/character_sounds.gd",
+    "game/zone_audio.gd",
+    "game/zone_door.gd",
+    "game/sound_loader.gd",
 ]
 CREATE_ONLY = [
     "game/ui/friends_window.gd",
     "game/ui/lfg_window.gd",
     "game/ui/commander_panel.gd",
     "game/ui/loot_roll_window.gd",
+    "game/sound_loader.gd",
 ]
 RELEASED_PATHS = [
     "game/ui/game_ui.gd",
@@ -64,6 +71,11 @@ RELEASED_PATHS = [
     "game/anim_lod.gd",
     "game/fig3_figure.gd",
     "game/npcs/npc_manager.gd",
+    "game/ui/options_window.gd",
+    "game/world_host/bot_view.gd",
+    "game/character_sounds.gd",
+    "game/zone_audio.gd",
+    "game/zone_door.gd",
 ]
 NEW_CLASSES = ("FriendsWindow", "LfgWindow", "CommanderPanel")
 GODOT_VERSION = "4.7.2"

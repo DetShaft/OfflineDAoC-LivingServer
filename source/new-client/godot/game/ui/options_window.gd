@@ -228,6 +228,8 @@ func _save(section: String, key: String, value) -> void:
 	settings.load(UiArt.settings_path)
 	settings.set_value(section, key, value)
 	settings.save(UiArt.settings_path)
+	if section == "bots":
+		BotView.options_changed()                  # (it no longer re-reads the file every second)
 
 
 # --- pages ----------------------------------------------------------------------------------------------------

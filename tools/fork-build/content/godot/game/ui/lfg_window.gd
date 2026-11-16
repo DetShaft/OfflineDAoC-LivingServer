@@ -182,6 +182,13 @@ static func class_display(abbrev: String) -> String:
 			var key := n.substr(0, 4).to_upper()
 			if not _class_names.has(key):
 				_class_names[key] = n
+		for id in range(1, 80):                    # the base classes too (a player still a Viking at level 3)
+			var n := String(ClassDb.cls(id).get("name", ""))
+			if n.is_empty():
+				continue
+			var key := n.substr(0, 4).to_upper()
+			if not _class_names.has(key):
+				_class_names[key] = n
 		if _class_names.is_empty():
 			_class_names[""] = ""                  # no class list: don't look again
 	return String(_class_names.get(a, abbrev.strip_edges().capitalize()))

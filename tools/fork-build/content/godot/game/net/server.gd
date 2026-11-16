@@ -103,6 +103,7 @@ func _ready() -> void:
 		return
 	var c = JSON.parse_string(FileAccess.get_file_as_string("res://content/rules/server_classes.json"))
 	classes = c if c is Dictionary else {}
+	fill_missing_classes(classes)
 	var ix = JSON.parse_string(FileAccess.get_file_as_string("res://content/zones/zones_index.json"))
 	_index = ix if ix is Dictionary else {}
 	var lk = JSON.parse_string(FileAccess.get_file_as_string(LOOKS_FILE)) if FileAccess.file_exists(LOOKS_FILE) else null
@@ -170,9 +171,87 @@ func _friends_packet(add: bool, data: PackedByteArray) -> void:
 			PlayerData.message.emit("Your friend %s just left the game." % n, "system")
 
 
-## A class's name by the server's class id (/friend window's list).
+## A class's name by the server's class id (the friends, guild and LFG lists). Falls back to the 1.65 class data
+## (ClassDb), so a base class ("Viking" for a friend still below level 5) or a class the create list leaves out still
+## gets a name instead of a blank column (owner 2026-11-16: a Savage friend showed no class).
 func class_name_of(id: int) -> String:
-	return String(classes.get("classes", {}).get(str(id), {}).get("name", ""))
+	var n := String(classes.get("classes", {}).get(str(id), {}).get("name", ""))
+	if n.is_empty():
+		n = String(ClassDb.cls(id).get("name", ""))
+	return n
+
+
+# The Savage as the server defines it (ClassSavage.cs: Viking line, DEX / QUI / STR; Norseman, Troll, Dwarf, Kobold,
+# Valkyn), used when neither the shipped server_classes.json nor ClassDb carries it.
+const SAVAGE_FALLBACK := {"id": 32, "name": "Savage", "realm": "mid", "races": [5, 6, 7, 8, 14],
+		"stats": ["DEX", "QUI", "STR"]}
+
+
+## Adds the Classic / Shrouded Isles advanced classes that the shipped server_classes.json lacks (owner 2026-11-16:
+## the Savage could not be picked at creation and showed a blank class in the friends window). The released file was
+## built from a database that switched the Savage off; the game's server (GlobalConstants.STARTING_CLASSES_DICT, and
+## the Setup's disabled_classes "20;33;34;39;58-62") accepts it. Missing classes come from ClassDb (the 1.65 classes:
+## no Catacombs or later class, no Sluaghbinder), limited to the races the realm's listed classes already allow, so
+## races the server switched off stay off. Classes already in the file are left as they are.
+static func fill_missing_classes(data: Dictionary) -> void:
+	if not data.has("classes") or not (data.classes is Dictionary):
+		data["classes"] = {}
+	if not data.has("realms") or not (data.realms is Dictionary):
+		data["realms"] = {}
+	var realm_races := {}                                  # realm -> the race ids its listed classes take
+	for k in data.classes:
+		var e = data.classes[k]
+		if not (e is Dictionary):
+			continue
+		var rk := String(e.get("realm", ""))
+		if not realm_races.has(rk):
+			realm_races[rk] = {}
+		for r in e.get("races", []):
+			realm_races[rk][int(r)] = true
+	var wanted := []                                       # [id, name, realm key, race ids, stats]
+	for id in range(1, 80):
+		var c := ClassDb.cls(id)
+		if c.is_empty() or bool(c.get("is_base", false)):
+			continue
+		var rk := String(c.get("realm", "")).left(3)
+		if not REALM_IDS.has(rk):
+			continue
+		var races := []
+		for r in c.get("races", []):
+			var rid := int(RACE_BY_NAME.get(String(r), 0))
+			if rid > 0 and not (rid in races):
+				races.append(rid)
+		var stats := []
+		for s in ["primary", "secondary", "tertiary"]:
+			if c.get(s) != null:
+				stats.append(String(c.get(s)))
+		wanted.append([id, String(c.get("name", "")), rk, races, stats])
+	if not wanted.any(func(w): return int(w[0]) == int(SAVAGE_FALLBACK.id)):
+		wanted.append([int(SAVAGE_FALLBACK.id), String(SAVAGE_FALLBACK.name), String(SAVAGE_FALLBACK.realm),
+				(SAVAGE_FALLBACK.races as Array).duplicate(), (SAVAGE_FALLBACK.stats as Array).duplicate()])
+	for w in wanted:
+		var id := int(w[0])
+		var rk := String(w[2])
+		if data.classes.has(str(id)) or String(w[1]).is_empty():
+			continue
+		var races: Array = w[3]
+		if realm_races.has(rk) and not (realm_races[rk] as Dictionary).is_empty():
+			races = races.filter(func(r): return (realm_races[rk] as Dictionary).has(int(r)))
+		if races.is_empty():
+			continue
+		var stats: Array = w[4] if (w[4] as Array).size() == 3 else ["STR", "CON", "DEX"]
+		data.classes[str(id)] = {"name": String(w[1]), "female": String(w[1]), "realm": rk, "races": races,
+				"stats": stats}
+		if not data.realms.has(rk) or not (data.realms[rk] is Array):
+			data.realms[rk] = []
+		var list: Array = data.realms[rk]
+		if not list.any(func(x): return int(x) == id):
+			var at := list.size()                          # the server's order is by class id
+			for i in list.size():
+				if int(list[i]) > id:
+					at = i
+					break
+			list.insert(at, id)
 
 
 ## The region's storm (WeatherManager / RegionWeather, owner 2026-10-14: the server's weather never showed - the game

@@ -6,6 +6,7 @@ var v: Node
 
 
 func _ready() -> void:
+	preload("res://game/sound_loader.gd").blocking = true   # a first play counts: read its file at once
 	v = get_tree().current_scene
 	await get_tree().create_timer(6.0).timeout
 	var out := String(v.args.get("out", "user://"))

@@ -4,6 +4,7 @@ extends Node
 ## listed with what the NPC manager built in it, then the view build broken down by step (Npc.prof_build: figure
 ## load, look, dress, monster instance / anims ...) and the model parses (NpcManager.prof_parse_us).
 ##   --screen 1 -- --skip-login --zone=209 --pos=580.25,191.5,689.35 --figure=elf_m --ui-test --probe=walk_perf
+const Sounds = preload("res://game/sound_loader.gd")
 var v: Node
 var t := 0.0
 var walking := false
@@ -74,10 +75,10 @@ func _process(delta: float) -> void:
 		slow.append([snappedf(t, 0.01), int(_span[0]), mgr.prof_built - last_built, mgr.active.size(),
 				int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
 				int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)),
-				_pipelines() - _pipe_last, (ZoneAudio.load_us + CharacterSounds.load_us - _snd_last) / 1000, top])
+				_pipelines() - _pipe_last, (Sounds.load_us - _snd_last) / 1000, top])
 	_build_last = mgr.prof_build_us
 	_pipe_last = _pipelines()
-	_snd_last = ZoneAudio.load_us + CharacterSounds.load_us
+	_snd_last = Sounds.load_us
 	last_built = mgr.prof_built
 	var a := t * 7.0 / radius                                   # 7 m/s around the loop
 	var p := centre + Vector3(cos(a), 0.0, sin(a)) * radius
