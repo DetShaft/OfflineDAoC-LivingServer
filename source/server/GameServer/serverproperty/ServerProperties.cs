@@ -2435,6 +2435,14 @@ namespace DOL.GS.ServerProperties
 		/// <summary>
 		/// Autonomous gamebots react to a player-shaped attacker like a player (stefanrows/OfflineDAoC 0.271).
 		/// </summary>
+		/// <summary>
+		/// Combat log detail for /spawn helpers (owner 2026-11-16: "Drop them by default"). Off: a helper's fighting shows
+		/// on its owner's log the way another player's does on live, with no damage numbers. On: the owner also sees the
+		/// helper's damage, crits, styles and spell lines, named after the helper, in others' combat.
+		/// </summary>
+		[ServerProperty("bots", "bot_combat_log_details", "Show your /spawn helpers' damage numbers, crits, styles and spell lines (named after the helper) in your others' combat log. False shows their fighting like another player's on live, without numbers.", false)]
+		public static bool BOT_COMBAT_LOG_DETAILS = false;
+
 		[ServerProperty("bots", "bot_incoming_fire_reaction", "Autonomous gamebots hit by a player, bot or pet react like a player: a 0.3-2.5 s reaction delay (healers heal meanwhile; shorter for tanks and bold personalities), an area spell from a distance doesn't make its caster the bot's target, and healers cure a dotted group with the group cure. Companions and bots in your group are not affected. False keeps the immediate reaction.", true)]
 		public static bool BOT_INCOMING_FIRE_REACTION;
 

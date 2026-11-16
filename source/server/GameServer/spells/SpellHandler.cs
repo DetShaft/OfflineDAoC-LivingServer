@@ -2626,7 +2626,11 @@ namespace DOL.GS.Spells
 
 				// A bot plays its own character: its lines name it, in the owner's others' combat (owner 2026-11-16).
 				if (Caster is GameBot bot)
-					CombatLogAttribution.SendToOwner(playerOwner, CombatLogAttribution.ThirdPerson(bot, message));
+				{
+					// Live shows no spell lines for another player's casting unless the details setting is on.
+					if (CombatLogAttribution.ShowDetails)
+						CombatLogAttribution.SendToOwner(playerOwner, CombatLogAttribution.ThirdPerson(bot, message));
+				}
 				else
 					playerOwner?.MessageToSelf(message, type);
 			}
