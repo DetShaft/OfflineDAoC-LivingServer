@@ -660,8 +660,8 @@
   {
     "Path": "new-client/godot/game/zone_audio.gd",
     "Released": "3b8661caacb99f9cd37627da5aee65e73516f998c7f989d97b56ce59dc1fcbbc",
-    "Fixed": "eedf26b5c9312fbd957efe2e97b73aad80aaac3c18319d86f5be1722c3a61ade",
-    "Size": 16801,
+    "Fixed": "1863fc0d81410c211e85d6fa85e5c99068d754889870dcab1bda0ace72a5c22c",
+    "Size": 17098,
     "File": "content/godot/game/zone_audio.gd",
     "ReplaceAny": true
   },
@@ -676,8 +676,8 @@
   {
     "Path": "new-client/godot/game/sound_loader.gd",
     "Released": "",
-    "Fixed": "b649eb05e09becf0a341f5dbc45ee40dd3c346e96ee2c7f4318407bb80bbc65d",
-    "Size": 3002,
+    "Fixed": "fde95c63e94117898cb91e58548040b314f0de21f15f06cf0f68f503164d372a",
+    "Size": 3518,
     "File": "content/godot/game/sound_loader.gd",
     "Create": true
   }

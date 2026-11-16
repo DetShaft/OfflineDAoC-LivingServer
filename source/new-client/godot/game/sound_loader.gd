@@ -38,7 +38,8 @@ static func want(file: String, then: Callable, loop := false) -> void:
 		then.call(_streams[key])
 		return
 	if blocking:
-		_done(key, _read(file, loop), 0)
+		var t0 := Time.get_ticks_usec()
+		_done(key, _read(file, loop), Time.get_ticks_usec() - t0, true)
 		then.call(_streams[key])
 		return
 	if _waiting.has(key):
@@ -61,11 +62,17 @@ static func _read(file: String, loop: bool) -> AudioStream:
 static func _work(file: String, loop: bool, key: String) -> void:      # (a worker thread)
 	var t0 := Time.get_ticks_usec()
 	var st := _read(file, loop)
-	_done.call_deferred(key, st, Time.get_ticks_usec() - t0)
+	_done.call_deferred(key, st, Time.get_ticks_usec() - t0, false)
 
 
-static func _done(key: String, st: AudioStream, usec: int) -> void:    # (the main thread)
+## The live log (perf_live.log, "process a frame by part"): a read on the main thread is "sound loads", a frame it held
+## up, as before; a worker's read is "sound reads off thread", its time on the disk, which held no frame.
+static func _done(key: String, st: AudioStream, usec: int, on_main: bool) -> void:    # (the main thread)
 	load_us += usec
+	var tree := Engine.get_main_loop() as SceneTree
+	var perf := tree.root.get_node_or_null("Perf") if tree else null
+	if perf:
+		perf.proc_add("sound loads" if on_main else "sound reads off thread", usec)
 	_streams[key] = st
 	var waiting: Array = _waiting.get(key, [])
 	_waiting.erase(key)

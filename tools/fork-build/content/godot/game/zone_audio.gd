@@ -233,6 +233,8 @@ func _loop(st: Dictionary, snd: Dictionary, want: bool, fade_time: float, delta:
 		snd["on"] = false
 	var target := 1.0 if (snd["on"] and snd["rolled"]) else 0.0
 	snd["gain"] = move_toward(snd["gain"], target, delta / fade_time)
+	if snd["player"] != null and not is_instance_valid(snd["player"]):
+		snd["player"] = null                       # (freed elsewhere: make a new one)
 	var player: AudioStreamPlayer = snd["player"]
 	if snd["gain"] <= 0.0:
 		if player != null:
@@ -338,7 +340,10 @@ func _start(st: AudioStream, player: AudioStreamPlayer, loop: bool) -> void:
 	if not is_instance_valid(player) or player.is_queued_for_deletion():
 		return                                     # (faded out and freed while its file was being read)
 	if st == null:
-		player.queue_free()                        # an unreadable file: silent, and its voice is given back
+		# an unreadable file is silent: a one-shot gives its voice back; a looped bed keeps its silent player (its
+		# _loop frees it when it fades out; freeing it here would only make _loop ask again every frame)
+		if not loop:
+			player.queue_free()
 		return
 	player.stream = st
 	player.play(_rng.randf() * st.get_length() if loop else 0.0)   # (don't start every bed at its first sample)
