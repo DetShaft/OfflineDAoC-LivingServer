@@ -1,0 +1,59 @@
+# Weekly check of how far upstream (chris4aker/OfflineDAoC-LivingServer) has moved since the fork last reviewed it
+# (issue #66). It never merges or changes anything: it lists the new upstream commits and the files they touch in the
+# run summary, and shows a warning when there are any. The reviewed point is .github/upstream-reviewed.txt.
+name: upstream-drift
+
+on:
+  schedule:
+    - cron: "17 13 * * 1"   # Mondays 13:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare with upstream
+        run: |
+          set -euo pipefail
+          git fetch --quiet https://github.com/chris4aker/OfflineDAoC-LivingServer.git main:refs/remotes/upstream/main
+          reviewed=$(grep -v '^#' .github/upstream-reviewed.txt | grep -E '^[0-9a-f]{40}$' | head -1)
+          head=$(git rev-parse upstream/main)
+          {
+            echo "## Upstream drift"
+            echo
+            echo "Upstream main: \`${head:0:12}\`. Last reviewed: \`${reviewed:0:12}\`."
+            echo "Fork commits not upstream: $(git rev-list --count upstream/main..HEAD). Upstream commits not in the fork: $(git rev-list --count HEAD..upstream/main)."
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          if ! git cat-file -e "${reviewed}^{commit}" 2>/dev/null; then
+            echo "::warning::The reviewed commit ${reviewed:0:12} is not in upstream's history (rewritten?). Review upstream by hand."
+            exit 0
+          fi
+          new=$(git rev-list --count "${reviewed}..upstream/main")
+          if [ "$new" = "0" ]; then
+            echo "No upstream commits since the last review." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "::warning::Upstream has ${new} new commit(s) since ${reviewed:0:12}. See the run summary."
+          {
+            echo "### ${new} new upstream commit(s)"
+            echo
+            echo '```'
+            git log --no-merges --format='%h %ad %s' --date=short "${reviewed}..upstream/main"
+            echo '```'
+            echo
+            echo "### Files they touch"
+            echo
+            echo '```'
+            git diff --stat=120 "${reviewed}" upstream/main | tail -60
+            echo '```'
+            echo
+            echo "After reviewing, update .github/upstream-reviewed.txt to \`${head}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
