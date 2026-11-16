@@ -460,8 +460,8 @@
   {
     "Path": "new-client/godot/game/ui/game_ui.gd",
     "Released": "219cd58ad3e9d227e0436358379b8697fe147ad62df8c61d4d07234a8817d1b2",
-    "Fixed": "c66439d2379c3e8de1688e44a61ab864b11567e072e2bd6a26cbcae28b3f565a",
-    "Size": 80408,
+    "Fixed": "44539ca7d11cd557db78f522fc1498269fa8099c9f9d246576537d6016e7bb65",
+    "Size": 81324,
     "File": "content/godot/game/ui/game_ui.gd",
     "ReplaceAny": true
   },
@@ -556,8 +556,8 @@
   {
     "Path": "new-client/godot/game/net/server.gd",
     "Released": "13a8a3bf7bcc42fce06888b3b4cfd2425b8ea1c5c16f46b1c9dbf50f524d1348",
-    "Fixed": "1c26e7420c87da8541856b1214d0fbf6a934028b0099b615b36ca916fb898c29",
-    "Size": 83850,
+    "Fixed": "6bd961e2acb0c5490d2da311872193bd471b837ee83ecab110d5666ae228da15",
+    "Size": 84256,
     "File": "content/godot/game/net/server.gd",
     "ReplaceAny": true
   },
@@ -632,5 +632,13 @@
     "Size": 36766,
     "File": "content/godot/game/zone_loader.gd",
     "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/loot_roll_window.gd",
+    "Released": "",
+    "Fixed": "8cefc8bb3036af7ee1e853bc28a2abd2cd2f4201e9b570db44aab31760723f79",
+    "Size": 7491,
+    "File": "content/godot/game/ui/loot_roll_window.gd",
+    "Create": true
   }
 ]

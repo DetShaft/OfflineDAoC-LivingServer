@@ -13,6 +13,7 @@ signal created(ok: bool, why: String)               # a character creation came 
 signal deleted
 signal name_checked(name: String, result: int)      # 0 free, 1 not allowed, 2 taken
 signal world(kind: String, d: Dictionary)           # every world packet (DaocClient.ReadWorld), for ServerWorld / the UI
+signal loot_roll_line(text: String)                 # a "Loot roll #..." line from the server (LootRollWindow reads it)
 signal jumped(entry: Dictionary)                    # the server moved you inside the region (a teleport)
 
 var active := false                      # started by the launcher: the server is the game
@@ -586,6 +587,11 @@ func _on_world_inner(kind: String, d: Dictionary) -> void:
 					_quiet_delves -= 1                       # a GM's debug line for a hover's request (the old client
 					return                                   # asked only on a right-click, where it still shows)
 				_exchange_text(String(d.get("text", "")))
+				var said := String(d.get("text", ""))
+				if said.begins_with("Loot roll "):                  # a need or greed roll: the loot window's rows
+					loot_roll_line.emit(said)
+				elif said.begins_with("Choose with /loot "):       # (the typed way, for the original client)
+					return
 			if not playing:
 				_backlog.append([kind, d])
 				return

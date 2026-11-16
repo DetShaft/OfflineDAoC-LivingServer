@@ -40,6 +40,7 @@ SHIPPED = [
     "game/ui/friends_window.gd",
     "game/ui/lfg_window.gd",
     "game/ui/commander_panel.gd",
+    "game/ui/loot_roll_window.gd",
     "game/net/server_world.gd",
     "game/combat/spell_fx.gd",
     "game/perf_governor.gd",
@@ -51,6 +52,7 @@ CREATE_ONLY = [
     "game/ui/friends_window.gd",
     "game/ui/lfg_window.gd",
     "game/ui/commander_panel.gd",
+    "game/ui/loot_roll_window.gd",
 ]
 RELEASED_PATHS = [
     "game/ui/game_ui.gd",
@@ -121,8 +123,8 @@ def main(argv: list[str] | None = None) -> int:
             work,
             ignore=shutil.ignore_patterns(
                 ".godot", "content", "tests",
-                "friends_window.gd", "lfg_window.gd", "commander_panel.gd",
-                "friends_window.gd.uid", "lfg_window.gd.uid", "commander_panel.gd.uid",
+                "friends_window.gd", "lfg_window.gd", "commander_panel.gd", "loot_roll_window.gd",
+                "friends_window.gd.uid", "lfg_window.gd.uid", "commander_panel.gd.uid", "loot_roll_window.gd.uid",
             ),
         )
         (work / "tests").mkdir()
@@ -209,6 +211,17 @@ def main(argv: list[str] | None = None) -> int:
         # Cache still frozen after the load (no silent regeneration).
         if cache.read_text(encoding="utf-8") != cache_before:
             print("class cache changed during load_check", file=sys.stderr)
+            return 1
+        # The loot roll window's own probe: the server's "Loot roll #" lines and the /loot answers.
+        shutil.copy2(GODOT_PROJECT / "tests/loot_roll_probe.gd", work / "tests/loot_roll_probe.gd")
+        probe = subprocess.run(
+            [str(godot), "--headless", "--path", str(work), "-s", "res://tests/loot_roll_probe.gd"],
+            text=True, capture_output=True,
+        )
+        probe_out = (probe.stdout or "") + (probe.stderr or "")
+        sys.stdout.write("".join(line + "\n" for line in probe_out.splitlines() if "[loot_roll_probe]" in line))
+        if probe.returncode != 0 or "[loot_roll_probe] FAIL" in probe_out or "[loot_roll_probe] ok" not in probe_out:
+            print(f"loot_roll_probe failed (exit {probe.returncode})", file=sys.stderr)
             return 1
         print(
             "New-client script check OK "
