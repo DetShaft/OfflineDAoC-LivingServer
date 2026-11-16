@@ -515,7 +515,7 @@ internal sealed partial class MainForm : Form
     private Control BuildTabs()
     {
         var tabs = new DaocTabControl { Dock = DockStyle.Fill };
-        var population = new TabPage("Active Population") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
+        var population = new TabPage("Population") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
         var populationLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
         populationLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         populationLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -525,13 +525,13 @@ internal sealed partial class MainForm : Form
 
         var auction = new TabPage("Realm Exchange") { BackColor = Color.FromArgb(48, 38, 26), ForeColor = DaocTheme.Parchment };
         auction.Controls.Add(BuildAuctionPanel());
-        var groups = new TabPage("Active Groups") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
+        var groups = new TabPage("Groups") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
         groups.Controls.Add(BuildActiveGroupsPanel());
-        var rvr = new TabPage("Active RvR") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
+        var rvr = new TabPage("RvR") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
         rvr.Controls.Add(BuildActiveRvrPanel());
         var xpSettings = new TabPage("Options") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
         xpSettings.Controls.Add(BuildXpSettingsPanel());
-        tabs.TabPages.Add(population);
+        tabs.TabPages.Add(BuildActiveTab(population, groups, rvr));
         // Living Server fork (chris4aker/OfflineDAoC-SocialExpansion): its settings tab, second in the list (owner
         // 2026-10-28: it was second to last, after the Bot Goals tab). SocialExpansionSettingsControl.cs.
         var socialExpansion = new TabPage("Living Server") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
@@ -539,8 +539,6 @@ internal sealed partial class MainForm : Form
         socialExpansion.Controls.Add(_socialExpansionSettings);
         tabs.TabPages.Add(socialExpansion);
         AddChangelogTab(tabs);
-        tabs.TabPages.Add(groups);
-        tabs.TabPages.Add(rvr);
         var battlegrounds = new TabPage("Battlegrounds") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
         battlegrounds.Controls.Add(_battlegroundsPanel);
         tabs.TabPages.Add(battlegrounds);
@@ -560,6 +558,20 @@ internal sealed partial class MainForm : Form
         tabs.TabPages.Add(botGoals);
         tabs.TabPages.Add(auction);
         return tabs;
+    }
+
+    /// <summary>
+    /// One "Active" tab holding Population, Groups and RvR as subtabs (#70: they were three top-level tabs). The
+    /// refresh timer's Visible checks still hold: a control on an unselected subtab is not Visible.
+    /// </summary>
+    private static TabPage BuildActiveTab(params TabPage[] pages)
+    {
+        var active = new TabPage("Active") { BackColor = DaocTheme.Panel, ForeColor = DaocTheme.Text };
+        var subtabs = new DaocTabControl { Dock = DockStyle.Fill, ItemSize = new Size(150, 26) };
+        foreach (TabPage page in pages)
+            subtabs.TabPages.Add(page);
+        active.Controls.Add(subtabs);
+        return active;
     }
 
     private Control BuildXpSettingsPanel()
