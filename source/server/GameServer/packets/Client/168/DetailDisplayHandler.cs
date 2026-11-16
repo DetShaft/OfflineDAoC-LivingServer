@@ -815,7 +815,12 @@ namespace DOL.GS.PacketHandler.Client.v168
 						if (client.TrainerSkillCache != null)
 						{
 							// Search Id
-							sk = client.TrainerSkillCache.SelectMany(el => el.Item2).Where(e => ((objectType == 23 && e.Item2 == objectId && e.Item1 == 5) || (e.Item2 == objectId && e.Item1 != 5))).OrderBy(e => e.Item1).FirstOrDefault().Item3;
+							// The page each request names (the new client's trainer preview, #71): 21 a song, 22 a spell, 23 an
+							// ability. A style and a spell can share an id, so the page decides; the old match is the fallback.
+							int page = objectType == 21 ? (int)eSkillPage.Songs : objectType == 22 ? (int)eSkillPage.Spells : 5;
+							var all = client.TrainerSkillCache.SelectMany(el => el.Item2);
+							sk = all.FirstOrDefault(e => e.Item2 == objectId && e.Item1 == page)?.Item3
+								?? all.Where(e => ((objectType == 23 && e.Item2 == objectId && e.Item1 == 5) || (e.Item2 == objectId && e.Item1 != 5 && e.Item1 != (int)eSkillPage.Styles))).OrderBy(e => e.Item1).FirstOrDefault()?.Item3;
 						}
 						
 						if (sk == null) return;

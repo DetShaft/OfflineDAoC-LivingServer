@@ -594,6 +594,14 @@
     "ReplaceAny": true
   },
   {
+    "Path": "new-client/godot/game/ui/trainer_window.gd",
+    "Released": "8366abc8d8d2f95fa87ceb6bd6ea6d34fe6bac32575db3d9da36309983e0539c",
+    "Fixed": "5b0eea2348b80752fd66d2386d2985033eec226feaf7cda4ff3294d3d9d74d51",
+    "Size": 14032,
+    "File": "content/godot/game/ui/trainer_window.gd",
+    "ReplaceAny": true
+  },
+  {
     "Path": "new-client/godot/game/ui/panel_sheets.gd",
     "Released": "83ccc3ed912ee94c0d3d4f640e2336aadf4ed4b0162ac9422935e231edf4afbd",
     "Fixed": "830cbd6b51d4d0e7143d753a7d86fb49e0f51053b4e4c86b1bd0a8c5f80fb177",

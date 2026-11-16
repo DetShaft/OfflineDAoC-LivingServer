@@ -214,14 +214,50 @@ func _scroll_to(row: Control) -> void:
 		_preview_scroll.scroll_vertical = int(maxf(row.position.y - PREVIEW_ICON, 0))
 
 
+## A preview row's hover box and right click (#71): the server's own delve text of a skill not learned yet, the
+## same box as a Magic tab or quickbar entry. The trainer window's DetailRequests (DetailDisplayHandler "Trainer
+## Window"): 20 a style, 21 a song, 22 a spell, 23 an ability, by the id code 3 sent. The server answers from the
+## trainer list it sent last; while that is gone (it is cleared when your skills update) it says nothing and the
+## plain name and level stay as the hover text.
+const PAGE_DETAIL := {2: 20, 3: 22, 4: 21, 5: 23}
+
+
+class PreviewRow extends Control:
+	var detail_type := -1
+	var detail_id := -1
+	var title := ""
+
+	func _key() -> String:
+		return "tr:%d:%d" % [detail_type, detail_id]
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_MOUSE_ENTER and Server.active and detail_type > 0:
+			Server.prefetch_detail(_key(), detail_type, detail_id, title)
+
+	func _make_custom_tooltip(_for_text: String) -> Object:
+		if not Server.active or detail_type <= 0:
+			return null
+		var d := Server.item_lines(_key())
+		return null if d.is_empty() else ItemTooltip.text_box(String(d.caption), d.lines)
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT \
+				and Server.active and detail_type > 0:
+			Server.detail_shown(detail_type, detail_id)    # the information window, as a Magic tab right click
+			accept_event()
+
+
 func _preview_row(k: Dictionary, col: Color) -> Control:
-	var row := Control.new()
+	var row := PreviewRow.new()
 	row.custom_minimum_size = Vector2(PREVIEW_W - 30, PREVIEW_ICON + 1)
-	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.mouse_filter = Control.MOUSE_FILTER_STOP           # its own hover box and right click (the scroll still wheels)
 	var name := String(k.get("name", ""))
 	var kind := String(PAGE_KIND.get(int(k.page), "skill"))
 	row.tooltip_text = "%s
 Level %d %s" % [name, int(k.level), kind]
+	row.detail_type = int(PAGE_DETAIL.get(int(k.page), -1))
+	row.detail_id = int(k.get("id", -1))
+	row.title = name
 	# the Magic tab's lookup: a spell / style / ability's icons.csv picture + its border
 	var pick: Array = Server.skill_icon({2: "style", 3: "spell", 4: "spell"}.get(int(k.page), "icon"), int(k.icon))
 	var ic := TextureRect.new()
