@@ -24,7 +24,7 @@ var _skel: Skeleton3D
 var _contacts := {}                        # clip -> sorted contact times (seconds)
 var _last_clip := ""
 var _last_pos := 0.0
-static var _streams := {}                  # file -> AudioStream, shared by every character (was one cache each)
+const Sounds = preload("res://game/sound_loader.gd")   # the files, read off the main thread and shared
 static var _voice_ends: Array = []         # when each sound playing now ends (ticks ms), every character together
 const MAX_VOICES := 48                     # a raid's 250 casters: the nearest / loudest get a voice
 var _rng := RandomNumberGenerator.new()
@@ -208,8 +208,26 @@ func _play_row(row: Dictionary, delay: float) -> void:
 		await get_tree().create_timer(delay).timeout
 	if play_log.size() > 50:
 		play_log.pop_front()
+	# its file is read off the main thread the first time (a read held the frame up to 600 ms on a busy disk, owner's
+	# perf_live.log 2026-11-16): that first play starts when the file is in, or not at all if that comes too late
+	var file := String(row["file"])
+	if not Sounds.has(file):
+		Sounds.want(file, _play_late.bind(row, Time.get_ticks_msec()))
+		return
+	_play_stream(row, Sounds.stream(file))
+
+
+const LATE_MS := 250                       # a first play may start this late (a swing's sound long after it is wrong)
+
+
+func _play_late(st: AudioStream, row: Dictionary, asked: int) -> void:
+	if is_inside_tree() and Time.get_ticks_msec() - asked <= LATE_MS:
+		_play_stream(row, st)
+
+
+func _play_stream(row: Dictionary, st: AudioStream) -> void:
 	var p := AudioStreamPlayer3D.new()
-	p.stream = _stream(row["file"])
+	p.stream = st
 	p.bus = "Effects"
 	p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
 	p.pitch_scale = _rng.randf_range(row["rate"][0], row["rate"][1])
@@ -239,17 +257,6 @@ func _play_row(row: Dictionary, delay: float) -> void:
 	_voice_ends.append(now + int(p.stream.get_length() / maxf(p.pitch_scale, 0.1) * 1000.0) + 50)
 	p.finished.connect(p.queue_free)
 	p.play()
-
-
-static var load_us := 0                          # time spent reading sound files (debug: tests/walk_perf.gd)
-
-
-func _stream(file: String) -> AudioStream:
-	if not _streams.has(file):
-		var t0 := Time.get_ticks_usec()
-		_streams[file] = AudioStreamWAV.load_from_file(ProjectSettings.globalize_path("res://content/sounds".path_join(file)))
-		load_us += Time.get_ticks_usec() - t0
-	return _streams[file]
 
 
 func contacts_text() -> String:

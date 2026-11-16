@@ -22,7 +22,7 @@ var sound_flag := 0                         # cc_doors row (0: silent)
 var door_id := -1                           # the client's door id (ZoneLoader._make_doors) - what the server knows it by
 var server_driven := false                  # the server's game: it opens / closes the door (DoorState), no timer here
 static var _sounds = null                   # content/sounds/sounds.json
-static var _streams := {}
+const Sounds = preload("res://game/sound_loader.gd")
 
 
 func setup(closed_xf: Transform3D, open_xf: Transform3D, open_seconds: float) -> void:
@@ -125,11 +125,14 @@ func _sound(which: String) -> void:
 	var row: Dictionary = (_sounds.get("sounds", {}) as Dictionary).get(str(int(id)), {}) if id != null else {}
 	if row.is_empty():
 		return
-	var file := String(row.file)
-	if not _streams.has(file):
-		_streams[file] = AudioStreamWAV.load_from_file(ProjectSettings.globalize_path("res://content/sounds".path_join(file)))
+	Sounds.want(String(row.file), _play.bind(row))      # (read off the main thread the first time)
+
+
+func _play(st: AudioStream, row: Dictionary) -> void:
+	if st == null or not is_inside_tree():
+		return
 	var p := AudioStreamPlayer3D.new()
-	p.stream = _streams[file]
+	p.stream = st
 	p.bus = "Effects"
 	p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
 	p.pitch_scale = randf_range(float(row.rate[0]), float(row.rate[1]))

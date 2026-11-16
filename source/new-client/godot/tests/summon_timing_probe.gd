@@ -19,6 +19,7 @@ var _pet_drawn := false
 
 
 func _ready() -> void:
+	preload("res://game/sound_loader.gd").blocking = true   # a first play counts: read its file at once
 	v = get_tree().current_scene
 	PlayerData.message.connect(func(t, _k):
 		if watching:

@@ -484,8 +484,8 @@
   {
     "Path": "new-client/godot/game/net/server_world.gd",
     "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
-    "Fixed": "f3d79019196d3f5fe5cd02205032587faf4c077ad2b18c78be1c4813d055e393",
-    "Size": 88503,
+    "Fixed": "3b326496645bc6698e85ebe281289e37b0775570c5a2c43d51daec8c0917720d",
+    "Size": 88544,
     "File": "content/godot/game/net/server_world.gd",
     "ReplaceAny": true
   },
@@ -632,5 +632,53 @@
     "Size": 36766,
     "File": "content/godot/game/zone_loader.gd",
     "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/options_window.gd",
+    "Released": "181026fdbbdc157398fe384cbbf44926cacfdb35de5413d27f9778edef2f8c69",
+    "Fixed": "5bfec0e4e5672866fe2d51cd18479a6770d7c656f6dedd1395d2e2443d3e8257",
+    "Size": 29268,
+    "File": "content/godot/game/ui/options_window.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/world_host/bot_view.gd",
+    "Released": "55fb82e92be9254a06f23bbbada22878f97b721beee0099b38da0f8c328edef6",
+    "Fixed": "57914695783305793cccd04b227a790a497e37e4480d075bc615c0554fad0920",
+    "Size": 15434,
+    "File": "content/godot/game/world_host/bot_view.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/character_sounds.gd",
+    "Released": "7935854a85735a455976180fa4fec44b36b1ed336653c73d811d7dc353370c89",
+    "Fixed": "5eb2bd8e360eabd50b098fc92908f91fe1f688bc0849f212022136447bf1c8c2",
+    "Size": 12023,
+    "File": "content/godot/game/character_sounds.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/zone_audio.gd",
+    "Released": "3b8661caacb99f9cd37627da5aee65e73516f998c7f989d97b56ce59dc1fcbbc",
+    "Fixed": "eedf26b5c9312fbd957efe2e97b73aad80aaac3c18319d86f5be1722c3a61ade",
+    "Size": 16801,
+    "File": "content/godot/game/zone_audio.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/zone_door.gd",
+    "Released": "e72829ae5dbdb5868d99f4baa13e07f23541ea105e9838541bb09cd6c069bfc7",
+    "Fixed": "676d7fdfcdff89c610b24a3f5a6af647f63adace0561f8b258d89eed9cc0d630",
+    "Size": 6363,
+    "File": "content/godot/game/zone_door.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/sound_loader.gd",
+    "Released": "",
+    "Fixed": "b649eb05e09becf0a341f5dbc45ee40dd3c346e96ee2c7f4318407bb80bbc65d",
+    "Size": 3002,
+    "File": "content/godot/game/sound_loader.gd",
+    "Create": true
   }
 ]

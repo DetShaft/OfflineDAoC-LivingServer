@@ -8,6 +8,16 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.19 (in development)
+
+**New client: fewer hitches while you play.** The new client read each sound file from disk on the main thread
+the first time it played (a swing, a pain cry, a door, a zone sound), and the name plates re-read `settings.cfg` from
+disk once a second. Each read usually takes a few milliseconds, but in the owner's 2026-11-16 session, while the
+server was writing slowly to its database, single reads took 200-600 ms, and each one froze a frame. Sound files are
+now read on a worker thread: a first play starts when its file is in, and a character's sound that would start more
+than a quarter second late is skipped. The bot name options are read once and again when Options saves them. Tests
+only: not yet seen in game.
+
 ## Beta 1.1.18 — 2026-11-15
 
 **The 15-19 battleground is Killaloe (#83).** Abermenai was the Uthgard name. The zone stays region 253. On startup

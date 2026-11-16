@@ -2,6 +2,7 @@ extends Node
 ## Debug: pain / hit sounds for an Elf mage and a lucradan outside Mag Mell (owner 2026-10-10: silent).
 ##   --headless --skip-login --zone=200 --figure=elf_m --ui-test --probe=pain_probe
 func _ready() -> void:
+	preload("res://game/sound_loader.gd").blocking = true   # a first play counts: read its file at once
 	var v := get_tree().current_scene
 	await get_tree().create_timer(6.0).timeout
 	var p: Player = v.player

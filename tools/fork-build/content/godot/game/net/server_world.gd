@@ -153,7 +153,7 @@ func _on_world(kind: String, d: Dictionary) -> void:
 ## sound when a quest was taken or done - the server sends QuestBegun 7 / QuestCompleted 11, bells, keep horns; this
 ## client dropped the packet). Placed (zone + x / y / z, heard within radius) or, all 0, just played.
 static var _sound_rows := {}
-static var _sound_streams := {}
+const Sounds = preload("res://game/sound_loader.gd")
 
 
 func _sound_effect(d: Dictionary) -> void:
@@ -164,9 +164,12 @@ func _sound_effect(d: Dictionary) -> void:
 	if row.is_empty():
 		push_warning("server sound %d: not in sounds.json (pipeline/build_sounds.py --events)" % int(d.id))
 		return
-	var file := String(row.file)
-	if not _sound_streams.has(file):
-		_sound_streams[file] = AudioStreamWAV.load_from_file(ProjectSettings.globalize_path("res://content/sounds".path_join(file)))
+	Sounds.want(String(row.file), _sound_play.bind(d, row))   # (read off the main thread the first time)
+
+
+func _sound_play(st: AudioStream, d: Dictionary, row: Dictionary) -> void:
+	if st == null or not is_inside_tree():
+		return
 	var gain := randf_range(float(row.vol[0]), float(row.vol[1]))
 	var placed := int(d.zone) > 0 and int(d.radius) > 0
 	var p: Node
@@ -180,7 +183,7 @@ func _sound_effect(d: Dictionary) -> void:
 		p = p3
 	else:
 		p = AudioStreamPlayer.new()
-	p.stream = _sound_streams[file]
+	p.stream = st
 	p.bus = "Effects"
 	p.pitch_scale = randf_range(float(row.rate[0]), float(row.rate[1]))
 	p.volume_db = linear_to_db(maxf(gain, 0.001))

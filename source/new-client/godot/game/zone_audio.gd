@@ -30,7 +30,7 @@ var queues := {}
 var mp3_table := {}
 var polygroups := {}
 var _regions: Array = []
-var _streams := {}
+const Sounds = preload("res://game/sound_loader.gd")
 var _rng := RandomNumberGenerator.new()
 var _mp3: AudioStreamPlayer
 var _voices := {}                          # polygroup -> playing one-shots, oldest first
@@ -243,10 +243,9 @@ func _loop(st: Dictionary, snd: Dictionary, want: bool, fade_time: float, delta:
 		var row: Dictionary = _row_of(s)
 		if row.is_empty():
 			return                                 # dead reference: silent in the client too
-		player = _make_player(row, true, music)
+		player = _make_player(row, true, music)      # (starts itself once its file is read: _start)
 		snd["player"] = player
 		snd["vol"] = _pick(row["vol"])
-		player.play(_rng.randf() * player.stream.get_length())   # don't start every bed at its first sample
 	player.volume_db = linear_to_db(maxf(float(s["volume"]) / 100.0 * snd["vol"] * snd["gain"], 0.0001))
 
 
@@ -296,7 +295,8 @@ func _one_shot(st: Dictionary, snd: Dictionary, music: bool) -> void:
 	var stat: Dictionary = stats.get_or_add(st["def"]["name"], {"played": 0, "full": 0})
 	if group != "" and polygroups.has(group):
 		var voices: Array = _voices.get_or_add(group, [])
-		voices = voices.filter(func(v): return is_instance_valid(v) and v.playing and not v.has_meta("stolen"))
+		# (a voice whose file is still being read has no stream yet: it counts)
+		voices = voices.filter(func(v): return is_instance_valid(v) and (v.playing or v.stream == null) and not v.has_meta("stolen"))
 		_voices[group] = voices
 		if voices.size() >= int(polygroups[group]["limit"]):
 			stat["full"] += 1
@@ -317,39 +317,31 @@ func _one_shot(st: Dictionary, snd: Dictionary, music: bool) -> void:
 	if group != "" and _voices.has(group):
 		_voices[group].append(player)
 	player.finished.connect(player.queue_free)
-	player.play()
 
 
+## A voice for a row. Its file is read off the main thread the first time (a read held the frame up to 600 ms on a
+## busy disk, owner's perf_live.log 2026-11-16), so the voice starts itself when the file is in: at once when it has
+## been read before.
 func _make_player(row: Dictionary, loop: bool, music: bool) -> AudioStreamPlayer:
 	var player := AudioStreamPlayer.new()
-	player.stream = _stream(row["file"], loop)
 	player.set_meta("snd", String(row.get("name", "")))     # which client sound it is (debug_text, probes)
 	player.pitch_scale = _pick(row["rate"])
 	var pan := _pick(row["pan"])
 	var k := clampi(roundi((pan + 1.0) * 0.5 * (PAN_STEPS - 1)), 0, PAN_STEPS - 1)
 	player.bus = "%s_pan%d" % ["Music" if music else "Ambient", k]
 	add_child(player)
+	Sounds.want(String(row["file"]), _start.bind(player, loop), loop)
 	return player
 
 
-static var load_us := 0                          # time spent reading sound files (debug: tests/walk_perf.gd)
-
-
-func _stream(file: String, loop: bool) -> AudioStream:
-	var key := file + ("#loop" if loop else "")
-	if _streams.has(key):
-		return _streams[key]
-	var t0 := Time.get_ticks_usec()
-	var st := AudioStreamWAV.load_from_file(ProjectSettings.globalize_path("res://content/sounds".path_join(file)))
-	load_us += Time.get_ticks_usec() - t0
-	Perf.proc_add("sound loads", Time.get_ticks_usec() - t0)   # (a first play reads its file: the live log)
-	if loop and st != null:
-		var frame_bytes := (2 if st.stereo else 1) * 2
-		st.loop_mode = AudioStreamWAV.LOOP_FORWARD
-		st.loop_begin = 0
-		st.loop_end = st.data.size() / frame_bytes
-	_streams[key] = st
-	return st
+func _start(st: AudioStream, player: AudioStreamPlayer, loop: bool) -> void:
+	if not is_instance_valid(player) or player.is_queued_for_deletion():
+		return                                     # (faded out and freed while its file was being read)
+	if st == null:
+		player.queue_free()                        # an unreadable file: silent, and its voice is given back
+		return
+	player.stream = st
+	player.play(_rng.randf() * st.get_length() if loop else 0.0)   # (don't start every bed at its first sample)
 
 
 func _pick(r) -> float:
