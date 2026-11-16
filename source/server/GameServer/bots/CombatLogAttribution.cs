@@ -12,12 +12,17 @@ namespace DOL.GS
     /// ("You hit the goblin for 50 damage!", "You perform your Doublefrost perfectly!") to the player, who read them as
     /// their own. A bot's lines now name the bot ("Aldwin hits the goblin for 50 damage!") and go to the player's
     /// OTHERS' COMBAT channel (<see cref="eChatType.CT_OthersCombat"/>), the way another player's fighting shows.
-    /// Real pets are unchanged.
+    /// By default (owner 2026-11-16: "Drop them by default") the owner sees only what live shows for another player:
+    /// "Aldwin attacks the goblin with his sword!", with no damage numbers, crits, styles or spell lines. The server
+    /// setting <c>bots / bot_combat_log_details</c> brings those back, still named after the bot. Real pets are unchanged.
     /// </summary>
     public static class CombatLogAttribution
     {
         /// <summary>The channel a bot's combat lines go to on its owner's log.</summary>
         public const eChatType Channel = eChatType.CT_OthersCombat;
+
+        /// <summary>Whether owners see their bots' damage numbers, crits, styles and spell lines (off by default).</summary>
+        public static bool ShowDetails => ServerProperties.Properties.BOT_COMBAT_LOG_DETAILS;
 
         /// <summary>Whether <paramref name="living"/> is a bot playing a character, not a pet.</summary>
         public static bool IsCharacterBot(GameLiving living) => living is GameBot;
@@ -163,7 +168,7 @@ namespace DOL.GS
 
             foreach (string line in AttackerLines(bot.Name, ad.Target?.GetName(0, false), ad.AttackResult, ad.AttackType,
                 ad.Damage, ad.Modifier, ad.CriticalDamage, ad.CriticalChance, ad.Style?.Name, ad.StyleDamage, ad.Style?.GrowthRate ?? 0,
-                ad.BroadcastMessage, ad.MissChance))
+                ad.BroadcastMessage, ad.MissChance, ShowDetails))
                 SendToOwner(owner, line);
         }
 
@@ -176,7 +181,7 @@ namespace DOL.GS
                 return;
 
             foreach (string line in TargetLines(ad.Attacker?.GetName(0, true), bot.Name, ad.AttackResult, ad.AttackType,
-                ad.Damage, ad.Modifier, ad.CriticalDamage))
+                ad.Damage, ad.Modifier, ad.CriticalDamage, ad.BroadcastMessage, ShowDetails))
                 SendToOwner(owner, line);
         }
 
@@ -186,9 +191,18 @@ namespace DOL.GS
         /// <summary>The lines naming a bot as the attacker. Pure.</summary>
         public static List<string> AttackerLines(string bot, string target, eAttackResult result, AttackData.eAttackType type,
             int damage, int modifier, int criticalDamage, int criticalChance, string styleName, int styleDamage, double growthRate,
-            string broadcast, double missChance)
+            string broadcast, double missChance, bool details = true)
         {
             List<string> lines = new();
+
+            // Live: another player's fighting shows only as the area line ("Aldwin attacks the goblin with his sword!").
+            if (!details)
+            {
+                if (!string.IsNullOrEmpty(broadcast))
+                    lines.Add(broadcast);
+
+                return lines;
+            }
 
             switch (result)
             {
@@ -227,9 +241,18 @@ namespace DOL.GS
 
         /// <summary>The lines naming a bot as the one attacked. Pure.</summary>
         public static List<string> TargetLines(string attacker, string bot, eAttackResult result, AttackData.eAttackType type,
-            int damage, int modifier, int criticalDamage)
+            int damage, int modifier, int criticalDamage, string broadcast = null, bool details = true)
         {
             List<string> lines = new();
+
+            // Live: an attack on another player shows only as the area line, and spell damage not at all.
+            if (!details)
+            {
+                if (type is not AttackData.eAttackType.Spell && !string.IsNullOrEmpty(broadcast))
+                    lines.Add(broadcast);
+
+                return lines;
+            }
 
             switch (result)
             {

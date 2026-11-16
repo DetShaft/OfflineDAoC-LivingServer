@@ -74,6 +74,25 @@ namespace DOL.UnitTests
         }
 
         [Test]
+        public void ByDefaultOnlyTheLiveAreaLineShows()
+        {
+            Assert.That(CombatLogAttribution.AttackerLines("Aldwin", "the goblin", eAttackResult.HitStyle, eAttackType.MeleeOneHand,
+                85, -4, 10, 7, "Doublefrost", 30, 0.4, "Aldwin attacks the goblin with his sword!", 0, details: false),
+                Is.EqualTo(new[] { "Aldwin attacks the goblin with his sword!" }));
+            Assert.That(CombatLogAttribution.AttackerLines("Aldwin", "the goblin", eAttackResult.Missed, eAttackType.MeleeOneHand,
+                0, 0, 0, 0, null, 0, 0, "Aldwin attacks the goblin and misses!", 12.5, details: false),
+                Is.EqualTo(new[] { "Aldwin attacks the goblin and misses!" }));
+            Assert.That(CombatLogAttribution.TargetLines("The goblin", "Aldwin", eAttackResult.HitUnstyled, eAttackType.MeleeOneHand,
+                33, 2, 5, "The goblin attacks Aldwin and hits!", details: false), Is.EqualTo(new[] { "The goblin attacks Aldwin and hits!" }));
+            Assert.That(CombatLogAttribution.TargetLines("The goblin", "Aldwin", eAttackResult.HitUnstyled, eAttackType.Spell,
+                40, 0, 0, null, details: false), Is.Empty);
+        }
+
+        [Test]
+        public void DetailsAreOffByDefault() =>
+            Assert.That(DOL.GS.ServerProperties.Properties.BOT_COMBAT_LOG_DETAILS, Is.False);
+
+        [Test]
         public void ChannelIsOthersCombat() =>
             Assert.That(CombatLogAttribution.Channel, Is.EqualTo(DOL.GS.PacketHandler.eChatType.CT_OthersCombat));
     }
