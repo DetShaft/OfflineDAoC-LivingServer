@@ -666,14 +666,21 @@ CATA_SLOTS = {'body': 1, 'legs': 3, 'boot': 4, 'arms': 5, 'glove': 6}     # text
 # robe items (objects.csv Cata Body# 16, Arms# / Legs# -1) wear "robBody" textures laid out for it (issue #37);
 # Fig3Figure.robe_worn hides the arms, legs and kilt under it
 ROBE_BODY_MESH = 7
+CATA_MESH_COLS = {'glove': 74, 'boot': 75}                 # objects.csv Cata Gloves# / Boots# (#45)
 OBJECT_SKIN_COLS = {4: 'body', 6: 'arms', 7: 'glove', 9: 'legs', 10: 'boot'}  # objects.csv Skins columns (male)
 
 
 def cata_outfit(rows, item_ids, gender='m'):
     """{fig3 part slot: (variant, texture)} for worn items, the way the client dresses Catacombs figures:
     objects.csv item -> its classic pskins skin per slot -> the pskins set named "Cata <same name>" -> that set's
-    Catacombs texture for the slot, whose name carries the mesh variant (leaBody01 = body mesh 1, chnBody05 = 5,
-    cthArms01 = arms 1, cthboot01 = boots 1)."""
+    Catacombs texture for the slot.
+
+    The mesh variant is NOT the texture's number (#45): every variant of a part shares one texture layout
+    (CLIENT-MODDING-GUIDE 13.5), and the texture numbers (chnBody05, leaBody02) don't follow the mesh. Gloves and boots
+    take the item's own Cata Gloves# / Boots# (objects.csv cols 74 / 75: 1 cloth, 2 chain, 3 leather, 4 plate, 6
+    scale, 7 cloth; Gloves04 / Boots04 are the tall plate meshes). The body's Cata Body# (col 73) is a style number
+    (1-21: plate 12, scale 18, robe 16 ...) that the client maps to a body mesh by a table we don't have, so bodies
+    keep the starter mesh 1, except robes (the long mesh 7, #37). Arms and legs have one mesh."""
     import re
     objects = {r[0]: r for r in rows('objects.csv') if r and r[0].isdigit()}
     pskins = {r[0]: r for r in rows('pskins.csv') if r and r[0].isdigit()}
@@ -703,9 +710,13 @@ def cata_outfit(rows, item_ids, gender='m'):
                     continue
                 if m.group(1) == 'body' and not low.endswith('_' + gender):
                     continue
-                variant = int(m.group(2))
+                variant = 1
                 if m.group(1) == 'body' and low.startswith('robbody'):
                     variant = ROBE_BODY_MESH                # a robe sheet is laid out for the long robe mesh (#37)
+                elif word in CATA_MESH_COLS and len(r) > CATA_MESH_COLS[word]:
+                    pick = r[CATA_MESH_COLS[word]].strip()
+                    if pick.isdigit() and 1 <= int(pick) <= 8:
+                        variant = int(pick)                 # the item's Cata Gloves# / Boots#
                 out[CATA_SLOTS[word]] = (variant, tex)
     return out
 

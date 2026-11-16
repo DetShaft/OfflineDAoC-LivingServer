@@ -572,8 +572,8 @@
   {
     "Path": "new-client/godot/game/fig3_figure.gd",
     "Released": "e2961fc3113b939f6bfa4363b866cd1851971ae0add8adbed7a91dd3148784ff",
-    "Fixed": "ac9216eca208dc28be613a20478edea0982916042f2df5805e60964edad49d9a",
-    "Size": 33432,
+    "Fixed": "b03543fd618f867970df7137a1f8d6c570938e23de7cabdf193f1aaee4e246ac",
+    "Size": 34042,
     "File": "content/godot/game/fig3_figure.gd",
     "ReplaceAny": true
   },
