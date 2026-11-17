@@ -69,48 +69,77 @@ namespace DOL.GS
             row.Type == "SummonCommander" && row.Power == -PowerPercent && Math.Abs(row.Damage + PetLevelPercent) < 0.001 &&
             row.LifeDrainReturn == commander.TemplateId && Math.Abs(row.CastTime - 6.0) < 0.001;
 
+        /// <summary>Adds or corrects the commanders in the server's database. Called once at startup.</summary>
         public static void Ensure()
         {
             IObjectDatabase db = GameServer.Database;
             if (db == null)
                 return;
+            int failed = Ensure(db);
+            if (failed > 0)
+                log.Error($"Bonedancer specialty commanders: {failed} of {Commanders.Length} commanders could not be written; " +
+                    "Bonedancers cannot summon them until this is fixed (see the errors above).");
+        }
+
+        /// <summary>
+        /// Writes each commander's template spells, summon spell row and level-40 line row, keeping rows that already
+        /// match (a hand-patched database included). DbSpell and DbLineXSpell are world-data tables whose rows default to
+        /// AllowAdd = false, so ObjectDatabase refused the new rows with only a warning ("AddObject: DataObject (Spell,
+        /// ObjectId{10106}) not allowed to be added to Database") and 1.1.19 never added the Keeper or Captain. New rows
+        /// are marked as allowed, and every write's result is checked. Returns how many commanders failed.
+        /// </summary>
+        public static int Ensure(IObjectDatabase db)
+        {
+            int failed = 0;
             foreach (Commander commander in Commanders)
             {
                 try
                 {
                     if (db.SelectObject<DbNpcTemplate>(DB.Column("TemplateId").IsEqualTo(commander.TemplateId)) is not DbNpcTemplate template)
                     {
-                        log.Warn($"Bonedancer specialty commanders: npc template {commander.TemplateId} is missing, {commander.Name} is not added.");
+                        log.Error($"Bonedancer specialty commanders: npc template {commander.TemplateId} is missing, {commander.Name} is not added.");
+                        failed++;
                         continue;
                     }
                     if (commander.TemplateSpells != null && template.Spells != commander.TemplateSpells)
                     {
                         template.Spells = commander.TemplateSpells;
-                        db.SaveObject(template);
+                        Require(db.SaveObject(template), $"save npc template {commander.TemplateId}");
                     }
 
                     DbSpell spell = db.SelectObject<DbSpell>(DB.Column("SpellID").IsEqualTo(commander.SpellId));
                     if (spell == null)
                     {
-                        spell = new DbSpell { ObjectId = commander.SpellId.ToString() };
+                        spell = new DbSpell { ObjectId = commander.SpellId.ToString(), AllowAdd = true };
                         Fill(spell, commander);
-                        db.AddObject(spell);
+                        Require(db.AddObject(spell), $"add spell {commander.SpellId}");
                     }
                     else if (!Matches(spell, commander))
                     {
                         Fill(spell, commander);
-                        db.SaveObject(spell);
+                        Require(db.SaveObject(spell), $"save spell {commander.SpellId}");
                     }
 
                     IList<DbLineXSpell> taught = db.SelectObjects<DbLineXSpell>(DB.Column("SpellID").IsEqualTo(commander.SpellId));
                     if (!taught.Any(row => row.LineName == commander.Line && row.Level == LineLevel))
-                        db.AddObject(new DbLineXSpell { LineName = commander.Line, SpellID = commander.SpellId, Level = LineLevel });
+                    {
+                        var line = new DbLineXSpell { LineName = commander.Line, SpellID = commander.SpellId, Level = LineLevel, AllowAdd = true };
+                        Require(db.AddObject(line), $"add {commander.Line} level {LineLevel} line row");
+                    }
                 }
                 catch (Exception e)
                 {
-                    log.Warn($"Bonedancer specialty commanders: could not add {commander.Name}: {e.Message}");
+                    log.Error($"Bonedancer specialty commanders: could not add {commander.Name}: {e.Message}", e);
+                    failed++;
                 }
             }
+            return failed;
+        }
+
+        private static void Require(bool written, string what)
+        {
+            if (!written)
+                throw new InvalidOperationException($"the database refused to {what}");
         }
     }
 

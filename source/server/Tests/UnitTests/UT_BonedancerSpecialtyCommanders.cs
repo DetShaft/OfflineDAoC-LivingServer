@@ -47,6 +47,24 @@ namespace DOL.UnitTests
         }
 
         [Test]
+        public void AThreeSlotCommander_HoldsThreeLevel37Minions_ATwoSlotOneHoldsTwo()
+        {
+            // Owner, 2026-11-17: the Dread Commander kept only two minions; the flat 75 budget refused the third.
+            Assert.That(3 * 37, Is.LessThanOrEqualTo(CommanderPet.LevelBudgetFor(3)));
+            Assert.That(CommanderPet.LevelBudgetFor(3), Is.EqualTo(150), "live's combined minion levels");
+            Assert.That(2 * 37, Is.LessThanOrEqualTo(CommanderPet.LevelBudgetFor(2)));
+            Assert.That(3 * 37, Is.GreaterThan(CommanderPet.LevelBudgetFor(2)), "the Bone Commander stays at two");
+        }
+
+        [Test]
+        public void TheCommanderCloak_IsAPlainCloakInTheCloakSlot()
+        {
+            var cloak = CommanderPet.CreateCommanderCloak();
+            Assert.That(cloak.Item_Type, Is.EqualTo((int)eInventorySlot.Cloak));
+            Assert.That(cloak.Model, Is.EqualTo(57));
+        }
+
+        [Test]
         public void ACommander_LandsSpellsLikeItsOwner_AMinionHalfway()
         {
             // To-hit against a level-50 target: 87.5 + (caster - 50) / 2 + (caster - 50) for an NPC caster.
