@@ -139,7 +139,39 @@ namespace DOL.UnitTests
                 Assert.That(O.Allows(O.Kind.TauntOnly, kit, order), Is.False, order.ToString());
 
             string menu = O.Menu(O.Kind.TauntOnly, "Hi.", eAggressionState.Defensive, false, eWalkState.Follow, kit, default);
-            Assert.That(menu, Is.EqualTo("Hi.\nShall I [taunt] the enemy away from you?"));
+            Assert.That(menu, Is.EqualTo("Hi.\nI know no weapon styles.\nShall I [taunt] the enemy away from you?"));
+
+            string armed = O.Menu(O.Kind.TauntOnly, "Hi.", eAggressionState.Defensive, false, eWalkState.Follow, kit, default,
+                new[] { "Cut", "Numb" });
+            Assert.That(armed, Is.EqualTo("Hi.\nIn a fight I use Cut and Numb.\nShall I [taunt] the enemy away from you?"));
+        }
+
+        [Test]
+        public void TheStylesLine_SpeaksForFightersOnly()
+        {
+            // Issue #118: Spiritmaster and Enchanter melee pets say which styles they know, or that they know none.
+            O.Kit spirit = O.KitFor(eCharacterClass.Spiritmaster, "spirit warrior");
+            Assert.That(O.StylesLine(spirit, new[] { "Numb", "Stun", "Disable" }), Is.EqualTo("In a fight I use Numb, Stun and Disable."));
+            Assert.That(O.StylesLine(O.KitFor(eCharacterClass.Enchanter, "underhill ally"), null), Is.EqualTo("I know no weapon styles."));
+            Assert.That(O.StylesLine(O.KitFor(eCharacterClass.Enchanter, "underhill compatriot"), new string[0]), Is.EqualTo("I know no weapon styles."));
+            // A caster pet says nothing about styles.
+            Assert.That(O.StylesLine(O.KitFor(eCharacterClass.Enchanter, "underhill zealot"), null), Is.Null);
+            Assert.That(O.StylesLine(O.KitFor(eCharacterClass.Theurgist, "earth elemental"), null), Is.Null);
+
+            string menu = O.Menu(O.Kind.Walker, "Hi.", eAggressionState.Defensive, false, eWalkState.Follow, spirit,
+                new O.KitState(O.Weapon.Axe, false, false), new[] { "Numb" });
+            Assert.That(menu, Does.Contain("In a fight I use Numb."));
+        }
+
+        [Test]
+        public void StyleNames_AreLowestLevelFirstAndDistinct()
+        {
+            DOL.GS.Styles.Style Make(string name, int id, int level) => new(new DOL.Database.DbStyle
+            {
+                Name = name, ID = id, StyleID = id, SpecKeyName = Specs.Shields, SpecLevelRequirement = level,
+            }, null);
+            var names = O.StyleNames(new[] { Make("Stun", 2, 8), Make("Numb", 1, 3), null, Make("numb", 1, 3) });
+            Assert.That(names, Is.EqualTo(new[] { "Numb", "Stun" }));
         }
 
         [TestCase("sword", O.Weapon.Sword)]

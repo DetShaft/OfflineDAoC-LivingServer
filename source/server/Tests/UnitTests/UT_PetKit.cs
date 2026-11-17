@@ -113,6 +113,45 @@ namespace DOL.UnitTests
             Assert.That(CommanderPet.SpellOrder(P.None), Is.EqualTo(new[] { P.Debuff, P.Other, P.Damage }));
         }
 
+        [Test]
+        public void NecromancerServants_FightWithTheTooltipsWeaponLine()
+        {
+            // Issue #117: Call Reanimated Servant says "Thrust & Shield Styles", Call Necroservant "Slash & Shield Styles".
+            Assert.That(PetKit.ServantWeaponSpec("reanimated servant"), Is.EqualTo(Specs.Thrust));
+            Assert.That(PetKit.ServantWeaponSpec("Necroservant"), Is.EqualTo(Specs.Slash));
+            foreach (string other in new[] { "lesser zombie servant", "zombie servant", "greater necroservant", "abomination", null })
+                Assert.That(PetKit.ServantWeaponSpec(other), Is.Null, other ?? "null");
+            Assert.That(PetKit.ServantWeaponModel(Specs.Thrust), Is.EqualTo(PetKit.ServantThrustModel));
+            Assert.That(PetKit.ServantWeaponModel(Specs.Slash), Is.EqualTo(PetKit.ServantSlashModel));
+            // The servants' weapon models are not kit weapons, so taunting never swaps their hands.
+            Assert.That(PetKit.WeaponOfModel(PetKit.ServantThrustModel), Is.EqualTo(W.None));
+            Assert.That(PetKit.WeaponOfModel(PetKit.ServantSlashModel), Is.EqualTo(W.None));
+        }
+
+        [Test]
+        public void NecromancerServantStyles_AreTheArmsmansLineAndShieldUpToTheirLevel()
+        {
+            var asked = new List<(string Spec, int Class)>();
+            List<Style> Source(string spec, int classId)
+            {
+                asked.Add((spec, classId));
+                return spec == Specs.Shields
+                    ? new List<Style> { StyleOf("Numb", 1, 3), StyleOf("Stun", 2, 8), StyleOf("Bash", 3, 29) }
+                    : new List<Style> { StyleOf("Lunge", 11, 2, eObjectType.ThrustWeapon), StyleOf("Thrust B", 12, 30, eObjectType.ThrustWeapon) };
+            }
+
+            List<Style> styles = PetKit.ServantStyles(Specs.Thrust, 11, Source);
+            Assert.That(styles.Select(style => style.Name), Is.EqualTo(new[] { "Lunge", "Numb", "Stun" }));
+            Assert.That(asked, Is.EquivalentTo(new[] { (Specs.Thrust, (int)eCharacterClass.Armsman), (Specs.Shields, (int)eCharacterClass.Armsman) }));
+            Assert.That(PetKit.ServantStyles(null, 50, Source), Is.Empty);
+        }
+
+        [Test]
+        public void TheAbomination_TowersOverTheOtherServants()
+        {
+            Assert.That(NecromancerPet.AbominationSize, Is.GreaterThan(50));
+        }
+
         private static Style StyleOf(string name, int id, int level, eObjectType weapon = eObjectType.Shield)
         {
             var row = new DOL.Database.DbStyle
