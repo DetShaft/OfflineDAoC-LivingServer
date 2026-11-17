@@ -3,6 +3,7 @@ using System.Linq;
 using DOL.Database;
 using DOL.Database.Connection;
 using DOL.GS;
+using DOL.Logging;
 using NUnit.Framework;
 
 namespace DOL.UnitTests
@@ -20,6 +21,9 @@ namespace DOL.UnitTests
         private string _folder;
         private IObjectDatabase _db;
 
+        [OneTimeSetUp]
+        public void InitializeLogging() => LoggerManager.InitializeWithExplicitLibrary(null, LogLibrary.None);
+
         [SetUp]
         public void SetUp()
         {
@@ -28,6 +32,7 @@ namespace DOL.UnitTests
                 $"Data Source={Path.Combine(_folder, "world.db")};Pooling=False");
             _db.RegisterDataObject(typeof(DbNpcTemplate));
             _db.RegisterDataObject(typeof(DbSpell));
+            _db.RegisterDataObject(typeof(DbSpellXCustomValues)); // DbSpell's relation: an add reports failure without it
             _db.RegisterDataObject(typeof(DbLineXSpell));
             foreach (int id in new[] { 211, 212, 213 })
                 Assert.That(_db.AddObject(new DbNpcTemplate { TemplateId = id, Name = $"template {id}", Model = "1", Spells = id == 213 ? "60119" : "" }), Is.True);
