@@ -365,11 +365,29 @@ namespace DOL.GS
 
         public override bool Interact(GamePlayer player)
         {
+            // Issue #35: the owner's right-click opens the pet's order dialog (taunt only).
+            if (PetOrders.TryInteract(this, player))
+                return true;
             return WhisperReceive(player, "arawn");
+        }
+
+        /// <summary>Taunt on or off from the order dialog: the pet's taunt stance (TauntEffect), which casts its taunt on each new target.</summary>
+        public override void SetTaunting(bool taunting)
+        {
+            TauntEffect tauntEffect = EffectList.GetOfType<TauntEffect>();
+            if (taunting && tauntEffect == null)
+                new TauntEffect().Start(this);
+            else if (!taunting && tauntEffect != null)
+                tauntEffect.Stop();
+            base.SetTaunting(taunting);
+            if (taunting && TargetObject != null)
+                Taunt();
         }
 
         public override bool WhisperReceive(GameLiving source, string text)
         {
+            if (PetOrders.TryWhisper(this, source, text))
+                return true;
             // Everything below this comment should not exist in a strict 1.65 level. Feel free to add it back in if desired.
             return false;
             GamePlayer owner = (Brain as IControlledBrain).Owner as GamePlayer;

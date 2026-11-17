@@ -19,7 +19,7 @@ namespace DOL.UnitTests
         [TestCase(eCharacterClass.Animist, O.Kind.Stationary)]
         [TestCase(eCharacterClass.Theurgist, O.Kind.Stationary)]
         [TestCase(eCharacterClass.Bonedancer, O.Kind.None)]
-        [TestCase(eCharacterClass.Necromancer, O.Kind.None)]
+        [TestCase(eCharacterClass.Necromancer, O.Kind.TauntOnly)]
         public void EachClassGetsItsKindOfPet(eCharacterClass ownerClass, O.Kind kind) =>
             Assert.That(O.KindFor(ownerClass), Is.EqualTo(kind));
 
@@ -33,6 +33,8 @@ namespace DOL.UnitTests
         [TestCase("come", O.Order.ComeHere)]
         [TestCase("", O.Order.Menu)]
         [TestCase("pet", O.Order.Menu)]
+        [TestCase("taunt", O.Order.Taunt)]
+        [TestCase("stop taunting", O.Order.StopTaunting)]
         [TestCase("hello there", O.Order.None)]
         public void KeywordsParse(string text, O.Order order) => Assert.That(O.Parse(text), Is.EqualTo(order));
 
@@ -81,6 +83,99 @@ namespace DOL.UnitTests
         {
             Assert.That(O.Greeting(eCharacterClass.Hunter, false), Is.Not.EqualTo(O.Greeting(eCharacterClass.Spiritmaster, false)));
             Assert.That(O.Greeting(eCharacterClass.Hunter, charmed: true), Does.Contain("bound"));
+        }
+
+        // Step 2 (owner, 2026-11-17): per-class kits.
+        [Test]
+        public void SpiritmasterPets_ChooseAOneHandedWeapon_AndTaunt()
+        {
+            O.Kit kit = O.KitFor(eCharacterClass.Spiritmaster, "spirit warrior");
+            Assert.That(kit.Weapons, Is.EqualTo(new[] { O.Weapon.Sword, O.Weapon.Axe, O.Weapon.Hammer }));
+            Assert.That(kit.Taunts, Is.True);
+        }
+
+        [TestCase("underhill ally", true, true)]
+        [TestCase("underhill compatriot", true, true)]
+        [TestCase("underhill friend", false, true)]
+        [TestCase("underhill companion", false, false)]
+        [TestCase("underhill zealot", false, false)]
+        public void EnchanterPets_OnlyAllyAndCompatriotTakeWeapons(string pet, bool weapons, bool taunts)
+        {
+            O.Kit kit = O.KitFor(eCharacterClass.Enchanter, pet);
+            Assert.That(kit.Weapons.Count > 0, Is.EqualTo(weapons));
+            if (weapons)
+                Assert.That(kit.Weapons, Is.EqualTo(new[] { O.Weapon.Blade, O.Weapon.Mace, O.Weapon.Dagger }));
+            Assert.That(kit.Taunts, Is.EqualTo(taunts));
+        }
+
+        [TestCase(eCharacterClass.Cabalist, "ruby simulacrum")]
+        [TestCase(eCharacterClass.Necromancer, "abomination")]
+        public void CabalistAndNecromancerPets_TauntOnly_NoWeapons(eCharacterClass owner, string pet)
+        {
+            O.Kit kit = O.KitFor(owner, pet);
+            Assert.That(kit.Weapons, Is.Empty);
+            Assert.That(kit.Taunts, Is.True);
+        }
+
+        [TestCase(eCharacterClass.Hunter)]
+        [TestCase(eCharacterClass.Druid)]
+        [TestCase(eCharacterClass.Theurgist)]
+        [TestCase(eCharacterClass.Animist)]
+        public void OtherPets_KeepThePlainDialog(eCharacterClass owner)
+        {
+            O.Kit kit = O.KitFor(owner, "pet");
+            Assert.That(kit.Weapons, Is.Empty);
+            Assert.That(kit.Taunts, Is.False);
+            Assert.That(O.Allows(O.KindFor(owner), kit, O.Order.Taunt), Is.False);
+        }
+
+        [Test]
+        public void TheNecromancerPet_TakesTauntAndNothingElse()
+        {
+            O.Kit kit = O.KitFor(eCharacterClass.Necromancer, "necroservant");
+            Assert.That(O.Allows(O.Kind.TauntOnly, kit, O.Order.Taunt), Is.True);
+            Assert.That(O.Allows(O.Kind.TauntOnly, kit, O.Order.StopTaunting), Is.True);
+            foreach (O.Order order in new[] { O.Order.Aggressive, O.Order.Assist, O.Order.Follow, O.Order.Stay })
+                Assert.That(O.Allows(O.Kind.TauntOnly, kit, order), Is.False, order.ToString());
+
+            string menu = O.Menu(O.Kind.TauntOnly, "Hi.", eAggressionState.Defensive, false, eWalkState.Follow, kit, default);
+            Assert.That(menu, Is.EqualTo("Hi.\nShall I [taunt] the enemy away from you?"));
+        }
+
+        [TestCase("sword", O.Weapon.Sword)]
+        [TestCase(" Axe ", O.Weapon.Axe)]
+        [TestCase("hammer", O.Weapon.Hammer)]
+        [TestCase("blade", O.Weapon.Blade)]
+        [TestCase("blunt", O.Weapon.Mace)]
+        [TestCase("mace", O.Weapon.Mace)]
+        [TestCase("piercing", O.Weapon.Dagger)]
+        [TestCase("dagger", O.Weapon.Dagger)]
+        [TestCase("taunt", O.Weapon.None)]
+        public void WeaponKeywordsParse(string text, O.Weapon weapon) => Assert.That(O.ParseWeapon(text), Is.EqualTo(weapon));
+
+        [Test]
+        public void TheMenu_OffersTheOtherWeapons_AndTaunt()
+        {
+            O.Kit kit = O.KitFor(eCharacterClass.Spiritmaster, "spirit soldier");
+            string menu = O.Menu(O.Kind.Walker, "Hi.", eAggressionState.Defensive, false, eWalkState.Follow, kit,
+                new O.KitState(O.Weapon.Axe, false, false));
+            Assert.That(menu, Does.Contain("I hold an axe. I can take up [sword] or [hammer] instead."));
+            Assert.That(menu, Does.Contain("[taunt]"));
+            foreach (string keyword in new[] { "sword", "hammer" })
+                Assert.That(O.ParseWeapon(keyword), Is.Not.EqualTo(O.Weapon.None));
+
+            string taunting = O.Menu(O.Kind.Walker, "Hi.", eAggressionState.Defensive, false, eWalkState.Follow, kit,
+                new O.KitState(O.Weapon.Axe, true, true));
+            Assert.That(taunting, Does.Contain("behind my shield"));
+            Assert.That(taunting, Does.Contain("[stop taunting]"));
+            Assert.That(taunting, Does.Not.Contain("[taunt]"));
+        }
+
+        [Test]
+        public void APlainPet_HasNoWeaponOrTauntLine()
+        {
+            string menu = O.Menu(O.Kind.Walker, "Hi.", eAggressionState.Defensive, false, eWalkState.Follow);
+            Assert.That(menu, Does.Not.Contain("taunt").And.Not.Contain("I hold"));
         }
     }
 }

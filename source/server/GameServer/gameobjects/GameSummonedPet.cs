@@ -13,6 +13,22 @@ namespace DOL.GS
 
         public bool CountsTowardsPetLimit { get; set; }
 
+        /// <summary>True while the pet taunts: it draws more of its target's attention (ControlledMobBrain.ModifyDamageWithTaunt).</summary>
+        public bool Taunting { get; protected internal set; }
+
+        /// <summary>True while taunting gave the pet a shield (PetKit: only a pet with a one-handed weapon gets one).</summary>
+        public bool TauntShielded { get; internal set; }
+
+        /// <summary>The one-handed weapon the owner chose (PetKit), None when the pet keeps its own.</summary>
+        public PetOrders.Weapon KitWeapon { get; internal set; }
+
+        /// <summary>Taunt on or off. A pet holding a one-handed weapon takes up a shield while it taunts (issue #35).</summary>
+        public virtual void SetTaunting(bool taunting)
+        {
+            Taunting = taunting;
+            PetKit.SyncTauntShield(this);
+        }
+
         // Player Sluaghbinders currently use this standard body, unlike bots.
         // Share only their role HP factors; do not opt players into the custom
         // body's separate damage multipliers as a side effect of an HP fix.
@@ -54,6 +70,7 @@ namespace DOL.GS
         public override bool AddToWorld()
         {
             if (!base.AddToWorld()) return false;
+            PetKit.OnSummoned(this, GetActualSummonerClass());
             AutonomousSummonActivity.ActivateAfterWorldAdd(this);
             return true;
         }
@@ -101,7 +118,7 @@ namespace DOL.GS
 				ScalSpells();
         }
 
-        private ICharacterClass GetActualSummonerClass()
+        internal ICharacterClass GetActualSummonerClass()
         {
             GameLiving current = Owner;
             for (int depth = 0; current != null && depth < 16; depth++)

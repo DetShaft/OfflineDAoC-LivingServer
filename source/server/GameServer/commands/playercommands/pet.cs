@@ -3,8 +3,8 @@ using DOL.GS.PacketHandler;
 namespace DOL.GS.Commands
 {
     /// <summary>
-    /// Orders for your pet (issue #35), for every pet class except the Bonedancer commander (/commander) and the
-    /// necromancer's shade pet. "/pet" or "/pet menu" opens the pet's [keyword] dialog (the new client sends this when
+    /// Orders for your pet (issue #35), for every pet class except the Bonedancer commander (/commander); the
+    /// necromancer's pet takes taunt only. "/pet" or "/pet menu" opens the pet's [keyword] dialog (the new client sends this when
     /// you right-click your pet); "/pet &lt;order&gt;" gives one order directly. See PetOrders.
     /// </summary>
     [CmdAttribute(
@@ -13,7 +13,7 @@ namespace DOL.GS.Commands
         "Give orders to your pet, or open its order dialog",
         "/pet",
         "/pet menu",
-        "/pet <aggressive|defensive|passive|assist|stop assisting|follow|stay|come>")]
+        "/pet <aggressive|defensive|passive|assist|stop assisting|follow|stay|come|taunt|stop taunting|sword|axe|hammer|blade|mace|dagger>")]
     public class PetCommandHandler : AbstractCommandHandler, ICommandHandler
     {
         public void OnCommand(GameClient client, string[] args)
@@ -39,24 +39,13 @@ namespace DOL.GS.Commands
             }
 
             string text = args.Length < 2 ? string.Empty : string.Join(" ", args, 1, args.Length - 1);
-            PetOrders.Order order = PetOrders.Parse(text);
-            PetOrders.Kind kind = PetOrders.KindFor((eCharacterClass)player.CharacterClass.ID);
-            if (order == PetOrders.Order.Menu)
+            string reply = PetOrders.Handle(player, pet, text);
+            if (reply == null)
             {
-                PetOrders.Show(player, pet, null);
+                Say(client, "Your pet does not know that order. Open its dialog with /pet to see what it takes.");
                 return;
             }
-            if (order == PetOrders.Order.None)
-            {
-                Say(client, "Orders: aggressive, defensive, passive, assist, stop assisting, follow, stay, come.");
-                return;
-            }
-            if (!PetOrders.Allows(kind, order))
-            {
-                Say(client, $"{pet.GetName(0, true)} does not move from where it was placed.");
-                return;
-            }
-            PetOrders.Show(player, pet, PetOrders.Apply(player, pet, order));
+            PetOrders.Show(player, pet, reply.Length == 0 ? null : reply);
         }
 
         private static void Say(GameClient client, string text) =>

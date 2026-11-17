@@ -211,27 +211,32 @@ namespace DOL.AI.Brain
 				Spell spellDebuff = pet.CommSpellDebuff;
 				Spell spellOther = pet.CommSpellOther;
 
+				// Issue #35: the favored kind goes first, then any debuff or snare not yet on the target, then damage.
 				Spell cast = null;
-				switch (pet.PreferredSpell)
+				foreach (CommanderPet.eCommanderPreferredSpell kind in CommanderPet.SpellOrder(pet.PreferredSpell))
 				{
-					case CommanderPet.eCommanderPreferredSpell.Debuff:
-						if (spellDebuff != null && !living.HasEffect(spellDebuff))
-							cast = spellDebuff;
+					switch (kind)
+					{
+						case CommanderPet.eCommanderPreferredSpell.Debuff:
+							if (spellDebuff != null && !living.HasEffect(spellDebuff))
+								cast = spellDebuff;
+							break;
+						case CommanderPet.eCommanderPreferredSpell.Other:
+							// A lifedrain is cast again and again; a snare only while it is not on the target.
+							if (spellOther != null && (spellOther.SpellType is eSpellType.Lifedrain or eSpellType.DirectDamage || !living.HasEffect(spellOther)))
+								cast = spellOther;
+							break;
+						case CommanderPet.eCommanderPreferredSpell.Damage:
+							if (spellDot != null && !living.HasEffect(spellDot))
+								cast = spellDot;
+							else if (spellDamageDebuff != null && (!living.HasEffect(spellDamageDebuff) || spellDamage == null))
+								cast = spellDamageDebuff;
+							else if (spellDamage != null)
+								cast = spellDamage;
+							break;
+					}
+					if (cast != null)
 						break;
-					case CommanderPet.eCommanderPreferredSpell.Other:
-						cast = spellOther;
-						break;
-				}
-
-				if (cast == null)
-				{
-					// Pick a damage spell
-					if (spellDot != null && !living.HasEffect(spellDot))
-						cast = spellDot;
-					else if (spellDamageDebuff != null && (!living.HasEffect(spellDamageDebuff) || spellDamage == null))
-						cast = spellDamageDebuff;
-					else if (spellDamage != null)
-						cast = spellDamage;
 				}
 
 				if (cast != null)
@@ -254,20 +259,6 @@ namespace DOL.AI.Brain
 				casted = base.CheckSpells(type);
 
 			return casted;
-		}
-
-		public override int ModifyDamageWithTaunt(int damage)
-		{
-			// TODO: Move 'CommanderPet.Taunting' to the brain.
-			if (Body is CommanderPet commanderPet)
-			{
-				int tauntScale = GS.ServerProperties.Properties.PET_BD_COMMANDER_TAUNT_VALUE;
-
-				if (commanderPet.Taunting && tauntScale > 100)
-					damage = (int)(damage * tauntScale / 100.0);
-			}
-
-			return base.ModifyDamageWithTaunt(damage);
 		}
 	}
 }

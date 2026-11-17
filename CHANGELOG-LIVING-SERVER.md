@@ -10,6 +10,23 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.19 (in development)
 
+**Pet weapons, taunt and commander spell choices (#35, step 2).** Jay, 2026-11-17, per class:
+- Spiritmaster pets choose a one-handed [sword], [axe] or [hammer]. They no longer roll a spear or a two-hander.
+- The Enchanter's Underhill Ally and Compatriot choose a one-handed [blade], [mace] or [dagger] and start with a blade.
+  The Friend stays unarmed, and the Companion and Zealot stay casters.
+- Spiritmaster, Cabalist, Necromancer and the Enchanter's melee pets get [taunt] / [stop taunting]. The
+  Necromancer's pet takes taunt and nothing else; its weapons stay baked into the summon. A taunting pet draws more
+  of its target's attention (server setting `pet_taunt_multiplier`, 150%).
+- No pet spawns with a shield. Taunting gives a pet that holds a one-handed weapon a shield, the shield styles of its
+  realm's fighter up to its level, and a 10% block chance if it had none. Without a one-handed weapon it taunts
+  without a shield.
+- Bonedancer commanders follow the same shield rule, and with the shield up they learn their level's shield styles.
+  They now use a back or side style whenever they stand where one opens, not only on the random style roll.
+- The Bone Magus (dread lich) offers [snare], [debuff] or [damage], and the Bone Keeper (dread guardian) [lifedrain]
+  or [suppress], as the spell kind to cast first. The other kinds still follow. The Bone Captain (dread archer) offers
+  its bow only.
+
+Tests only: not yet seen in game.
 **Every pet class gets an order dialog (#35).** Right-click your pet in the new client, type `/pet`, or whisper it,
 and it answers with clickable orders, like the Bonedancer commander's dialog: [aggressive], [defensive] or [passive],
 [assist] (it attacks whatever you attack, the pet window's Assist) or [stop assisting], and [follow], [stay] or

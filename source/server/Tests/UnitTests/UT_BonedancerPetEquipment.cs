@@ -73,6 +73,31 @@ public sealed class UT_BonedancerPetEquipment
         Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Null);
     }
 
+    // Issue #35 step 2 (owner, 2026-11-17): taunting gives a commander with a one-handed weapon its shield, and only then.
+    [Test]
+    public void TauntingWithAOneHandedWeapon_RaisesAShield()
+    {
+        CommanderPet commander = new CommanderPet(Template(50, "skeletal commander"));
+        commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.OneHandHammer, false);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Null, "no shield before taunting");
+
+        commander.SetTaunting(true);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon)?.Object_Type, Is.EqualTo((int)eObjectType.Shield));
+        Assert.That(commander.TauntShielded, Is.True);
+        Assert.That(commander.DialogMenu(), Does.Contain("behind my shield"));
+
+        commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.TwoHandSword, false);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Null, "a two-hander takes no shield");
+        Assert.That(commander.Taunting, Is.True, "it keeps taunting without one");
+
+        commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.OneHandSword, false);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Not.Null);
+
+        commander.SetTaunting(false);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Null);
+        Assert.That(commander.TauntShielded, Is.False);
+    }
+
     [Test]
     public void OneHandedSwapBroadcastsAndDropsTheOtherWeaponsStyles()
     {
