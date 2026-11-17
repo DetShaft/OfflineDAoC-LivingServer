@@ -916,6 +916,10 @@ func interact(n: Npc) -> void:
 	if _is_my_commander(n):
 		Server.command("/commander menu")
 		return
+	# Any other pet of yours opens its order dialog the same way (issue #35: stance, assist, follow / stay).
+	if pet_oid > 0 and int(n.spawn.get("oid", 0)) == pet_oid:
+		Server.command("/pet menu")
+		return
 	var r := Server.to_region(_current_zone(), player.global_position)
 	Server.client.call("Interact", int(n.spawn.get("oid", 0)), int(r.x), int(r.y))
 

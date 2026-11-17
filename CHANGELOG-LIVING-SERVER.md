@@ -10,6 +10,14 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.19 (in development)
 
+**Every pet class gets an order dialog (#35).** Right-click your pet in the new client, type `/pet`, or whisper it,
+and it answers with clickable orders, like the Bonedancer commander's dialog: [aggressive], [defensive] or [passive],
+[assist] (it attacks whatever you attack, the pet window's Assist) or [stop assisting], and [follow], [stay] or
+[come] for pets that walk with you. Animist turrets and Theurgist elementals offer stance and assist only, since they
+do not follow. Each class's pet greets you in its own voice, and a charmed creature as a charmed one. Orders go
+through the same calls as the pet window, so the two stay in step. `/pet <order>` gives one order directly. The
+commander keeps its own dialog, and the Necromancer's pet is unchanged. Weapon kits and styles for other pets are not
+in this step: which pets carried weapons needs a per-class decision. Tests only: not yet seen in game.
 **Healers hold a safe spot in fights (#48).** Jay, 2026-11-16: a healer on healing duty stayed pinned to a spot
 behind the leader during a fight, so it ran around after the leader the whole time. Now a group's back-line support
 (Cleric, Druid, Healer, and now Shaman and Bard too) picks a post when the fight starts: out of the enemies' reach and
