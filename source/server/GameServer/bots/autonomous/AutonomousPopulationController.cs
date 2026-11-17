@@ -157,6 +157,9 @@ public static class AutonomousPopulationController
                 .Where(record => !scheduled || AutonomousBotSchedule.WantsOnline(record, nowUtc))
                 // A rage quitter stays away even with schedules off.
                 .Where(record => !AutonomousBotSchedule.RageQuitting(record.BotId, nowUtc))
+                // One character per bot player (alts, #57): wait while another of its characters is still online.
+                .Where(record => !AutonomousBotAlts.AnotherCharacterOnline(record.BotId,
+                    id => AutonomousBotRegistry.Contains(id) || PendingSpawns.ContainsKey(id)))
                 .ToList();
 
             // Ten thousand actors require about eleven scheduled logins per
@@ -426,6 +429,10 @@ public static class AutonomousPopulationController
             .SelectObjects(DB.Column("IsRetired").IsEqualTo(false))
             .OrderBy(record => record.BotId)
             .ToArray();
+        // Bot players and their alts (#57): the index first, then any new alts (read on the next refresh).
+        AutonomousBotAlts.Refresh(_cachedRoster);
+        if (AutonomousBotAlts.RollAlts(_cachedRoster))
+            RefreshRosterSoon();
         // A gamebot taken off the roster (launcher removal, retirement, test-roster rollback) leaves its guild.
         long[] rosterIds = _cachedRoster.Select(record => record.BotId).ToArray();
         NpcService.Instance.Post<long[]>(ids => AutonomousBotGuilds.Reconcile(ids), rosterIds);

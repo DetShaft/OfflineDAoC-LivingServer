@@ -250,12 +250,17 @@ public static class AutonomousBotSchedule
             return true;
         if (RageQuitting(record.BotId, nowUtc))
             return false;
+        // Alts (issue #57): only the character its player plays in this block; the others wait their turn.
+        if (!AutonomousBotAlts.IsPlaying(record.BotId, nowUtc))
+            return false;
         Mode mode = CurrentMode;
         if (mode == Mode.Off && !BreaksOn)
             return true;
         if (BreaksOn && OnBreak(record.BotId, nowUtc))
             return false;
-        return ScheduledOnline(mode, record.BotId, AutonomousBotPersonality.TypeFor(record.BotId), nowUtc - _startedUtc, nowUtc.ToLocalTime());
+        // A player's characters keep its hours: the schedule is the player's (its first character's id).
+        long player = AutonomousBotAlts.PlayerOf(record.BotId);
+        return ScheduledOnline(mode, player, AutonomousBotPersonality.TypeFor(player), nowUtc - _startedUtc, nowUtc.ToLocalTime());
     }
 
     #region Logging out (game loop)
