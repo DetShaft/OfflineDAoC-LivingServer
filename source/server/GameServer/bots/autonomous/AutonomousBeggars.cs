@@ -63,6 +63,7 @@ public static class AutonomousBeggars
 
     /// <summary>The roll alone: a Crafter whose stable roll is under the share. Pure.</summary>
     public static bool IsBeggarByRoll(long botId) => botId > 0 &&
+        AutonomousBotAlts.PlayerOf(botId) == botId &&                 // an alt never begs (#57): its player levels it
         AutonomousBotPersonality.TypeFor(botId) == BotPersonalityType.Crafter &&
         AutonomousBotSchedule.Unit(botId, Salt) < ShareOfCrafters;
 
@@ -98,7 +99,8 @@ public static class AutonomousBeggars
             try
             {
                 _chosen = ChooseBeggars(GameServer.Database.SelectAllObjects<OfflineWorldBotRecord>()
-                    .Where(record => !record.IsRetired).Select(record => (record.BotId, record.Realm)));
+                    // Alts (#57) are never beggars: a begging alt would be its player's leveling character forever.
+                    .Where(record => !record.IsRetired && record.PlayerId <= 0).Select(record => (record.BotId, record.Realm)));
                 Log.Info($"BEGGARS_CHOSEN count={_chosen.Count}");
             }
             catch (Exception exception)

@@ -124,6 +124,22 @@ namespace DOL.UnitTests
         }
 
         [Test]
+        public void AnAlt_IsNeverABeggarByRoll()
+        {
+            // Find a first character the roll makes a beggar, then give it an alt: the alt shares its Crafter personality
+            // (and so its type) but must not beg, or it would be its player's leveling character forever.
+            long first = Enumerable.Range(1, 20_000).Select(i => (long)i).First(AutonomousBeggars.IsBeggarByRoll);
+            long alt = first + 1_000_000;
+            A.Refresh(
+            [
+                new OfflineWorldBotRecord { BotId = first, Level = 50 },
+                new OfflineWorldBotRecord { BotId = alt, Level = 1, PlayerId = first },
+            ]);
+            Assert.That(AutonomousBeggars.IsBeggarByRoll(first), Is.True);
+            Assert.That(AutonomousBeggars.IsBeggarByRoll(alt), Is.False);
+        }
+
+        [Test]
         public void ANewAlt_IsAFreshLevelOneRecordOfThePlayer()
         {
             var first = new OfflineWorldBotRecord { BotId = 5, Name = "Aldric", Realm = (int)eRealm.Albion, Level = 50 };
