@@ -129,6 +129,33 @@ function Get-InstallRecords([string]$Game) {
         })
 }
 
+# Fork builds whose package folder sits somewhere in the game folder: the launcher unpacks each update into
+# LivingServer-<version>\, and a test build copied into runtime\server by hand keeps its package nearby (owner's PC,
+# 2026-11-17: a Killaloe test build was copied in without INSTALL.cmd, so no install record named it, and the 1.1.19
+# update refused it as "unknown"). A file whose SHA-256 is listed in such a BUILD-INFO.txt is that fork build, not a
+# player's own change, so it may be replaced like a recorded one (it is still backed up). Returns hash -> label for
+# GameServer.dll, the server libraries and the launcher. The game's own big folders are skipped.
+function Get-ForkBuildHashes([string]$Game) {
+    $known = @{}
+    $skip = @('runtime', 'new-client', 'source', 'log-archive', 'docs', 'tools', 'editions')
+    $roots = @(Get-ChildItem -LiteralPath $Game -Directory -ErrorAction SilentlyContinue | Where-Object { $skip -notcontains $_.Name })
+    foreach ($root in $roots) {
+        foreach ($file in @(Get-ChildItem -LiteralPath $root.FullName -Recurse -Depth 3 -File -Filter 'BUILD-INFO.txt' -ErrorAction SilentlyContinue)) {
+            try { $values = Read-KeyValueFile $file.FullName } catch { continue }
+            if (!$values['BuildName'] -or !$values['Commit'] -or !$values['GameServer.dll']) { continue }
+            $commit = [string]$values['Commit']
+            if ($commit.Length -gt 7) { $commit = $commit.Substring(0, 7) }
+            $label = "$($values['BuildName']) (commit $commit, copied in without INSTALL.cmd)"
+            $keys = @('GameServer.dll', 'launcher/OfflineDAoC.dll') + @($Script:CoreFiles | ForEach-Object { "core/$_" })
+            foreach ($key in $keys) {
+                $hash = [string]$values[$key]
+                if ($hash -match '^[0-9a-fA-F]{64}$' -and !$known.ContainsKey($hash.ToLowerInvariant())) { $known[$hash.ToLowerInvariant()] = $label }
+            }
+        }
+    }
+    return $known
+}
+
 function Get-BackupName([string]$Folder) { return ($Folder -replace '[\\/]', '_') }
 
 # Game files this build fixes in place (content-patches.json, made by make_content_patch.py): byte patches against the

@@ -73,6 +73,9 @@ In a playable folder:
   - Only one server can use port 10300 at a time.
 - **Build and test separately.** Deploy only tested outputs, with a backup of what you replace:
   `GameServer.dll` goes to `runtime/server`, `runtime/server/lib` and `runtime/server/win-x64`.
+  - Put a test build on the owner's game with its package's `INSTALL.cmd`, never by copying DLLs by hand. INSTALL.cmd
+    writes the install record that the next update needs; a hand copy left 1.1.19's update refusing the server as
+    "unknown" (2026-11-17). Keep the package folder (with its `BUILD-INFO.txt`) inside the game folder.
 - **Client files:**
   - Keep hash guards on any binary patch; never patch an unverified `game.dll`.
   - Private art is added under new IDs; stock models, skins and effects are never edited in place.
