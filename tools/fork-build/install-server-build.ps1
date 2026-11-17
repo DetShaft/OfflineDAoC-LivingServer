@@ -9,7 +9,8 @@
 # - installs only into the release(s) it was built for (BaseRelease in BUILD-INFO.txt, e.g. 0.37 or 0.37,0.38), checked against
 #   the game's own PACKAGE MANIFEST.sha256;
 # - replaces only a GameServer.dll that is the original release file or a fork build this script
-#   installed; anything else is refused unless -Force;
+#   installed (or a fork build whose package's BUILD-INFO.txt is in the game folder, copied in by hand);
+#   anything else is refused unless -Force;
 # - the same for the server's own libraries (core\: CoreBase, CoreDatabase, CoreServer, Living Server 1.1.2), in each
 #   server folder that has them;
 # - the same for the launcher (OfflineDAoC.exe and its files, with the Living Server tab) in runtime\
@@ -108,6 +109,9 @@ $knownFork = @{}
 foreach ($record in Get-InstallRecords $game) {
     foreach ($entry in $record.Folders) { if ($entry.NewDll) { $knownFork[$entry.NewDll] = $record.BuildName } }
 }
+# Fork builds copied in by hand (their package's BUILD-INFO.txt is in the game folder): known too, after the records.
+$forkPackages = Get-ForkBuildHashes $game
+foreach ($hash in $forkPackages.Keys) { if (!$knownFork.ContainsKey($hash)) { $knownFork[$hash] = $forkPackages[$hash] } }
 $newDll = $info['GameServer.dll'].ToLowerInvariant()
 $newPdb = $info['GameServer.pdb'].ToLowerInvariant()
 $plan = @()
@@ -133,6 +137,7 @@ $knownCore = @{}
 foreach ($record in Get-InstallRecords $game) {
     foreach ($entry in @($record.CoreFiles)) { if ($entry -and $entry.NewHash) { $knownCore[$entry.NewHash] = $record.BuildName } }
 }
+foreach ($hash in $forkPackages.Keys) { if (!$knownCore.ContainsKey($hash)) { $knownCore[$hash] = $forkPackages[$hash] } }
 $corePlan = @()
 foreach ($folder in $Script:ServerFolders) {
     foreach ($name in $Script:CoreFiles) {
@@ -163,6 +168,7 @@ $knownLauncher = @{}
 foreach ($record in Get-InstallRecords $game) {
     foreach ($entry in @($record.LauncherFolders)) { if ($entry -and $entry.NewDll) { $knownLauncher[$entry.NewDll] = $record.BuildName } }
 }
+foreach ($hash in $forkPackages.Keys) { if (!$knownLauncher.ContainsKey($hash)) { $knownLauncher[$hash] = $forkPackages[$hash] } }
 $newClientManifest = Read-ManifestFile (Join-Path $game 'new-client\PACKAGE MANIFEST.sha256')
 $launcherPlan = @()
 if ($launcherNew.Count -gt 0) {

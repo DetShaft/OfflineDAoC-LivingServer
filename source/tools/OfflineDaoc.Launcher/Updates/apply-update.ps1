@@ -72,8 +72,10 @@ try {
     $line = '"' + $install + '" -GameFolder "' + $GameFolder.TrimEnd('\') + '" < NUL 2>&1'
     $p = Start-Process -FilePath "$env:SystemRoot\System32\cmd.exe" -ArgumentList ('/d /s /c "' + $line + '"') `
         -WorkingDirectory $PackageFolder -NoNewWindow -Wait -PassThru -RedirectStandardOutput $output
+    $refusal = ''
     foreach ($text in @(Get-Content -LiteralPath $output -ErrorAction SilentlyContinue)) {
         if ($text -notmatch '^Press any key') { Say "  $text" }
+        if (!$refusal -and $text -match 'NOTHING WAS CHANGED:\s*(.+)$') { $refusal = $Matches[1].Trim() }
     }
     Say "INSTALL.cmd finished (exit $($p.ExitCode))."
 
@@ -104,6 +106,8 @@ try {
         }
     }
     if ($ok) { Finish 'installed' "Living Server $Build is installed. ROLLBACK.cmd in $PackageFolder undoes it." }
+    # The launcher shows Detail, so INSTALL.cmd's own reason goes there, not only into the log (1.1.19, 2026-11-17).
+    if ($refusal) { Finish 'not installed' "INSTALL.cmd refused: $refusal The game is as it was before." }
     Finish 'not installed' 'INSTALL.cmd did not install it (its output is above and in the log); the game is as it was before.'
 } catch {
     try { Finish 'not installed' "the update stopped: $($_.Exception.Message)" } catch { exit 1 }
