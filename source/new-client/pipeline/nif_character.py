@@ -667,6 +667,21 @@ CATA_SLOTS = {'body': 1, 'legs': 3, 'boot': 4, 'arms': 5, 'glove': 6}     # text
 # Fig3Figure.robe_worn hides the arms, legs and kilt under it
 ROBE_BODY_MESH = 7
 CATA_MESH_COLS = {'glove': 74, 'boot': 75}                 # objects.csv Cata Gloves# / Boots# (#45)
+
+
+def cata_mesh(slot, tex, row):
+    """The mesh variant of a worn part (#45), shared by every path that dresses armour (cata_outfit's rule;
+    build_armor.cata_columns and fix_armor_variants use it too, so a rebuild and a patched armor.json agree): a body
+    on the starter mesh 1, or the robe mesh for a robe sheet; gloves / boots on the item's Cata Gloves# / Boots#
+    (objects.csv cols 74 / 75, 1-8) when the row has one; everything else on mesh 1. slot is the fig3 slot name."""
+    if slot == 'body':
+        return ROBE_BODY_MESH if tex.lower().startswith('robbody') else 1
+    word = {'gloves': 'glove', 'boots': 'boot'}.get(slot)
+    if word and row is not None and len(row) > CATA_MESH_COLS[word]:
+        pick = row[CATA_MESH_COLS[word]].strip()
+        if pick.isdigit() and 1 <= int(pick) <= 8:
+            return int(pick)
+    return 1
 OBJECT_SKIN_COLS = {4: 'body', 6: 'arms', 7: 'glove', 9: 'legs', 10: 'boot'}  # objects.csv Skins columns (male)
 
 
