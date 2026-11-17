@@ -70,6 +70,7 @@ namespace DOL.GS.Friends
 		{
 			ArgumentNullException.ThrowIfNull(player);
 
+			RealmAltSharing.MergeFriendsOnEnter(player); // Fork, issue #116: one friends list per realm.
 			string[] friends = player.SerializedFriendsList;
 			PlayersFriendsListsCache.TryAdd(player, friends);
 
@@ -135,6 +136,7 @@ namespace DOL.GS.Friends
 
 			BotFriends.OnFriendAdded(player, friend); // Fork: the whole online list; the old client's AddFriend replaces Friends Monitor.
 			player.SerializedFriendsList = this[player];
+			RealmAltSharing.ShareFriends(player, this[player]); // Fork, issue #116.
 			DbCoreCharacter offlineFriend = Database.SelectObjects<DbCoreCharacter>(DB.Column("Name").IsEqualTo(friend)).FirstOrDefault();
 			FriendStatus[] currentFriendsStatus;
 			FriendStatus botStatus = offlineFriend == null ? BotFriends.OfflineStatus(friend, player.Realm) : null;
@@ -195,6 +197,7 @@ namespace DOL.GS.Friends
 
 			player.Out.SendRemoveFriends(new[] { friend });
 			player.SerializedFriendsList = this[player];
+			RealmAltSharing.ShareFriends(player, this[player]); // Fork, issue #116.
 			FriendStatus[] currentFriendStatus;
 
 			while (PlayersFriendsStatusCache.TryGetValue(player, out currentFriendStatus))

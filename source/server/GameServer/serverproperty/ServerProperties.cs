@@ -2446,6 +2446,14 @@ namespace DOL.GS.ServerProperties
 		/// on its owner's log the way another player's does on live, with no damage numbers. On: the owner also sees the
 		/// helper's damage, crits, styles and spell lines, named after the helper, in others' combat.
 		/// </summary>
+		/// <summary>Issue #116: a guildless character joins the guild its player's other characters on that realm are in.</summary>
+		[ServerProperty("world", "realm_alts_share_guild", "A character with no guild (or only the starter guild) joins the guild of your most recently played character on the same realm, at that character's rank. Characters already in another guild are left alone.", true)]
+		public static bool REALM_ALTS_SHARE_GUILD = true;
+
+		/// <summary>Issue #116: your characters on one realm share one friends list.</summary>
+		[ServerProperty("world", "realm_alts_share_friends", "Your characters on one realm share one friends list: entering the game merges them, and /friend add or remove changes all of them.", true)]
+		public static bool REALM_ALTS_SHARE_FRIENDS = true;
+
 		[ServerProperty("bots", "bot_combat_log_details", "Show your /spawn helpers' damage numbers, crits, styles and spell lines (named after the helper) in your others' combat log. False shows their fighting like another player's on live, without numbers.", false)]
 		public static bool BOT_COMBAT_LOG_DETAILS = false;
 
