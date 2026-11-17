@@ -201,6 +201,33 @@ public sealed class UT_BonedancerPetEquipment
     }
 
     [Test]
+    public void TheFullestTeacherLineWinsOverAPartialOne()
+    {
+        // Issue #113: the Thane's hammer line holds Placate alone. A commander must not settle for it.
+        var table = new Dictionary<(string, int), List<Style>>
+        {
+            [("Hammer", (int)eCharacterClass.Thane)] = new() { Leveled("Placate", eObjectType.Hammer, 163, 6) },
+            [("Hammer", (int)eCharacterClass.Skald)] = new()
+            {
+                Leveled("Thor's Anvil", eObjectType.Hammer, 161, 2), Leveled("Placate", eObjectType.Hammer, 163, 6),
+                Leveled("Ruiner", eObjectType.Hammer, 165, 10),
+            },
+        };
+        List<Style> Lookup(string spec, int classId) =>
+            table.TryGetValue((spec, classId), out List<Style> list) ? new List<Style>(list) : new List<Style>();
+
+        var styles = CommanderPet.LevelStyles(12, new[] { "Hammer" }, Lookup).Select(s => s.Name).ToList();
+        Assert.That(styles, Is.EqualTo(new[] { "Thor's Anvil", "Placate", "Ruiner" }));
+    }
+
+    [Test]
+    public void CommanderTauntShieldIsThePlainMidgardShield()
+    {
+        // Issue #112: the commander's shield matches the plain shield other Midgard pets carry.
+        Assert.That((int)CommanderPet.CommanderShieldModel, Is.EqualTo(PetKit.ShieldModel(eRealm.Midgard)));
+    }
+
+    [Test]
     public void HammerCommanderLearnsHammerStylesAndOffersThem()
     {
         Func<string, int, List<Style>> old = CommanderPet.StyleSource;

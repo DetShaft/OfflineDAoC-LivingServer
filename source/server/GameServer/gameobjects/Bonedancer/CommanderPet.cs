@@ -470,6 +470,9 @@ namespace DOL.GS
 		/// <summary>Where level styles come from. Tests replace it; the server reads the style table.</summary>
 		public static Func<string, int, List<Style>> StyleSource = SkillBase.GetStyleList;
 
+		/// <summary>The taunt shield's model: Midgard's plain elm heater shield (issue #112).</summary>
+		public const ushort CommanderShieldModel = 1054;
+
 		/// <summary>
 		/// Styles a commander of this level knows in each weapon line: every style of the line
 		/// up to the commander's level, so a higher commander knows more of them. The npc template's
@@ -520,23 +523,35 @@ namespace DOL.GS
 		}
 
 		/// <summary>
-		/// One weapon line's styles, lowest level first: the first Midgard teacher that has the line,
-		/// else the classless rows, else any class that has it (a database that files the line under
-		/// other classes still gives the commander its styles).
+		/// One weapon line's styles, lowest level first: the fullest line any Midgard teacher has
+		/// (the first teacher wins a tie), else the classless rows, else any class that has it (a
+		/// database that files the line under other classes still gives the commander its styles).
+		/// Issue #113: the Thane's hammer line holds Placate alone, so taking the first teacher that
+		/// had any hammer style could leave a hammer commander with only Placate.
 		/// </summary>
 		private static List<Style> StyleLine(string spec, Func<string, int, List<Style>> stylesOf)
 		{
-			IEnumerable<int> classes = StyleTeachers.Append(0).Concat(Enumerable.Range(1, 80).Except(StyleTeachers));
-			foreach (int classId in classes)
+			List<Style> best = null;
+			foreach (int classId in StyleTeachers)
 			{
-				List<Style> line = stylesOf(spec, classId);
-				if (line != null && line.Any(style => style != null))
-				{
-					return line.Where(style => style != null)
-						.OrderBy(style => style.SpecLevelRequirement).ThenBy(style => style.ID).ToList();
-				}
+				List<Style> line = Clean(stylesOf(spec, classId));
+				if (line.Count > (best?.Count ?? 0))
+					best = line;
+			}
+			if (best != null)
+				return best;
+			foreach (int classId in Enumerable.Range(0, 81).Except(StyleTeachers))
+			{
+				List<Style> line = Clean(stylesOf(spec, classId));
+				if (line.Count > 0)
+					return line;
 			}
 			return new List<Style>();
+
+			static List<Style> Clean(List<Style> line) => line == null
+				? new List<Style>()
+				: line.Where(style => style != null)
+					.OrderBy(style => style.SpecLevelRequirement).ThenBy(style => style.ID).ToList();
 		}
 
 		/// <summary>The weapon lines this commander can hold.</summary>
@@ -608,6 +623,9 @@ namespace DOL.GS
 			}
 			_levelStyles = added;
 			Styles = kept;
+			// Issue #113: the play log shows what a commander can pick with the weapon it holds.
+			if (log.IsDebugEnabled)
+				log.Debug($"CommanderPet.RefreshLevelStyles(): {Name} level {Level} holding {EquippedWeaponType()}: {string.Join(", ", PickableStylesForEquippedWeapon().Select(s => s.Name))}");
 			if (PreferredCombatStyle != null && !Styles.Any(s => s.ID == PreferredCombatStyle.ID))
 				SetPreferredCombatStyle(null);
 		}
@@ -1002,10 +1020,12 @@ namespace DOL.GS
 			else if (weaponType is eWeaponType.CommanderShield or eWeaponType.GuardianBuckler)
 			{
 				temp.Id_nb = WEAPON_KEYS[(int)weaponType];
-				// 3460 is a campfire in the client, so the commander's shield never
-				// showed. 3554 is the skull shield the Necromancer's reanimated servant carries.
-				weaponName = weaponType == eWeaponType.CommanderShield ? "bone skull shield" : "bone round buckler";
-				temp.Model = weaponType == eWeaponType.CommanderShield ? 3554 : 1045;
+				// 3460 is a campfire in the client, so the commander's shield never showed. 3554
+				// rendered as an ornate gold-and-bronze round shield (issue #112, owner 2026-11-17);
+				// the commander now carries the plain elm heater shield other Midgard pets get
+				// (PetKit.ShieldModel). Size and block are unchanged.
+				weaponName = weaponType == eWeaponType.CommanderShield ? "elm heater shield" : "bone round buckler";
+				temp.Model = weaponType == eWeaponType.CommanderShield ? CommanderShieldModel : 1045;
 				temp.Object_Type = (int)eObjectType.Shield;
 				temp.Type_Damage = 1;
 				temp.SPD_ABS = 0;
