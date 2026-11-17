@@ -40,6 +40,21 @@ namespace DOL.GS
 		/// </summary>
 		public int SubPetCapacity => ControlledNpcList?.Length ?? 0;
 
+		/// <summary>The combined minion levels a commander with up to two slots can hold.</summary>
+		public const int TwoSlotLevelBudget = 75;
+
+		/// <summary>
+		/// The combined minion levels a three-slot commander can hold: live's 150. The old flat 75 let a Dread Commander
+		/// or a level-40 specialty commander keep only two of a level-50 Bonedancer's level-37 minions (owner,
+		/// 2026-11-17: "be able to command 3 minions").
+		/// </summary>
+		public const int ThreeSlotLevelBudget = 150;
+
+		/// <summary>Combined minion levels this commander can hold.</summary>
+		public int SubPetLevelBudget => LevelBudgetFor(SubPetCapacity);
+
+		public static int LevelBudgetFor(int slots) => slots >= 3 ? ThreeSlotLevelBudget : TwoSlotLevelBudget;
+
 
 		/// <summary>
 		/// Are the minions assisting this commander?
@@ -687,6 +702,10 @@ namespace DOL.GS
 			if (CanUseWeaponSlot(eActiveWeaponSlot.Distance))
 				CommanderSwitchWeapon(eWeaponType.Bow);
 
+			// The Dread Commander wears a cloak (owner, 2026-11-17).
+			if (CommanderType == eCommanderType.DreadCommander)
+				CommanderEquipCloak();
+
 			_commanderReady = true;
 			RefreshLevelStyles();
 		}
@@ -1201,6 +1220,36 @@ namespace DOL.GS
 
 			if (ObjectState == eObjectState.Active)
 				BroadcastLivingEquipmentUpdate();
+		}
+
+		/// <summary>Plain cloak model (the one the realm teleporters wear).</summary>
+		public const int CommanderCloakModel = 57;
+
+		/// <summary>An in-memory cloak, like the commander's in-memory weapons: nothing is written to the database.</summary>
+		public static DbItemTemplate CreateCommanderCloak() => new()
+		{
+			Id_nb = "BD_Commander_Cloak",
+			Name = "bone commander cloak",
+			Model = CommanderCloakModel,
+			Object_Type = (int)eObjectType.Magical,
+			Item_Type = (int)eInventorySlot.Cloak,
+			Level = 1,
+			Quality = 100,
+			Condition = 50000,
+			MaxCondition = 50000,
+			Durability = 50000,
+			MaxDurability = 50000,
+		};
+
+		private void CommanderEquipCloak()
+		{
+			DbInventoryItem cloak = GameInventoryItem.Create(CreateCommanderCloak());
+			if (cloak == null)
+				return;
+
+			Inventory ??= new GameNPCInventory(new GameNpcInventoryTemplate());
+			Inventory.RemoveItem(Inventory.GetItem(eInventorySlot.Cloak));
+			Inventory.AddItem(eInventorySlot.Cloak, cloak);
 		}
 
 		private void ClearCommanderOffhand()

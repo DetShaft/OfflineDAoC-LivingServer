@@ -138,11 +138,16 @@ namespace DOL.GS.Spells
 
 			if (template.ClassType != null && template.ClassType.Length > 0)
 			{
+				// The ClassType must name a pet brain. Some templates a summon borrows are world-mob templates whose ClassType
+				// is an NPC class: dread lich (212, Summon Bone Magus) says DOL.GS.GameNPC, and casting the Magus threw an
+				// InvalidCastException that kicked the caster to character select (2026-11-17). Use the default brain then.
 				Assembly asm = Assembly.GetExecutingAssembly();
-				brain = (IControlledBrain)asm.CreateInstance(template.ClassType, true);
+				Type brainType = asm.GetType(template.ClassType, false, true);
+				if (brainType != null && typeof(IControlledBrain).IsAssignableFrom(brainType) && !brainType.IsAbstract)
+					brain = asm.CreateInstance(brainType.FullName, true) as IControlledBrain;
 
 				if (brain == null && log.IsWarnEnabled)
-					log.Warn($"ApplyEffectOnTarget(): ClassType {template.ClassType} on NPCTemplateID {template.TemplateId} not found, using default ControlledBrain");
+					log.Warn($"ApplyEffectOnTarget(): ClassType {template.ClassType} on NPCTemplateID {template.TemplateId} is not a pet brain, using the default one");
 			}
 
 			if (brain == null)
