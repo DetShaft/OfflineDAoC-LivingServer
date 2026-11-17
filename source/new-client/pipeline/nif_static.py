@@ -46,6 +46,7 @@ def local_matrix(b):
 
 DOOR_LEAF = __import__('re').compile(r'(?i)^door\s*[lr]?\s*\d')
 DOOR_GROUP = __import__('re').compile(r'(?i)^door\s*\d')
+DAMAGED_BRANCH = __import__('re').compile(r'(?i)(?<![a-z])damaged')   # not 'undamaged' / 'udamaged'
 
 
 def is_door_leaf(b, in_group=False):
@@ -295,7 +296,8 @@ def climb_shapes(nif):
 
 def collidee_shapes(nif):
     """[(shape, data, model matrix)] under the collidee node: every shape, hidden or not (the client hides the whole
-    subtree for drawing and tests it for collision)."""
+    subtree for drawing and tests it for collision). NF keep NIFs (mainKeep_lvl4) put a 12-triangle placeholder in
+    the first 'collidee' and the undamaged walls in '!collidee_static'; include that node when present."""
     sp = spec()
     node, parent_m = find_collidee(nif)
     out = []
@@ -313,6 +315,20 @@ def collidee_shapes(nif):
             walk(c, m)
     if node is not None:
         walk(node, parent_m)
+    extra = []
+    def find_static(b, pm):
+        if b is None:
+            return
+        m = local_matrix(b) @ pm
+        if (b.get('name') or '').lower() == '!collidee_static':
+            extra.append((b, m))
+            return
+        for c in b.get('children') or []:
+            find_static(c, m)
+    for r in nif.roots:
+        find_static(r, np.identity(4))
+    for b, m in extra:
+        walk(b, m)
     return out
 
 
@@ -717,6 +733,10 @@ def collect(nif, node_anims=False):
             return
         props = dict(inherited)
         props.update(props_of(b))
+        if '_doorgroup' in props:
+            props['_ancestors'] = tuple(props.get('_ancestors', ())) + (b,)
+        if DAMAGED_BRANCH.search(b.get('name') or ''):
+            props['_damaged'] = True                       # NF keep pieces: '!visible_damaged', '!alb_cake_damaged'
         if node_anims:
             # a spell / monster effect: everything in it runs on the effect's timeline - its material fades and colour
             # keys too, not only those of the parts under an animated node (2026-10-13: the earth fingers, a morphing
@@ -766,7 +786,36 @@ def collect(nif, node_anims=False):
 
     for r in nif.roots:
         walk(r, np.identity(4), {})
+    attach_static_door_panels(shapes, doors)
     return shapes, doors
+
+
+def attach_static_door_panels(shapes, doors):
+    """NF keep doors (gatehouse_lvl4, mainKeep_lvl4 in the live client) animate only the collision leaves; the
+    undamaged panels ('vis1 k', 'postern door01') sit unanimated in the group's 'visible' node. Each such panel joins
+    the leaf of its own door group nearest to it, so it is drawn and posed with that leaf. Hinges stay put, under a
+    'gatestatic_' name (2026-11-15: Killaloe's keep doors were invisible, the panels drawn as leftover 'Editable Mesh'
+    nodes that the keep skin filter drops)."""
+    leaves = {}
+    for shape, data, m, props in shapes:
+        if '_door' in props:
+            did, m_leaf = props['_door']
+            leaves.setdefault(did, m_leaf)
+    for i, (shape, data, m, props) in enumerate(shapes):
+        group = props.get('_doorgroup')
+        if not group or '_door' in props:
+            continue
+        if 'hinge' in ' '.join((b.get('name') or '') for b in props.get('_ancestors', ())).lower():
+            props['_name'] = f'gatestatic_{i}'
+            continue
+        same = [d for d in leaves if d < len(doors) and doors[d].get('group') == group]
+        if not same:
+            props['_name'] = f'gatestatic_{i}'
+            continue
+        v = np.asarray(data['vertices'], dtype=np.float64)[:, :3]
+        centre = (np.c_[v, np.ones(len(v))] @ m)[:, :3].mean(axis=0)
+        best = min(same, key=lambda d: float(np.linalg.norm(leaves[d][3, :3] - centre)))
+        props['_door'] = (best, leaves[best])
 
 
 def shape_arrays(data, m):
@@ -1413,6 +1462,7 @@ def convert(raw, out_path, texture_uri='textures', node_anims=False):
     morph_specs = []
     anim_specs = {}
     shapes, doors = collect(nif, node_anims)
+    damaged_nodes = []                                     # node indices drawn from a '..._damaged' branch
     for i, (shape, data, m, props) in enumerate(shapes):
         if '_door' in props:
             # a door leaf's panel / collision, in the leaf's own frame (the engine poses the leaf: closed / open)
@@ -1484,7 +1534,7 @@ def convert(raw, out_path, texture_uri='textures', node_anims=False):
         pos, nrm, uv, col, tri = shape_arrays(data, m)
         if not len(tri):
             continue
-        name = shape.get('name') or f'shape{i}'
+        name = props.get('_name') or shape.get('name') or f'shape{i}'
         tp = props.get('NiTexturingProperty')
         if not uv and texture_name(tp) is None:
             hidden += len(tri)                            # untextured helper geometry (e.g. door 'collideeNN'): not drawn
@@ -1506,6 +1556,8 @@ def convert(raw, out_path, texture_uri='textures', node_anims=False):
             anim_specs[anim_key]['meshes'].append(name)
         g.mesh(name, pos, nrm, uvs, col if spec['vertex_colors'] else None, tri, g.material(spec, texture_uri), pivot,
                targets)
+        if props.get('_damaged'):
+            damaged_nodes.append(len(g.doc['nodes']) - 1)
         textures.update(names)
         ntri += len(tri)
         wpos = pos + pivot if pivot is not None else pos
@@ -1519,6 +1571,8 @@ def convert(raw, out_path, texture_uri='textures', node_anims=False):
         g.doc['extras']['nif_morphs'] = morph_specs
     if anim_specs:
         g.doc['extras']['nif_node_anims'] = [a for a in anim_specs.values() if a['meshes']]
+    if damaged_nodes:
+        g.doc['extras']['nif_damaged_nodes'] = damaged_nodes
     if doors:
         g.doc['extras']['nif_doors'] = doors
     g.doc['extras']['warnings'] = sorted(set(warnings))

@@ -774,6 +774,72 @@ def zone_lights(dat):
     return lights
 
 
+def tree_clusters():
+    """zones/trees/tree_clusters.csv: a 'CL' NIF name (Elm1CL5.nif) -> (tree NIF, [(dx, dy, dz), ...]). The client
+    has no NIF of that name; a fixture naming one is that many single trees around its spot."""
+    path = CLIENT / 'zones/trees/tree_clusters.mpk'
+    if not path.exists():
+        return {}
+    rows = read_csv(read_mpk(str(path)).get('tree_clusters.csv', b''))[1:]
+    out = {}
+    for r in rows:
+        if len(r) < 5 or not r[0].strip():
+            continue
+        offsets = []
+        vals = [float(v or 0) for v in r[2:]]
+        for k in range(0, len(vals) - 2, 3):
+            dx, dy, dz = vals[k:k + 3]
+            if dx or dy or dz:
+                offsets.append((dx, dy, dz))
+        out[r[0].strip().rsplit('.', 1)[0].lower()] = (r[1].strip(), offsets)
+    return out
+
+
+CLUSTER_NIF_BASE = 1_000_000                               # nifs.csv ids made up for a cluster's single tree
+
+
+def expand_tree_clusters(nifs, fixtures, npk_files):
+    """Replace each fixture of a tree-cluster NIF by its single trees (tree_clusters), turned by the fixture's angle
+    and sized by its scale. Killaloe (zone 237) places 89 of its 225 props this way (Hoak, elm, willow and low-tree
+    groves); without this the build dropped them as missing models. Rows that are not clusters pass unchanged."""
+    clusters = None
+    out = []
+    made = {}
+    for r in fixtures:
+        row = nifs.get(int(r[1]))
+        base = row[2].strip().rsplit('.', 1)[0].lower() if row else ''
+        if row is None or base + '.npk' in npk_files:
+            out.append(r)
+            continue
+        if clusters is None:
+            clusters = tree_clusters()
+        if base not in clusters:
+            out.append(r)
+            continue
+        tree, offsets = clusters[base]
+        tree_base = tree.rsplit('.', 1)[0].lower()
+        if tree_base not in made:
+            nid = CLUSTER_NIF_BASE + len(made)
+            single = list(row)
+            single[0], single[1], single[2] = str(nid), f'{row[1].strip()} tree', tree
+            nifs[nid] = single
+            made[tree_base] = nid
+        x, y, a, scale = float(r[3] or 0), float(r[4] or 0), float(r[6] or 0), float(r[7] or 100) / 100.0
+        t = np.radians(a)
+        for k, (dx, dy, _dz) in enumerate(offsets):
+            # same turn as the fixture's own model (yaw = -A degrees about up; DAoC y is Godot z)
+            ox = (dx * np.cos(-t) + dy * np.sin(-t)) * scale
+            oy = (-dx * np.sin(-t) + dy * np.cos(-t)) * scale
+            single_fixture = list(r)
+            single_fixture[1] = str(made[tree_base])
+            single_fixture[3], single_fixture[4] = str(round(x + ox)), str(round(y + oy))
+            single_fixture[6] = str((a + 72 * k) % 360)      # each tree of the grove faces its own way
+            out.append(single_fixture)
+    if made:
+        print(f'tree clusters: {len(made)} kinds expanded into single trees')
+    return out
+
+
 def build(zone_id, upscale=True):
     zdir = CLIENT / f'zones/zone{zone_id:03d}'
     if not zdir.exists():                                  # the Albion epic dungeons (233, 244) ship in frontiers/zones
@@ -792,7 +858,7 @@ def build(zone_id, upscale=True):
         return build_dungeon(zone_id, upscale, zdir, out, dat, sector)
 
     # Zone 253 is Killaloe. Its own folder has heights in the dat and no painted ground. Borrow retail
-    # zone 237's height, water, sector and ground archives. Fixtures and the csv exits stay zone 253.
+    # zone 237's height, water, sector and ground archives, and its props (killaloe_terrain.BORROWED_CSV).
     # The retail region offset (64, 64) is not applied: the keeps are in 0..65536, and that offset
     # would put the ground at 524288.
     ground_dir, ground_id, clutter_zone = zdir, zone_id, zone_id
@@ -814,8 +880,21 @@ def build(zone_id, upscale=True):
                 ground_dir, ground_id = borrowed, killaloe_terrain.TERRAIN_ZONE
                 clutter_zone = killaloe_terrain.TERRAIN_ZONE
                 applied = True
-                print(f'zone {zone_id}: ground from {borrowed} (retail zone {ground_id}); '
-                      f'fixtures and exits stay zone {zone_id}')
+                props = 'Abermenai props kept'
+                csv_path = borrowed / killaloe_terrain.CSV_ARCHIVE
+                try:
+                    csv_src = read_mpk(str(csv_path)) if csv_path.is_file() else {}
+                except (OSError, ValueError, KeyError) as error:
+                    print('could not read', csv_path, type(error).__name__, error)
+                    csv_src = {}
+                if all(key in csv_src for key in killaloe_terrain.NEEDED_IN_CSV):
+                    for key in killaloe_terrain.BORROWED_CSV:
+                        if key in csv_src:
+                            dat[key] = csv_src[key]
+                    for key in killaloe_terrain.DROPPED_FROM_BATTLEGROUND:
+                        dat.pop(key, None)
+                    props = f'props, lights and bounds from {killaloe_terrain.CSV_ARCHIVE}, no zonejump exits'
+                print(f'zone {zone_id}: ground from {borrowed} (retail zone {ground_id}); {props}')
         if not applied:
             print(killaloe_terrain.missing_message())
 
@@ -926,6 +1005,7 @@ def build(zone_id, upscale=True):
     nifs = {int(r[0]): r for r in read_csv(dat['nifs.csv']) if r and r[0].strip().isdigit()}
     fixtures = [r for r in read_csv(dat['fixtures.csv'])[2:] if len(r) > 11 and r[1].strip().isdigit()]
     npk_files = {p.name.lower(): p for p in (CLIENT / 'zones/Nifs').iterdir()}
+    fixtures = expand_tree_clusters(nifs, fixtures, npk_files)
     mdir = out / 'models'
     mdir.mkdir(exist_ok=True)
     tex_names, models, model_index = set(), [], {}

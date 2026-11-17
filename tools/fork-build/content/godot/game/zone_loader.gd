@@ -561,8 +561,10 @@ func _build_fixtures() -> void:
 				add_child(ps)
 		if not parts.doors.is_empty():
 			for i in xforms.size():
-				var fid := int((per_model[m][i] as Dictionary).get("id", -1))
-				_make_doors(parts, xforms[i], int(info.get("id", 0)) * 1000000 + fid * 100 if fid > 0 else -1)
+				var fx: Dictionary = per_model[m][i]
+				var fid := int(fx.get("id", -1))
+				var base := int(info.get("id", 0)) * 1000000 + fid * 100 if fid > 0 else -1
+				_make_doors(parts, xforms[i], base, fx.get("door_ids", {}))
 		for part in parts.meshes:
 			for c in cells:
 				var mm := MultiMesh.new()
@@ -668,8 +670,9 @@ var door_by_id := {}                         # the client's door id -> [ZoneDoor
 ## base: the client's door id of this placed object without the piece - zone x 1,000,000 + fixtures.csv ID x 100
 ## (DoorRequestHandler: fixture = id / 100 % 10000, piece = id % 100); the piece is the door group's number
 ## ("door001" = 1, both leaves of a double door share it). -1: not a zone fixture (no server door).
-func _make_doors(parts: Dictionary, at: Transform3D, base := -1) -> void:
+func _make_doors(parts: Dictionary, at: Transform3D, base := -1, id_map: Variant = {}) -> void:
 	var by_group := {}
+	var ids: Dictionary = id_map if id_map is Dictionary else {}
 	for spec in parts.door_specs:
 		var k := int(spec.id)
 		if not parts.doors.has(k):
@@ -694,11 +697,17 @@ func _make_doors(parts: Dictionary, at: Transform3D, base := -1) -> void:
 		d.sound_flag = _door_flag()
 		var g := String(spec.get("group", spec.name))
 		var digits := RegEx.create_from_string("(\\d+)\\s*$").search(g)
-		if base >= 0 and digits:
-			d.door_id = base + int(digits.get_string(1))
-			if not door_by_id.has(d.door_id):
-				door_by_id[d.door_id] = []
-			(door_by_id[d.door_id] as Array).append(d)
+		if digits:
+			var piece := int(digits.get_string(1))
+			var mapped: Variant = ids.get(piece, ids.get(str(piece), null))
+			if mapped != null:
+				d.door_id = int(mapped)
+			elif base >= 0:
+				d.door_id = base + piece
+			if d.door_id >= 0:
+				if not door_by_id.has(d.door_id):
+					door_by_id[d.door_id] = []
+				(door_by_id[d.door_id] as Array).append(d)
 		if by_group.has(g):
 			var other: ZoneDoor = by_group[g]
 			d.partner = other

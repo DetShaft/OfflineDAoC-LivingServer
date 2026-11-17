@@ -23,10 +23,11 @@ using DOL.Database;
 namespace DOL.GS.DatabaseUpdate
 {
     /// <summary>
-    /// The 15-19 battleground stays region 253. Its name becomes Killaloe. Offsets, keeps and
-    /// portals are not moved. A second start finds nothing left to rename.
-    /// Region 253 is unchanged, so a startup copy of portal-keep guards into this region still
-    /// applies here. This rename does not depend on that copy.
+    /// The 15-19 battleground stays region 253. Its name becomes Killaloe.
+    /// A fresh world already has the Setup packs. An already-played world does not, so this
+    /// start also applies those existing seeds (field spawns, keep staff, doors, keep pads)
+    /// before NPCs load. Region 253 portal keeps stay excluded from the Thidranki placeholder copy.
+    /// A second start finds nothing left to rename and the packs already present.
     /// </summary>
     [DatabaseUpdate]
     public class KillaloeBattlegroundUpdate : IDatabaseUpdater
@@ -57,6 +58,9 @@ namespace DOL.GS.DatabaseUpdate
                 log.Info("Killaloe: region 253 already uses that name.");
             else
                 log.Info($"Killaloe: renamed {changed} rows. Region 253 is the 15-19 battleground.");
+
+            KillaloeZone253Seeds.ApplyToLiveDatabase();
+            log.Info("Killaloe: field spawns, keep staff, doors and keep pads are present for region 253.");
         }
 
         private static int RenameRegion()

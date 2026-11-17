@@ -142,22 +142,18 @@ namespace DOL.GS.PacketHandler.Client.v168
 
                 if (door != null)
                 {
-                    if (door is GameKeepDoor)
+                    if (door is GameKeepDoor keepDoor &&
+                        keepDoor.Component?.Keep is GameKeepTower &&
+                        keepDoor.Component.Keep.KeepComponents.Count > 1)
                     {
-                        GameKeepDoor keepDoor = door as GameKeepDoor;
-
-                        if (keepDoor.Component.Keep is GameKeepTower && keepDoor.Component.Keep.KeepComponents.Count > 1)
-                            keepDoor.Interact(player);
+                        keepDoor.Interact(player);
                     }
-                    else
+                    else if (player.IsWithinRadius(door, radius))
                     {
-                        if (player.IsWithinRadius(door, radius))
-                        {
-                            if (doorState == 0x01)
-                                door.Open(player);
-                            else
-                                door.Close(player);
-                        }
+                        if (doorState == 0x01)
+                            door.Open(player);
+                        else
+                            door.Close(player);
                     }
                 }
                 else

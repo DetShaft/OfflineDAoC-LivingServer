@@ -248,6 +248,8 @@ func _fill_dropdown() -> void:
 		var z := _zone(int(k))
 		if int(z.get("type", 0)) == 0 and int(z.get("region", -1)) in REALM_REGIONS.get(realm, []) and String(z.get("map", "")) != "":
 			open.append(int(k))
+	if current_zone >= 0 and current_zone not in open and String(_zone(current_zone).get("map", "")) != "" and int(_zone(current_zone).get("type", 0)) != 2:
+		open.append(current_zone)
 	open.sort_custom(func(a, b): return String(_zone(a).name) < String(_zone(b).name))
 	for z in open:
 		_add_entry(String(_zone(z).name).to_upper(), {"kind": "zone", "id": z}, false)

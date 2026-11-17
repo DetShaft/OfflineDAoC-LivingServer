@@ -27,10 +27,18 @@ class KillaloeTerrainTests(unittest.TestCase):
             self.assertFalse(origin <= x < origin + 65536)
             self.assertFalse(origin <= y < origin + 65536)
 
-    def test_borrowed_dat_does_not_replace_exits_or_fixtures(self):
-        self.assertEqual(set(kt.BORROWED_DAT) & set(kt.KEPT_FROM_BATTLEGROUND), set())
+    def test_borrowed_dat_has_the_ground(self):
         for key in kt.NEEDED_IN_DAT:
             self.assertIn(key, kt.BORROWED_DAT)
+
+    def test_killaloe_props_come_from_csv237_and_abermenai_exits_go(self):
+        for key in ('fixtures.csv', 'nifs.csv', 'lights.csv'):
+            self.assertIn(key, kt.BORROWED_CSV)
+        for key in kt.NEEDED_IN_CSV:
+            self.assertIn(key, kt.BORROWED_CSV)
+        self.assertEqual(kt.CSV_ARCHIVE, 'csv237.mpk')
+        self.assertIn('zonejump.csv', kt.DROPPED_FROM_BATTLEGROUND)
+        self.assertEqual(set(kt.BORROWED_CSV) & set(kt.DROPPED_FROM_BATTLEGROUND), set())
 
     def test_frontiers_zone_237_wins_over_a_zones_copy(self):
         import tempfile
@@ -103,6 +111,97 @@ class KillaloeTerrainTests(unittest.TestCase):
         self.assertIn('godot/content/zones/zone253/', text)
         self.assertIn('Do not commit that output.', text)
         self.assertNotIn('524288', text)
+
+
+class KillaloeKeepTests(unittest.TestCase):
+    def test_portal_keeps_share_the_captured_lvl4_layout(self):
+        import killaloe_keeps as kk
+        self.assertEqual(len(kk.PORTAL_KEEPS), 3)
+        self.assertEqual(kk.PORTAL_PIECES, kk.PORTAL_KEEPS[0]['pieces'])
+        self.assertEqual(kk.PORTAL_PIECES, kk.PORTAL_KEEPS[1]['pieces'])
+        self.assertEqual(kk.PORTAL_PIECES, kk.PORTAL_KEEPS[2]['pieces'])
+        skins = [s for s, *_ in kk.PORTAL_PIECES]
+        self.assertEqual(skins.count(24), 1)
+        self.assertEqual(skins.count(29), 1)
+        self.assertEqual(skins.count(27), 4)
+        self.assertEqual(skins.count(23), 2)
+        self.assertEqual(skins.count(21), 4)
+        self.assertNotIn(30, skins)
+
+    def test_dun_killaloe_has_mainkeep_gatehouse_short_walls_and_corner_towers(self):
+        import killaloe_keeps as kk
+        skins = [s for s, *_ in kk.DUN_PIECES]
+        self.assertEqual(skins.count(30), 1)
+        self.assertEqual(skins.count(24), 1)
+        self.assertEqual(skins.count(21), 5)
+        self.assertEqual(skins.count(27), 4)
+        self.assertNotIn(29, skins)
+        self.assertNotIn(23, skins)
+
+    def test_border_keeps_are_not_the_live_layout(self):
+        import killaloe_keeps as kk
+        self.assertTrue(all(stem not in kk.PIECE_STEMS for stem in kk.BORDER_STEMS))
+        self.assertNotIn('frontkeep', ''.join(kk.PIECE_STEMS))
+
+    def test_component_grid_places_albion_gatehouse_from_the_0x69_pad(self):
+        import killaloe_keeps as kk
+        alb = kk.PORTAL_KEEPS[0]
+        x, y = kk.component_xy(alb['x'], alb['y'], alb['heading'], -2, -3)
+        self.assertAlmostEqual(x, 545157.57, places=1)
+        self.assertAlmostEqual(y, 581815.49, places=1)
+        pos = kk.fixture_pos(alb['x'], alb['y'], alb['z'])
+        self.assertAlmostEqual(pos[0], 513.4, places=4)
+        self.assertAlmostEqual(pos[1], 207.2, places=4)
+        self.assertAlmostEqual(pos[2], 1448.6, places=4)
+
+    def test_realm_skins_hide_other_cakes_and_damage(self):
+        import killaloe_keeps as kk
+        self.assertTrue(kk.node_keep_visible('!Tiers_4_alb UN:6', 1))
+        self.assertFalse(kk.node_keep_visible('!Tiers_4_mid01 UN:6', 1))
+        self.assertFalse(kk.node_keep_visible('!Tiers_4_hib01 UN:6', 1))
+        self.assertTrue(kk.node_keep_visible('!Tiers_4_MidToppers01:6', 2))
+        self.assertFalse(kk.node_keep_visible('!Tiers_4_Alb_topper01:6', 2))
+        self.assertFalse(kk.node_keep_visible('!Tiers_4_alb DAM:9', 1))
+        self.assertFalse(kk.node_keep_visible('vi-siege-tower:0', 1))
+        self.assertTrue(kk.node_keep_visible('vis undamaged:0', 1))
+        self.assertTrue(kk.node_keep_visible('collision_0', 3))
+        self.assertTrue(kk.node_keep_visible('doorcol0_1', 1))
+        self.assertFalse(kk.node_keep_visible('Editable Mesh', 1))
+        self.assertFalse(kk.node_keep_visible('!Tiers_1_-undamaged:4', 1))
+        self.assertTrue(kk.node_keep_visible('!Tiers_2-3-4_facade_undamaged:4', 1))
+
+    def test_dun_mainkeep_is_the_midgard_lvl4_keep(self):
+        import killaloe_keeps as kk
+        rows = kk.all_piece_fixtures()
+        dun = [r for r in rows if r['name'].startswith('Dun Killaloe')]
+        mains = [r for r in dun if r['stem'] == 'mainkeep_lvl4']
+        self.assertEqual(len(mains), 1)
+        self.assertEqual(mains[0]['realm'], 2)
+        self.assertEqual(mains[0]['realm_stem'], 'mainkeep_lvl4_mid')
+        self.assertEqual(mains[0]['door_ids'], {1: 253138002})
+        self.assertTrue(all(r['stem'] != 'borderkeep1' for r in dun))
+        self.assertNotIn('straighttower_lvl4', [r['stem'] for r in dun])
+
+    def test_portal_gatehouse_door_ids_match_the_capture(self):
+        import killaloe_keeps as kk
+        rows = kk.all_piece_fixtures()
+        alb = next(r for r in rows if r['name'] == 'Albion Portal Keep Gatehouse')
+        hib = next(r for r in rows if r['name'] == 'Hibernia Portal Keep Gatehouse')
+        self.assertEqual(alb['door_ids'][1], 253201001)
+        self.assertNotIn(1, hib['door_ids'])
+        self.assertEqual(hib['door_ids'][2], 253203002)
+        self.assertEqual(kk.realm_stem('gatehouse_lvl4', 1), 'gatehouse_lvl4_alb')
+
+    def test_door_swing_splits_a_stuck_double_leaf(self):
+        import killaloe_keeps as kk
+        pose = [-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, 2.0]
+        doors = [
+            {'group': 'door001', 'closed': pose, 'open': pose},
+            {'group': 'door001', 'closed': pose, 'open': pose},
+        ]
+        kk.ensure_door_swing(doors)
+        self.assertNotEqual(doors[0]['open'], doors[0]['closed'])
+        self.assertNotEqual(doors[1]['open'], doors[0]['open'])
 
 
 if __name__ == '__main__':
