@@ -1201,6 +1201,12 @@ namespace DOL.GS.ServerProperties
 		public static int PET_BD_COMMANDER_TAUNT_VALUE;
 
 		/// <summary>
+		/// Extra aggro, as a percentage of damage, for any other pet told to [taunt] (issue #35).
+		/// </summary>
+		[ServerProperty("npc", "pet_taunt_multiplier", "Percentage of damage that a taunting pet (other than a BD commander) gets as aggro, e.g. 150 gives 150% normal aggro.", 150)]
+		public static int PET_TAUNT_VALUE;
+
+		/// <summary>
 		/// Minimum respawn time for npc's without a set respawninterval
 		/// </summary>
 		[ServerProperty("npc", "npc_min_respawn_interval", "Minimum respawn time, in minutes, for npc's without a set respawninterval", 5)]

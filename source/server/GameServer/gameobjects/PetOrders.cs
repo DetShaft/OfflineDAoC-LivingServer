@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using DOL.AI.Brain;
 using DOL.GS.PacketHandler;
 
@@ -15,10 +16,13 @@ namespace DOL.GS
     /// Hunter animals, the Sluaghbinder's sluagh, charmed creatures): stance, assist, follow / stay / come.</item>
     /// <item>Animist turrets and Theurgist elementals do not follow their owner (ControlledMobBrain.FollowOwner), so
     /// they offer stance and assist only.</item>
-    /// <item>Necromancer shades are left alone: the necromancer's pet has its own control path.</item>
+    /// <item>Necromancer pets take [taunt] only: their weapons come with the summon (owner, 2026-11-17).</item>
     /// </list>
-    /// Orders go through the same GamePlayer.CommandNpc* calls as the pet window, so both stay in step. Weapon kits and
-    /// styles are not offered yet: those need a per-class decision on what each pet historically used.
+    /// Per-class kits (owner, 2026-11-17, step 2): Spiritmaster pets choose a one-handed sword, axe or hammer, and the
+    /// Enchanter's Underhill Ally and Compatriot a one-handed blade, mace or dagger. Spiritmaster, Cabalist,
+    /// Necromancer and the Enchanter's melee pets (Friend, Ally, Compatriot) can [taunt]. No pet spawns with a shield:
+    /// taunting gives a pet that holds a one-handed weapon a shield and the shield styles of its level (PetKit).
+    /// Orders go through the same GamePlayer.CommandNpc* calls as the pet window, so both stay in step.
     /// Real players' pets only; bot pets are driven by their bot's AI.
     /// </summary>
     public static class PetOrders
@@ -28,7 +32,39 @@ namespace DOL.GS
             None,
             Walker,
             Stationary,
+            /// <summary>Taunt only: no stance, assist or movement lines (the necromancer's pet).</summary>
+            TauntOnly,
         }
+
+        /// <summary>A one-handed weapon a pet can be told to take up.</summary>
+        public enum Weapon
+        {
+            None,
+            Sword,
+            Axe,
+            Hammer,
+            Blade,
+            Mace,
+            Dagger,
+        }
+
+        /// <summary>What a pet offers beyond its stance and movement: weapons it can take up, and taunt.</summary>
+        public sealed class Kit
+        {
+            public static readonly Kit Plain = new(Array.Empty<Weapon>(), false);
+
+            public Kit(IReadOnlyList<Weapon> weapons, bool taunts)
+            {
+                Weapons = weapons ?? Array.Empty<Weapon>();
+                Taunts = taunts;
+            }
+
+            public IReadOnlyList<Weapon> Weapons { get; }
+            public bool Taunts { get; }
+        }
+
+        /// <summary>What the pet is doing now, for the dialog.</summary>
+        public readonly record struct KitState(Weapon Holding, bool Taunting, bool Shielded);
 
         public enum Order
         {
@@ -42,22 +78,83 @@ namespace DOL.GS
             Follow,
             Stay,
             ComeHere,
+            Taunt,
+            StopTaunting,
         }
 
-        /// <summary>The kind of pet a class keeps. None: no dialog (the commander and the necromancer have their own).</summary>
+        /// <summary>The kind of pet a class keeps. None: no dialog (the commander has its own).</summary>
         public static Kind KindFor(eCharacterClass ownerClass) => ownerClass switch
         {
-            eCharacterClass.Bonedancer or eCharacterClass.Necromancer => Kind.None,
+            eCharacterClass.Bonedancer => Kind.None,
+            eCharacterClass.Necromancer => Kind.TauntOnly,
             eCharacterClass.Animist or eCharacterClass.Theurgist => Kind.Stationary,
             _ => Kind.Walker,
         };
 
-        /// <summary>Movement orders only for a pet that walks with its owner.</summary>
-        public static bool Allows(Kind kind, Order order) => kind switch
+        private static readonly Weapon[] MidgardWeapons = { Weapon.Sword, Weapon.Axe, Weapon.Hammer };
+        private static readonly Weapon[] HiberniaWeapons = { Weapon.Blade, Weapon.Mace, Weapon.Dagger };
+
+        /// <summary>
+        /// The kit of a pet, from its owner's class and the pet's name (the Enchanter's five pets share one class).
+        /// </summary>
+        public static Kit KitFor(eCharacterClass ownerClass, string petName)
         {
-            Kind.None => false,
-            Kind.Stationary => order is not (Order.Follow or Order.Stay or Order.ComeHere),
-            _ => order != Order.None,
+            string name = (petName ?? string.Empty).ToLowerInvariant();
+            switch (ownerClass)
+            {
+                case eCharacterClass.Spiritmaster:
+                    return new Kit(MidgardWeapons, true);
+                case eCharacterClass.Cabalist:
+                case eCharacterClass.Necromancer:
+                    return new Kit(null, true);
+                case eCharacterClass.Enchanter:
+                    if (name.Contains("ally") || name.Contains("compatriot"))
+                        return new Kit(HiberniaWeapons, true);
+                    // The Friend fights unarmed; the Companion and the Zealot are casters.
+                    return name.Contains("friend") ? new Kit(null, true) : Kit.Plain;
+                default:
+                    return Kit.Plain;
+            }
+        }
+
+        /// <summary>Movement orders only for a pet that walks with its owner; taunt only for a pet that taunts.</summary>
+        public static bool Allows(Kind kind, Order order) => Allows(kind, Kit.Plain, order);
+
+        public static bool Allows(Kind kind, Kit kit, Order order)
+        {
+            kit ??= Kit.Plain;
+            if (order is Order.Taunt or Order.StopTaunting)
+                return kind != Kind.None && kit.Taunts;
+            return kind switch
+            {
+                Kind.None => false,
+                Kind.TauntOnly => false,
+                Kind.Stationary => order is not (Order.None or Order.Follow or Order.Stay or Order.ComeHere),
+                _ => order != Order.None,
+            };
+        }
+
+        /// <summary>A weapon keyword ("sword", "blunt", ...). None when the text names no weapon.</summary>
+        public static Weapon ParseWeapon(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return Weapon.None;
+            return text.Trim().ToLowerInvariant() switch
+            {
+                "sword" => Weapon.Sword,
+                "axe" => Weapon.Axe,
+                "hammer" => Weapon.Hammer,
+                "blade" => Weapon.Blade,
+                "mace" or "blunt" or "club" => Weapon.Mace,
+                "dagger" or "piercing" or "pierce" or "rapier" => Weapon.Dagger,
+                _ => Weapon.None,
+            };
+        }
+
+        public static string WeaponWord(Weapon weapon) => weapon switch
+        {
+            Weapon.None => string.Empty,
+            _ => weapon.ToString().ToLowerInvariant(),
         };
 
         public static Order Parse(string text)
@@ -75,6 +172,8 @@ namespace DOL.GS
                 "follow" or "follow me" or "heel" => Order.Follow,
                 "stay" or "stay here" or "hold" => Order.Stay,
                 "come" or "come here" or "here" => Order.ComeHere,
+                "taunt" => Order.Taunt,
+                "stop taunting" or "stop taunt" or "untaunt" => Order.StopTaunting,
                 _ => Order.None,
             };
         }
@@ -86,6 +185,7 @@ namespace DOL.GS
                 return "(It watches you, bound to your will.)";
             return ownerClass switch
             {
+                eCharacterClass.Necromancer => "(The servant of Arawn turns its dead eyes on you.)",
                 eCharacterClass.Cabalist => "(The simulacrum turns to you, awaiting your will.)",
                 eCharacterClass.Spiritmaster => "What would you have of me, master?",
                 eCharacterClass.Hunter => "(Your companion looks up at you, ears pricked.)",
@@ -99,9 +199,16 @@ namespace DOL.GS
         }
 
         /// <summary>The dialog: the answer (or greeting) on top, then a line for each order this pet takes.</summary>
-        public static string Menu(Kind kind, string top, eAggressionState stance, bool assisting, eWalkState walk)
+        public static string Menu(Kind kind, string top, eAggressionState stance, bool assisting, eWalkState walk,
+            Kit kit = null, KitState state = default)
         {
+            kit ??= Kit.Plain;
             var lines = new List<string> { top };
+            if (kind == Kind.TauntOnly)
+            {
+                AddKitLines(lines, kit, state);
+                return string.Join("\n", lines);
+            }
             if (assisting)
                 lines.Add("I attack whatever you attack. Shall I [stop assisting]?");
             else
@@ -129,15 +236,46 @@ namespace DOL.GS
                     _ => "I follow you. Shall I [stay] here?",
                 });
             }
+            AddKitLines(lines, kit, state);
             return string.Join("\n", lines);
         }
+
+        private static void AddKitLines(List<string> lines, Kit kit, KitState state)
+        {
+            if (kit.Weapons.Count > 0)
+            {
+                var offered = new List<string>();
+                foreach (Weapon weapon in kit.Weapons)
+                {
+                    if (weapon != state.Holding)
+                        offered.Add("[" + WeaponWord(weapon) + "]");
+                }
+                string held = state.Holding == Weapon.None
+                    ? "I hold no weapon."
+                    : "I hold " + Article(WeaponWord(state.Holding)) + " " + WeaponWord(state.Holding) + ".";
+                lines.Add(held + " I can take up " + Join(offered) + " instead.");
+            }
+            if (!kit.Taunts)
+                return;
+            if (state.Taunting)
+            {
+                lines.Add((state.Shielded
+                    ? "I hold the enemy's eye behind my shield."
+                    : "I am holding the enemy's eye.") + " Shall I [stop taunting]?");
+            }
+            else
+                lines.Add("Shall I [taunt] the enemy away from you?");
+        }
+
+        private static string Article(string word) =>
+            word.Length > 0 && "aeiou".IndexOf(char.ToLowerInvariant(word[0])) >= 0 ? "an" : "a";
 
         private static string Join(IReadOnlyList<string> items) => items.Count switch
         {
             0 => string.Empty,
             1 => items[0],
             2 => items[0] + " or " + items[1],
-            _ => string.Join(", ", System.Linq.Enumerable.Take(items, items.Count - 1)) + " or " + items[^1],
+            _ => string.Join(", ", items.Take(items.Count - 1)) + " or " + items[^1],
         };
 
         #region Live
@@ -148,16 +286,43 @@ namespace DOL.GS
             ReferenceEquals(player.ControlledBrain?.Body, pet) && pet.Brain is ControlledMobBrain &&
             KindFor((eCharacterClass)player.CharacterClass.ID) != Kind.None;
 
+        public static Kit KitOf(GamePlayer player, GameNPC pet) =>
+            player?.CharacterClass == null ? Kit.Plain : KitFor((eCharacterClass)player.CharacterClass.ID, pet?.Name);
+
+        /// <summary>
+        /// A keyword from the pet's owner: an order, a weapon or the menu. Null when the text is none of them (the
+        /// caller leaves it to the normal path), otherwise the pet's answer (empty for the menu).
+        /// </summary>
+        public static string Handle(GamePlayer player, GameNPC pet, string text)
+        {
+            Kind kind = KindFor((eCharacterClass)player.CharacterClass.ID);
+            Kit kit = KitOf(player, pet);
+            Weapon weapon = ParseWeapon(text);
+            if (weapon != Weapon.None)
+            {
+                if (!kit.Weapons.Contains(weapon))
+                    return null;
+                return PetKit.Wield(pet, weapon)
+                    ? "I take up the " + WeaponWord(weapon) + "."
+                    : "I cannot take up a " + WeaponWord(weapon) + " right now.";
+            }
+            Order order = Parse(text);
+            if (order == Order.Menu)
+                return string.Empty;
+            if (order == Order.None || !Allows(kind, kit, order))
+                return null;
+            return Apply(player, pet, order);
+        }
+
         /// <summary>A whisper to the pet from its owner: an order or the menu. False leaves the whisper to the normal path.</summary>
         public static bool TryWhisper(GameNPC pet, GameLiving source, string text)
         {
             if (source is not GamePlayer player || !IsOrderable(pet, player))
                 return false;
-            Order order = Parse(text);
-            Kind kind = KindFor((eCharacterClass)player.CharacterClass.ID);
-            if (order == Order.None || order != Order.Menu && !Allows(kind, order))
+            string reply = Handle(player, pet, text);
+            if (reply == null)
                 return false;
-            Show(player, pet, order == Order.Menu ? null : Apply(player, pet, order));
+            Show(player, pet, reply.Length == 0 ? null : reply);
             return true;
         }
 
@@ -199,6 +364,18 @@ namespace DOL.GS
                 case Order.ComeHere:
                     player.CommandNpcComeHere();
                     return "I am coming.";
+                case Order.Taunt:
+                    if (pet is not GameSummonedPet tauntingPet)
+                        return null;
+                    tauntingPet.SetTaunting(true);
+                    return tauntingPet.TauntShielded
+                        ? "I raise my shield and draw the enemy to me."
+                        : "I will draw the enemy to me.";
+                case Order.StopTaunting:
+                    if (pet is not GameSummonedPet quietPet)
+                        return null;
+                    quietPet.SetTaunting(false);
+                    return "I will no longer taunt.";
                 default:
                     return null;
             }
@@ -210,7 +387,11 @@ namespace DOL.GS
                 return;
             eCharacterClass ownerClass = (eCharacterClass)player.CharacterClass.ID;
             string top = string.IsNullOrWhiteSpace(reply) ? Greeting(ownerClass, pet is not GameSummonedPet) : reply;
-            string text = Menu(KindFor(ownerClass), top, brain.AggressionState, PetAssistMode.IsOn(player), brain.WalkState);
+            var state = pet is GameSummonedPet summoned
+                ? new KitState(PetKit.Holding(summoned), summoned.Taunting, summoned.TauntShielded)
+                : default;
+            string text = Menu(KindFor(ownerClass), top, brain.AggressionState, PetAssistMode.IsOn(player), brain.WalkState,
+                KitOf(player, pet), state);
             player.Out.SendMessage(text, eChatType.CT_Say, eChatLoc.CL_PopupWindow);
         }
 

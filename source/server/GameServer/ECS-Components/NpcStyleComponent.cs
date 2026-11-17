@@ -53,6 +53,20 @@ namespace DOL.GS
                 }
             }
 
+            // Issue #35: a Bonedancer commander uses a back or side style whenever it stands where one opens,
+            // instead of only on the general style roll.
+            if (_npcOwner is CommanderPet)
+            {
+                foreach (System.Collections.Generic.List<Style> positional in new[] { _npcOwner.StylesBack, _npcOwner.StylesSide })
+                {
+                    if (positional == null || positional.Count == 0)
+                        continue;
+                    Style style = PickRandom(positional);
+                    if (style != null && StyleProcessor.CanUseStyle(lastAttackData, _npcOwner, style, _npcOwner.ActiveWeapon))
+                        return style;
+                }
+            }
+
             if (Util.Chance(Properties.GAMENPC_CHANCES_TO_STYLE))
             {
                 // All of the remaining lists are randomly picked from,
