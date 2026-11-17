@@ -1511,7 +1511,8 @@ namespace DOL.GS
                 GameBot fightingMember = !brain.HasAggro && !bot.IsAttacking
                     ? AutonomousGroupCombat.MemberToHelp(bot, GameLoop.GameLoopTime)
                     : null;
-                if (fightingMember == null)
+                // A healer walking to its post for this fight (issue #48) keeps walking.
+                if (fightingMember == null && !brain.IsWalkingToHealerPost)
                 {
                     bot.StopMovingOnPath();
                     bot.StopMoving();
