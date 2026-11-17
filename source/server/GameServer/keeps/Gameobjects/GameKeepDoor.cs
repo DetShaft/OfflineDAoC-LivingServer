@@ -559,6 +559,16 @@ namespace DOL.GS.Keeps
         /// <summary>
         /// This method is called when door is repair or keep is reset
         /// </summary>
+        public override void Open(GameLiving opener = null)
+        {
+            State = eDoorState.Open;
+        }
+
+        public override void Close(GameLiving closer = null)
+        {
+            CloseDoor();
+        }
+
         public virtual void CloseDoor()
         {
             State = eDoorState.Closed;

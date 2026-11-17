@@ -54,10 +54,15 @@ def main():
     zones, regions = {}, {}
     for z in built:
         f = files.get(f'z{z:03d}.dds')
+        if z == killaloe_terrain.BATTLEGROUND_ZONE:
+            f = files.get(f'z{killaloe_terrain.TERRAIN_ZONE:03d}.dds') or f
         sec = dict(l.split('=', 1) for l in zone_section(z).splitlines() if '=' in l)
         # zones.dat region (1 / 51 Albion + SI, 100 / 151 Midgard + SI, 200 / 181 Hibernia + SI ...) and type
         # (0 open world, 1 city, 2 dungeon): the map window lists your realm's open world + capital only
-        zones[z] = {'name': zone_name(z) or f'Zone {z}', 'map': f'z{z:03d}.png' if f else '', 'areas': [], 'region_map': 0,
+        name = zone_name(z) or f'Zone {z}'
+        if z == killaloe_terrain.BATTLEGROUND_ZONE:
+            name = killaloe_terrain.PLACE_NAME
+        zones[z] = {'name': name, 'map': f'z{z:03d}.png' if f else '', 'areas': [], 'region_map': 0,
                     'desc': '', 'region': int(sec.get('region', -1)), 'type': int(sec.get('type', 0) or 0)}
     # area maps (towns / dungeon wings)
     for sec, kv, _ in sections(SRC / 'areas.dat'):
