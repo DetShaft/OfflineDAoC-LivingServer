@@ -442,6 +442,15 @@ func robe_worn() -> bool:
 	return false
 
 
+## figure.json numbers come back from JSON.parse_string as floats, and [5.0].has(5) is false in Godot 4 (#45): every
+## gloves / boots variant fell back to the default mesh.
+static func _has_variant(variants: Dictionary, slot: String, v: int) -> bool:
+	for k in (variants.get(slot, []) as Array):
+		if int(k) == v:
+			return true
+	return false
+
+
 func _apply_armor() -> void:
 	var parts := armor
 	var variants: Dictionary = meta.get("variants", {})
@@ -458,7 +467,11 @@ func _apply_armor() -> void:
 		var v := int(want[0]) if want.size() > 0 else default_v
 		if robe and slot == "body":
 			v = ROBE_BODY                                    # robe_worn checked that this race has it
-		elif not (variants.get(slot, []) as Array).has(v):
+		elif slot == "body":
+			v = default_v                                    # #45: the body mesh comes from the item's Cata Body# style
+			                                                 # through a client table we don't have; older armor.json
+			                                                 # files name the texture's number here, which is not it
+		elif not _has_variant(variants, slot, v):
 			v = default_v                                    # this race lacks that mesh: keep the default shape
 		for k in (variants.get(slot, []) as Array):
 			var node: String = slot if int(k) == default_v else "%s_v%d" % [slot, int(k)]
@@ -517,8 +530,7 @@ func _apply_kilt() -> void:
 				mi.visible = false                           # the robe's skirt covers it (issue #37)
 		return
 	var body_default := int(meta.get("clothes", {}).get("body", {}).get("variant", 1))
-	var want: Array = armor.get("body", [])
-	var bv := int(want[0]) if want.size() > 0 and (meta.get("variants", {}).get("body", []) as Array).has(int(want[0])) else body_default
+	var bv := body_default                                 # the body mesh _apply_armor shows (#45)
 	var kilt_default := int(kilt.get("variant", 1))
 	var kv := bv if kilts.has(bv) else kilt_default
 	var m := _material(false)

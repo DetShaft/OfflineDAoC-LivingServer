@@ -73,6 +73,9 @@ In a playable folder:
   - Only one server can use port 10300 at a time.
 - **Build and test separately.** Deploy only tested outputs, with a backup of what you replace:
   `GameServer.dll` goes to `runtime/server`, `runtime/server/lib` and `runtime/server/win-x64`.
+  - Put a test build on the owner's game with its package's `INSTALL.cmd`, never by copying DLLs by hand. INSTALL.cmd
+    writes the install record that the next update needs; a hand copy left 1.1.19's update refusing the server as
+    "unknown" (2026-11-17). Keep the package folder (with its `BUILD-INFO.txt`) inside the game folder.
 - **Client files:**
   - Keep hash guards on any binary patch; never patch an unverified `game.dll`.
   - Private art is added under new IDs; stock models, skins and effects are never edited in place.
@@ -88,6 +91,19 @@ In a playable folder:
     result came from.
 - **Keep the old releases.** v0.3–v0.36c stay available as legacy releases, and their branches
   and tags are not rewritten.
+
+## Assistants on this fork
+
+- **Claude Code** does the main development: features, redesigns, bot AI, client art, releases.
+- **Squire (Grok Bot)** takes small, well-scoped issues only: a bug with a clear cause, a typo,
+  text or config fix, a missing null check, a small command or setting tweak, or a docs fix.
+  - It works on branches named `squire/issue-<number>-<slug>` and opens **draft** PRs on this fork
+    only. It never merges, marks a PR ready, pushes to `main` or touches upstream.
+  - Its issue comments and PRs are signed "Squire - Grokbot". It may comment on an issue to record
+    what it found, or to hand a non-simple issue back to Claude with notes. It never closes or
+    relabels issues.
+  - Its PRs are tested by build and unit tests only ("tests only"). Review them like any other
+    change before merging.
 
 ## Useful facts
 

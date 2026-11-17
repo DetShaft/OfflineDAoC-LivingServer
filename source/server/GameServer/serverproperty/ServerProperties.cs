@@ -1201,6 +1201,12 @@ namespace DOL.GS.ServerProperties
 		public static int PET_BD_COMMANDER_TAUNT_VALUE;
 
 		/// <summary>
+		/// Extra aggro, as a percentage of damage, for any other pet told to [taunt] (issue #35).
+		/// </summary>
+		[ServerProperty("npc", "pet_taunt_multiplier", "Percentage of damage that a taunting pet (other than a BD commander) gets as aggro, e.g. 150 gives 150% normal aggro.", 150)]
+		public static int PET_TAUNT_VALUE;
+
+		/// <summary>
 		/// Minimum respawn time for npc's without a set respawninterval
 		/// </summary>
 		[ServerProperty("npc", "npc_min_respawn_interval", "Minimum respawn time, in minutes, for npc's without a set respawninterval", 5)]
@@ -2435,13 +2441,21 @@ namespace DOL.GS.ServerProperties
 		/// <summary>
 		/// Autonomous gamebots react to a player-shaped attacker like a player (stefanrows/OfflineDAoC 0.271).
 		/// </summary>
+		/// <summary>
+		/// Combat log detail for /spawn helpers (owner 2026-11-16: "Drop them by default"). Off: a helper's fighting shows
+		/// on its owner's log the way another player's does on live, with no damage numbers. On: the owner also sees the
+		/// helper's damage, crits, styles and spell lines, named after the helper, in others' combat.
+		/// </summary>
+		[ServerProperty("bots", "bot_combat_log_details", "Show your /spawn helpers' damage numbers, crits, styles and spell lines (named after the helper) in your others' combat log. False shows their fighting like another player's on live, without numbers.", false)]
+		public static bool BOT_COMBAT_LOG_DETAILS = false;
+
 		[ServerProperty("bots", "bot_incoming_fire_reaction", "Autonomous gamebots hit by a player, bot or pet react like a player: a 0.3-2.5 s reaction delay (healers heal meanwhile; shorter for tanks and bold personalities), an area spell from a distance doesn't make its caster the bot's target, and healers cure a dotted group with the group cure. Companions and bots in your group are not affected. False keeps the immediate reaction.", true)]
 		public static bool BOT_INCOMING_FIRE_REACTION;
 
 		/// <summary>
-		/// Cleric/Druid/Healer support bots assist with nukes or melee when nobody needs healing.
+		/// Back-line support bots (Cleric, Druid, Healer, Shaman, Bard) assist when nobody needs healing (issue #48).
 		/// </summary>
-		[ServerProperty("bots", "healer_idle_combat_enabled", "Off by default since 1.1.16 (healer AI was rough; see issue #48). When on: when a Cleric, Druid or Healer is the exclusive support in a group: if nobody needs healing, the group is fighting, mana is at least 40%, and stance is not Passive, the healer may nuke, debuff or melee the group's target instead of standing idle. Healing, cures and resurrection still come first. False keeps healers support-only (buff/follow only while grouped).", false)]
+		[ServerProperty("bots", "support_idle_combat_enabled", "Replaces healer_idle_combat_enabled (issue #48; the new name means a False saved under the old one does not carry over). When a Cleric, Druid, Healer, Shaman or Bard holds the back line in a group: if nobody needs healing, the group is fighting, mana is at least 40% and stance is not Passive, it may nuke or debuff the group's target from its post (Bards: instant damage spells only, instrument kept in hand). Pure healers swing only at an enemy already in reach; Shamans and Bards never melee; none of them walks toward the enemy. Healing, cures and resurrection still come first. False keeps them support-only.", true)]
 		public static bool HEALER_IDLE_COMBAT;
 
 		/// <summary>
@@ -2514,6 +2528,14 @@ namespace DOL.GS.ServerProperties
 		/// <summary>Bots take short breaks (brb) and now and then go linkdead and come back.</summary>
 		[ServerProperty("bots", "bot_living_breaks", "Server life: an idle bot now and then says brb and logs off for 5-25 minutes, and a bot grouped with you rarely goes linkdead for 30-90 seconds (the group hears about it) and comes back with an apology. Never during a fight, siege or relic march.", false)]
 		public static bool BOT_LIVING_BREAKS;
+
+		/// <summary>Level-50 gamebots roll a new low-level alt (issue #57, AutonomousBotAlts).</summary>
+		[ServerProperty("bots", "bot_alts_enabled", "Server life: once all of a gamebot player's characters are level 50, it rolls a new level-one alt in the same realm and plays it most of the time, so the leveling zones stay busy. Only one of a player's characters is online at a time and they share its personality and schedule. Needs bot_schedule_mode session or clock.", true)]
+		public static bool BOT_ALTS_ENABLED;
+
+		/// <summary>The share of a gamebot player's play blocks spent on one of its level-50s rather than its leveling alt.</summary>
+		[ServerProperty("bots", "bot_alts_main_share", "Server life: when bot alts are on, the share (0-1) of a gamebot player's two-hour play blocks it spends on one of its level-50 characters (RvR, end game) instead of its leveling alt.", 0.25)]
+		public static double BOT_ALTS_MAIN_SHARE;
 
 		/// <summary>Idle bots look around, emote, shift their feet, wave at you and cheer a ding nearby.</summary>
 		[ServerProperty("bots", "bot_living_body_language", "Server life: autonomous gamebots standing around in town, waiting for their group or resting look around, emote now and then (ponder, shrug, laugh, stretch their legs with a step or two in town), turn and wave at you when you walk up, and cheer when someone dings nearby. Only where a real player can see it; never in a fight. Bots cannot jump or sit (the game sends no such state for them).", false)]

@@ -214,6 +214,26 @@ New-FakeGame $changedLauncher $base
 $unknownLauncher = Run 'install-server-build.ps1' @('-GameFolder', $changedLauncher)
 Check ($unknownLauncher.Code -ne 0 -and (Sha (Join-Path $changedLauncher 'runtime\server\GameServer.dll')) -ne $info['GameServer.dll']) 'an unknown launcher is refused'
 
+# A fork build copied in by hand, without INSTALL.cmd (owner's PC, 2026-11-17): no install record names it, but its
+# package's BUILD-INFO.txt sits in the game folder, so it is a known fork build and the update replaces it.
+$handCopied = Join-Path $work 'hand-copied'
+New-FakeGame $handCopied $base
+$devPackage = Join-Path $handCopied 'patch-backups\dev\build-abc1234\LivingServer-dev'
+New-Item -ItemType Directory -Path $devPackage -Force | Out-Null
+$devInfo = @('BuildName=dev-test', "BaseRelease=$base", 'Commit=abc1234def5678abc1234def5678abc1234def56')
+foreach ($folder in @('runtime/server', 'runtime/server/lib', 'runtime/server/win-x64')) {
+    [IO.File]::WriteAllText((Join-Path $handCopied "$folder\GameServer.dll"), 'a dev fork build')
+}
+$devInfo += "GameServer.dll=$(Sha (Join-Path $handCopied 'runtime\server\GameServer.dll'))"
+foreach ($folder in @('runtime/server', 'runtime/server/lib', 'runtime/server/win-x64')) {
+    [IO.File]::WriteAllText((Join-Path $handCopied "$folder\CoreDatabase.dll"), 'a dev fork build database layer')
+}
+$devInfo += "core/CoreDatabase.dll=$(Sha (Join-Path $handCopied 'runtime\server\CoreDatabase.dll'))"
+Set-Content -LiteralPath (Join-Path $devPackage 'BUILD-INFO.txt') -Value $devInfo -Encoding UTF8
+$handInstall = Run 'install-server-build.ps1' @('-GameFolder', $handCopied)
+Check ($handInstall.Code -eq 0 -and (Sha (Join-Path $handCopied 'runtime\server\lib\GameServer.dll')) -eq $info['GameServer.dll'] -and
+       $handInstall.Output -match 'dev-test \(commit abc1234, copied in without INSTALL.cmd\)') "a hand-copied fork build with its BUILD-INFO.txt in the game folder is replaced`n$($handInstall.Output)"
+
 # A game without the new client: only runtime's launcher is replaced.
 $plain = Join-Path $work 'plain'
 New-FakeGame $plain $base

@@ -668,12 +668,18 @@ namespace DOL.GS
             inventoryItem.AssertLockAcquisition();
             // Discarded gear and a group that is not sharing stay on the solo path.
             // The player's own /autoloot still picks up a kill that has no group.
-            // Inside a group, the player's turn waits on the corpse for /look.
+            // Inside a group with a player, gear is rolled for (need or greed). Everything else
+            // is dealt in turn: a player's turn goes to the backpack with /autoloot on, and
+            // waits on the ground with it off.
             if (!AutosplitLoot || inventoryItem.IsPlayerDiscarded)
                 return TryPickUpResult.DoesNotWant;
 
             List<GameLiving> eligible = EligibleItemMembers(inventoryItem);
             if (eligible.Count == 0)
+                return TryPickUpResult.Blocked;
+
+            // Blocked leaves the drop in the world until the roll ends. DropLoot adds it there.
+            if (GroupLootRolls.TryStart(this, inventoryItem, eligible))
                 return TryPickUpResult.Blocked;
 
             lock (_lootTurnLock)
@@ -690,8 +696,10 @@ namespace DOL.GS
 
                         _lootTurn = index + 1;
                         inventoryItem.ReservedFor = player;
+                        if (player.Autoloot && TryPickUpItem(player, inventoryItem) is TryPickUpResult.Success)
+                            return TryPickUpResult.Success;
                         if (player.Client != null)
-                            player.Out.SendMessage($"{inventoryItem.Name} is yours to look over. /look, then /look take.", eChatType.CT_Loot, eChatLoc.CL_SystemWindow);
+                            player.Out.SendMessage($"{inventoryItem.Name} is yours and waits on the ground. Pick it up, or use /look take.", eChatType.CT_Loot, eChatLoc.CL_SystemWindow);
                         // Blocked leaves the drop in the world. DropLoot adds it there.
                         return TryPickUpResult.Blocked;
                     }
@@ -722,6 +730,13 @@ namespace DOL.GS
                 return TryPickUpResult.DoesNotWant;
 
             string language = source.Client?.Account?.Language;
+            if (item.PendingRoll != null)
+            {
+                if (language != null)
+                    source.Out.SendMessage($"The group is still rolling for {item.Name}.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
+                return TryPickUpResult.Blocked;
+            }
+
             if (item.ReservedFor != null && item.ReservedFor != source)
             {
                 if (language != null)

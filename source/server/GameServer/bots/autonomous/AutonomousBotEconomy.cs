@@ -914,6 +914,9 @@ namespace DOL.GS;
 public sealed class OfflineWorldBotRecord : DataObject
 {
     [PrimaryKey(AutoIncrement = true)] public long BotId { get; set; }
+    // The bot "player" this character belongs to (issue #57, AutonomousBotAlts): 0 for a first character, otherwise
+    // the BotId of the player's first character.
+    [DataElement(AllowDbNull = false)] public long PlayerId { get; set; }
     [DataElement(AllowDbNull = false)] public string Name { get; set; } = string.Empty;
     [DataElement(AllowDbNull = false)] public int Realm { get; set; }
     [DataElement(AllowDbNull = false)] public int ClassId { get; set; }

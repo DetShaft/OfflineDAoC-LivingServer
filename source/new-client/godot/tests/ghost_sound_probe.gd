@@ -9,6 +9,7 @@ var v: Node
 
 
 func _ready() -> void:
+	preload("res://game/sound_loader.gd").blocking = true   # a first play counts: read its file at once
 	v = get_tree().current_scene
 	await get_tree().create_timer(5.0).timeout
 	v.ui.visible = false

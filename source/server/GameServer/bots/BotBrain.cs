@@ -1271,6 +1271,9 @@ namespace DOL.AI.Brain
                 }
                 return;
             }
+            // A back-line support in a fight holds its healer post instead of a slot that turns with the leader (#48).
+            if (!ambientWander && HoldHealerPost())
+                return;
             var party = new List<GroupFormation.Member>();
             if (Body.Group != null)
             {
@@ -2388,7 +2391,10 @@ namespace DOL.AI.Brain
             // support-only actor merely because a group exists.
             bool minstrelAtRange = !groupedSupport && !UsesMinstrelHybridCombat && (eCharacterClass)bot.CharacterClass.ID == eCharacterClass.Minstrel &&
                                     !IsUnderImmediateMeleePressure();
-            if (immediateCombat && !minstrelAtRange)
+            // Issue #48 (Jay, 2026-11-16): a Bard holding the back line keeps its instrument out and keeps singing
+            // through the fight; it does not swap to melee.
+            bool bardKeepsPlaying = (eCharacterClass)bot.CharacterClass.ID == eCharacterClass.Bard && BotPartyRoles.IsSupport(bot);
+            if (immediateCombat && !minstrelAtRange && !bardKeepsPlaying)
             {
                 StopTwistedSong();
                 SwitchToUsableMeleeWeapon();
@@ -3844,7 +3850,8 @@ namespace DOL.AI.Brain
 
             HoldSupportCombat();
             CheckSpells(eCheckSpellType.Defensive);
-            if (BotBody.IsPlayerLedGroup)
+            // In a fight the healer holds its post (issue #48); otherwise it keeps its formation slot.
+            if (!HoldHealerPost() && BotBody.IsPlayerLedGroup)
             {
                 if (!Body.IsCasting && Body.castingComponent?.HasPendingSkillRequests != true)
                     FollowFormation();
@@ -3894,7 +3901,16 @@ namespace DOL.AI.Brain
             if (target == null || !MaySupportIdleCombatAssist(target))
                 return false;
 
-            bool inMeleeReach = SupportIdleMeleeInReach(target);
+            // Issue #48 (Jay, 2026-11-16): Bards keep their instrument and only throw their instant damage spells;
+            // Shamans cast but never melee. Neither walks toward the enemy.
+            eCharacterClass supportClass = (eCharacterClass)BotBody.CharacterClass.ID;
+            if (supportClass == eCharacterClass.Bard)
+            {
+                StopSupportEnemyChase();
+                return TrySupportInstantDamage(target);
+            }
+
+            bool inMeleeReach = !BotPartyRoles.AvoidsSupportMelee(supportClass) && SupportIdleMeleeInReach(target);
             int spellRange = OffensiveApproachRange(target);
             bool inSpellRange = spellRange > 0 && Body.IsWithinRadius(target, spellRange);
             if (!inMeleeReach && !inSpellRange)
@@ -3925,6 +3941,27 @@ namespace DOL.AI.Brain
 
             Body.StartAttack(target);
             return true;
+        }
+
+        /// <summary>
+        /// A Bard's idle offense as group support: an instant damage spell at a target already in its range, cast with
+        /// the instrument still in hand. True when one was cast.
+        /// </summary>
+        private bool TrySupportInstantDamage(GameLiving target)
+        {
+            if (target?.IsAlive != true || Body.InstantHarmfulSpells == null)
+                return false;
+            foreach (Spell spell in Body.InstantHarmfulSpells
+                         .Where(spell => spell != null && spell.Level <= Body.Level && spell.Damage > 0 && !spell.NeedInstrument)
+                         .OrderByDescending(spell => spell.Level))
+            {
+                if (!Body.IsWithinRadius(target, spell.CalculateEffectiveRange(Body)))
+                    continue;
+                Body.TargetObject = target;
+                if (CheckInstantOffensiveSpells(spell))
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>True when the support bot can swing at target from where it stands (no walking in).</summary>

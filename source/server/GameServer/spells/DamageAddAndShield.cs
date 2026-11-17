@@ -30,7 +30,12 @@ namespace DOL.GS.Spells
             {
                 GamePlayer owner = brain.GetPlayerOwner();
 
-                if (owner != null)
+                if (owner != null && ad.Attacker is GameBot)
+                {
+                    if (CombatLogAttribution.ShowDetails)
+                        CombatLogAttribution.SendToOwner(owner, $"{ad.Attacker.Name} hits {target.GetName(0, false)} for {ad.Damage} damage!");
+                }
+                else if (owner != null)
                     MessageToLiving(owner, string.Format(LanguageMgr.GetTranslation(owner.Client, "DamageAddAndShield.EventHandlerDA.YourHitFor"), ad.Attacker.Name, target.GetName(0, false), ad.Damage), eChatType.CT_Spell);
             }
             else if (attacker is GamePlayer attackerPlayer)
@@ -76,7 +81,12 @@ namespace DOL.GS.Spells
             {
                 GamePlayer owner = brain.GetPlayerOwner();
 
-                if (owner != null)
+                if (owner != null && ad.Attacker is GameBot)
+                {
+                    if (CombatLogAttribution.ShowDetails)
+                        CombatLogAttribution.SendToOwner(owner, $"{ad.Attacker.Name} hits {target.GetName(0, false)} for {ad.Damage} damage!");
+                }
+                else if (owner != null)
                     MessageToLiving(owner, string.Format(LanguageMgr.GetTranslation(owner.Client, "DamageAddAndShield.EventHandlerDS.YourHitFor"), ad.Attacker.Name, target.GetName(0, false), ad.Damage ), eChatType.CT_Spell);
             }
 

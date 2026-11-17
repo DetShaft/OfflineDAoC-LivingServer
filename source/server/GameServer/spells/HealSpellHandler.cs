@@ -286,8 +286,9 @@ namespace DOL.GS.Spells
             if (caster == target)
                 return true;
 
-            // A pet healing its owner.
-            return caster is GameNPC npcCaster && npcCaster.Brain is IControlledBrain npcCasterBrain && npcCasterBrain.GetPlayerOwner() == target;
+            // A pet healing its owner. A bot plays its own character: its heal on the owner reads "Aldwin heals Morgan", and
+            // the owner is told "You are healed by Aldwin" (owner 2026-11-16).
+            return caster is GameNPC npcCaster && caster is not GameBot && npcCaster.Brain is IControlledBrain npcCasterBrain && npcCasterBrain.GetPlayerOwner() == target;
         }
     }
 }

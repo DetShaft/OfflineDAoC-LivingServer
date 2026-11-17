@@ -452,7 +452,7 @@
   {
     "Path": "new-client/godot/game/zone_viewer.gd",
     "Released": "39e4c91d75a99240a5de057b6c289477a66a446d6a3e146fdee3e135a664a068",
-    "Fixed": "456471bb5a6372f43df9c60f17127f5f06ae164d8c8d1a63c4c0bd78d84c90d3",
+    "Fixed": "339e9cf866146985218a0189dc37bf30eeb42a9dc84defd7760996205282735d",
     "Size": 89823,
     "File": "content/godot/game/zone_viewer.gd",
     "ReplaceAny": true
@@ -460,8 +460,8 @@
   {
     "Path": "new-client/godot/game/ui/game_ui.gd",
     "Released": "219cd58ad3e9d227e0436358379b8697fe147ad62df8c61d4d07234a8817d1b2",
-    "Fixed": "c66439d2379c3e8de1688e44a61ab864b11567e072e2bd6a26cbcae28b3f565a",
-    "Size": 80408,
+    "Fixed": "def39066a1f0378771550af2673cef50979df78054d5a4d9d11160e985fb9659",
+    "Size": 81324,
     "File": "content/godot/game/ui/game_ui.gd",
     "ReplaceAny": true
   },
@@ -484,8 +484,8 @@
   {
     "Path": "new-client/godot/game/net/server_world.gd",
     "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
-    "Fixed": "f3d79019196d3f5fe5cd02205032587faf4c077ad2b18c78be1c4813d055e393",
-    "Size": 88503,
+    "Fixed": "a321160037066d0076d44f5a54f87c3caa269caea06dd66143e6a464a5897d22",
+    "Size": 88748,
     "File": "content/godot/game/net/server_world.gd",
     "ReplaceAny": true
   },
@@ -500,8 +500,8 @@
   {
     "Path": "new-client/godot/game/ui/lfg_window.gd",
     "Released": "",
-    "Fixed": "bdc2528140f4dd3424a094d87b066208f230ce497217a329f79965206546e77a",
-    "Size": 13742,
+    "Fixed": "73e171775cf11851d54c5a5e1ae5a0e54215b4d2db3e814f8c5cde4b4c6eae65",
+    "Size": 14031,
     "File": "content/godot/game/ui/lfg_window.gd",
     "Create": true
   },
@@ -556,8 +556,8 @@
   {
     "Path": "new-client/godot/game/net/server.gd",
     "Released": "13a8a3bf7bcc42fce06888b3b4cfd2425b8ea1c5c16f46b1c9dbf50f524d1348",
-    "Fixed": "1c26e7420c87da8541856b1214d0fbf6a934028b0099b615b36ca916fb898c29",
-    "Size": 83850,
+    "Fixed": "3c5a65b41dbafec9e2347ccb228c0a434a484a6d11a750aa8a64e2ef15cc3dd1",
+    "Size": 88066,
     "File": "content/godot/game/net/server.gd",
     "ReplaceAny": true
   },
@@ -572,8 +572,8 @@
   {
     "Path": "new-client/godot/game/fig3_figure.gd",
     "Released": "e2961fc3113b939f6bfa4363b866cd1851971ae0add8adbed7a91dd3148784ff",
-    "Fixed": "ac9216eca208dc28be613a20478edea0982916042f2df5805e60964edad49d9a",
-    "Size": 33432,
+    "Fixed": "b03543fd618f867970df7137a1f8d6c570938e23de7cabdf193f1aaee4e246ac",
+    "Size": 34042,
     "File": "content/godot/game/fig3_figure.gd",
     "ReplaceAny": true
   },
@@ -591,6 +591,14 @@
     "Fixed": "df4594d9aa23d2236a5dcd3818d74d38d1355924cb164cea086800b2c3cfcb25",
     "Size": 12175,
     "File": "content/godot/game/ui/quickbar.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/trainer_window.gd",
+    "Released": "8366abc8d8d2f95fa87ceb6bd6ea6d34fe6bac32575db3d9da36309983e0539c",
+    "Fixed": "5b0eea2348b80752fd66d2386d2985033eec226feaf7cda4ff3294d3d9d74d51",
+    "Size": 14032,
+    "File": "content/godot/game/ui/trainer_window.gd",
     "ReplaceAny": true
   },
   {
@@ -632,5 +640,61 @@
     "Size": 37077,
     "File": "content/godot/game/zone_loader.gd",
     "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/options_window.gd",
+    "Released": "181026fdbbdc157398fe384cbbf44926cacfdb35de5413d27f9778edef2f8c69",
+    "Fixed": "5bfec0e4e5672866fe2d51cd18479a6770d7c656f6dedd1395d2e2443d3e8257",
+    "Size": 29268,
+    "File": "content/godot/game/ui/options_window.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/world_host/bot_view.gd",
+    "Released": "55fb82e92be9254a06f23bbbada22878f97b721beee0099b38da0f8c328edef6",
+    "Fixed": "57914695783305793cccd04b227a790a497e37e4480d075bc615c0554fad0920",
+    "Size": 15434,
+    "File": "content/godot/game/world_host/bot_view.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/character_sounds.gd",
+    "Released": "7935854a85735a455976180fa4fec44b36b1ed336653c73d811d7dc353370c89",
+    "Fixed": "5eb2bd8e360eabd50b098fc92908f91fe1f688bc0849f212022136447bf1c8c2",
+    "Size": 12023,
+    "File": "content/godot/game/character_sounds.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/zone_audio.gd",
+    "Released": "3b8661caacb99f9cd37627da5aee65e73516f998c7f989d97b56ce59dc1fcbbc",
+    "Fixed": "1863fc0d81410c211e85d6fa85e5c99068d754889870dcab1bda0ace72a5c22c",
+    "Size": 17098,
+    "File": "content/godot/game/zone_audio.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/zone_door.gd",
+    "Released": "e72829ae5dbdb5868d99f4baa13e07f23541ea105e9838541bb09cd6c069bfc7",
+    "Fixed": "676d7fdfcdff89c610b24a3f5a6af647f63adace0561f8b258d89eed9cc0d630",
+    "Size": 6363,
+    "File": "content/godot/game/zone_door.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/sound_loader.gd",
+    "Released": "",
+    "Fixed": "fde95c63e94117898cb91e58548040b314f0de21f15f06cf0f68f503164d372a",
+    "Size": 3518,
+    "File": "content/godot/game/sound_loader.gd",
+    "Create": true
+  },
+  {
+    "Path": "new-client/godot/game/ui/loot_roll_window.gd",
+    "Released": "",
+    "Fixed": "8cefc8bb3036af7ee1e853bc28a2abd2cd2f4201e9b570db44aab31760723f79",
+    "Size": 7491,
+    "File": "content/godot/game/ui/loot_roll_window.gd",
+    "Create": true
   }
 ]

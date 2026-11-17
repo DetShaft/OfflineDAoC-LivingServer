@@ -8,7 +8,8 @@ namespace DOL.GS.Commands
 {
     /// <summary>
     /// /look lists the drops beside you and /look take puts the one you choose in your backpack.
-    /// In a group this is how your round-robin share is taken. It does not take a bot's share.
+    /// In a group it takes a share that waits on the ground for you: a turn dealt with /autoloot off,
+    /// or a roll you won with a full backpack. It does not take a bot's share. Gear is rolled for with /loot.
     /// </summary>
     [CmdAttribute(
         "&look",

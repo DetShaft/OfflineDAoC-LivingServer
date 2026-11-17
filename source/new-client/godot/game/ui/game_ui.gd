@@ -33,7 +33,8 @@ const RESTORABLE := [["panel", "CHARACTER PANEL"], ["status", "STATUS"], ["chat"
 const FriendsWindow := preload("res://game/ui/friends_window.gd")
 const LfgWindow := preload("res://game/ui/lfg_window.gd")
 const CommanderPanel := preload("res://game/ui/commander_panel.gd")
-const LIVING_SERVER_CLIENT_PATCH := "1.1.18"
+const LootRollWindow := preload("res://game/ui/loot_roll_window.gd")
+const LIVING_SERVER_CLIENT_PATCH := "1.1.19"
 
 var root: Control
 var ui_scale := 1.0
@@ -74,7 +75,7 @@ var _cast_name: Label
 var _effects_bar: HBoxContainer
 var npc_dialog: NpcDialog
 var trainer: TrainerWindow
-const TRANSIENT := ["npc_dialog", "trainer", "merchant", "vault", "exchange", "guide", "info", "release", "siege", "emblem"]
+const TRANSIENT := ["npc_dialog", "trainer", "merchant", "vault", "exchange", "guide", "info", "release", "siege", "emblem", "loot_roll"]
 const INFO_W := 160.0                                     # the information window's width (interact.bmp is 300)
 const INFO_WIDE := 320.0                                  # ... for a server text with long lines (/stables routes)
 var _compass_letters: Control
@@ -381,6 +382,7 @@ func _build() -> void:
 	_build_guild()
 	if living_server_social_windows():
 		_build_friends()
+	_build_loot_roll()
 	PlayerData.window_toggle.connect(func(id: String):
 		if windows.has(id):
 			if windows[id].visible:
@@ -836,6 +838,8 @@ var lfg_window  # preload consts above (not global class_name cache)
 var commander_panel
 ## Modern friends window (Shift+F / /friend window).
 var friends_window
+## The group's need or greed rolls: opens by itself when gear drops in a group (the server's "Loot roll #" lines).
+var loot_roll_window
 ## The guild emblem picker - the server opens it (EmblemDialogue).
 var emblem_window: EmblemWindow
 
@@ -864,6 +868,24 @@ func _build_guild() -> void:
 		if chat:
 			chat.start_typing(text)
 	guild_window.build()
+
+
+func _build_loot_roll() -> void:
+	loot_roll_window = LootRollWindow.new()
+	loot_roll_window.resizable = true
+	loot_roll_window.patch = [6, 19, 13, 33]
+	var body := Vector2(LootRollWindow.WIDTH, LootRollWindow.height_for(1))
+	loot_roll_window.min_size = body
+	loot_roll_window.max_size = body
+	loot_roll_window.size = body
+	var at := Vector2(area().x * 0.5 - body.x * 0.5, area().y * 0.5 + 40)
+	loot_roll_window.setup("loot_roll", "interact", Rect2(), at)
+	_add(loot_roll_window, at, false)
+	loot_roll_window.command.connect(func(text: String):
+		if Server.active:
+			Server.command(text))
+	loot_roll_window.build()
+	Server.loot_roll_line.connect(loot_roll_window.server_line)
 
 
 func _build_lfg() -> void:

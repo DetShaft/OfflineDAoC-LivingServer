@@ -120,8 +120,8 @@ def cata_columns(rows, idx, skip):
     Catacombs figures (owner 2026-10-15: the Sluaghbinder's Dubh Sluagh epic set, objects 4826-4832 - its items are
     made in server code, so no list named their models, and its own skins have no "Cata" twin): Cata Status (objects
     col 65) on, a pskins id per slot (66 body m, 67 body f, 68 arms, 69 gloves, 70 legs, 71 boots), the pskin's BaseTex
-    an mskins row = the texture in figures/Mskins; a cloak (col 72) wears the pskin's own texture. Every slot on mesh 1,
-    as the stock sets here. Objects in `skip` (already dressed) are left alone. {model: {m/f: {slot: [1, tex]}}}."""
+    an mskins row = the texture in figures/Mskins; a cloak (col 72) wears the pskin's own texture. Meshes as
+    nif_character.cata_mesh (gloves / boots from cols 74 / 75, #45), as the stock sets here. Objects in `skip` (already dressed) are left alone. {model: {m/f: {slot: [1, tex]}}}."""
     pskins = {r[0].strip(): r for r in rows('pskins.csv') if r and r[0].strip().isdigit()}
     mskins = {r[0].strip(): r for r in rows('mskins.csv') if r and r[0].strip().isdigit()}
     out = {}
@@ -143,11 +143,11 @@ def cata_columns(rows, idx, skip):
             if not tex or idx.locate(tex) is None:
                 continue
             if slot == 'body_m':
-                parts_m['body'] = [1, tex]
+                parts_m['body'] = [nc.cata_mesh('body', tex, r), tex]
             elif slot == 'body_f':
-                parts_f['body'] = [1, tex]
-            else:
-                parts_m[slot] = parts_f[slot] = [1, tex]
+                parts_f['body'] = [nc.cata_mesh('body', tex, r), tex]
+            else:                                          # gloves / boots on the item's own mesh (#45)
+                parts_m[slot] = parts_f[slot] = [nc.cata_mesh(slot, tex, r), tex]
         if parts_m or parts_f:
             out[r[0].strip()] = {'m': parts_m, 'f': parts_f}
     return out

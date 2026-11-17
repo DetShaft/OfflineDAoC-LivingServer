@@ -8,6 +8,104 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.19 — 2026-11-17
+
+**Also in 1.1.19** (all tests only: not yet seen in game):
+- **Combat log (#92, #98):** a `/spawn` helper's spells and melee are named in the combat log, under Others' combat,
+  instead of being credited to you. Helpers' damage numbers are hidden by default (server setting
+  `bot_combat_log_details`).
+- **Savage (#91):** the new client offers the Savage at character creation and shows Savage and base-class names in the
+  Friends, guild and LFG lists.
+- **Armour (#101, #105):** gloves and boots use the item's own mesh in the new client, through one rule for every
+  dressing path.
+- **Launcher (#70):** one Active tab with Population, Groups and RvR subtabs.
+- **Trainer (#71):** skill tooltips on the trainer's training preview in the new client.
+- **Gamebot alts (#57, #104):** level-50 bot players roll a new low-level alt, and alts are never chosen as beggars.
+- **Upstream check (#66):** a weekly workflow reports new commits in the upstream repository.
+
+**Level-40 Bonedancer commanders and pet accuracy (#35).** Jay, 2026-11-17:
+- Each Bonedancer specialization line now teaches its own level-40 commander, following live's tooltips. All three
+  summon at 85% of the caster's level for 20% power and control three minions.
+  - **Bone Magus** (Bone Mystics, Darkness): a caster with snare, debuff and direct-damage spells. It keeps its
+    183-damage lifedrain, since the commander is meant to be the Bonedancer's main damage.
+  - **Bone Keeper** (Bone Guardians, Suppression): lifedrain, plus Shroud of Cowardice and Annihilate Strength to
+    suppress with.
+  - **Bone Captain** (Bone Warriors, Bone Army): a bowman.
+  - The released world had only an unused Bone Magus row, so the server adds the missing rows on its first start.
+- **Spell accuracy:** a pet's spells were resisted more the lower its level. Against a level-50 player, a level-42
+  commander was resisted about 24% of the time, twice a player's 12.5%.
+  - A commander now makes up the whole level gap to its Bonedancer, so it lands spells about as often as its owner.
+  - Minions make up half the gap: a level-37 minion goes from 32% resisted to 22%. That keeps four pets from
+    dropping a player at once.
+
+Tests only: not yet seen in game.
+**Pet weapons, taunt and commander spell choices (#35, step 2).** Jay, 2026-11-17, per class:
+- Spiritmaster pets choose a one-handed [sword], [axe] or [hammer]. They no longer roll a spear or a two-hander.
+- The Enchanter's Underhill Ally and Compatriot choose a one-handed [blade], [mace] or [dagger] and start with a blade.
+  The Friend stays unarmed, and the Companion and Zealot stay casters.
+- Spiritmaster, Cabalist, Necromancer and the Enchanter's melee pets get [taunt] / [stop taunting]. The
+  Necromancer's pet takes taunt and nothing else; its weapons stay baked into the summon. A taunting pet draws more
+  of its target's attention (server setting `pet_taunt_multiplier`, 150%).
+- No pet spawns with a shield. Taunting gives a pet that holds a one-handed weapon a shield, the shield styles of its
+  realm's fighter up to its level, and a 10% block chance if it had none. Without a one-handed weapon it taunts
+  without a shield.
+- Bonedancer commanders follow the same shield rule, and with the shield up they learn their level's shield styles.
+  They now use a back or side style whenever they stand where one opens, not only on the random style roll.
+- The Bone Magus (dread lich) offers [snare], [debuff] or [damage], and the Bone Keeper (dread guardian) [lifedrain]
+  or [suppress], as the spell kind to cast first. The other kinds still follow. The Bone Captain (dread archer) offers
+  its bow only.
+
+Tests only: not yet seen in game.
+**Every pet class gets an order dialog (#35).** Right-click your pet in the new client, type `/pet`, or whisper it,
+and it answers with clickable orders, like the Bonedancer commander's dialog: [aggressive], [defensive] or [passive],
+[assist] (it attacks whatever you attack, the pet window's Assist) or [stop assisting], and [follow], [stay] or
+[come] for pets that walk with you. Animist turrets and Theurgist elementals offer stance and assist only, since they
+do not follow. Each class's pet greets you in its own voice, and a charmed creature as a charmed one. Orders go
+through the same calls as the pet window, so the two stay in step. `/pet <order>` gives one order directly. The
+commander keeps its own dialog, and the Necromancer's pet is unchanged. Weapon kits and styles for other pets are not
+in this step: which pets carried weapons needs a per-class decision. Tests only: not yet seen in game.
+**Healers hold a safe spot in fights (#48).** Jay, 2026-11-16: a healer on healing duty stayed pinned to a spot
+behind the leader during a fight, so it ran around after the leader the whole time. Now a group's back-line support
+(Cleric, Druid, Healer, and now Shaman and Bard too) picks a post when the fight starts: out of the enemies' reach and
+within casting range of everyone in the group. If it already stands somewhere like that, it does not move at all. It
+holds the post while it watches the group, and moves only when an enemy comes close or a member gets too far away.
+This applies in your group and in gamebot groups.
+- **Idle combat is back on**, under a new setting name `bots / support_idle_combat_enabled` (a `False` saved under
+  1.1.16's `healer_idle_combat_enabled` does not carry over). When nobody needs healing, the back line nukes or debuffs
+  the group's target from its post. None of them walks toward the enemy.
+- **Shamans and Bards never melee as group support.** Shamans cast. Bards keep their instrument in hand and keep
+  singing through the fight, and only throw their instant damage spells. Friars and Wardens still melee.
+- Solo bots of these classes fight as before. Tests only: not yet seen in game.
+
+**Group gear is rolled for, need or greed, in a loot window (#72).** Jay, 2026-11-16: stopping to type `/look` for
+loot is not good design. When a weapon, armor piece, shield, instrument or jewel drops in a group with you in it, the
+server opens a roll and the new client opens a **Loot Rolls** window by itself: one row per drop with the piece's
+level, type, slot, DPS and speed or AF, quality and bonuses, who already rolled Need, a countdown, and **NEED**,
+**GREED** and **PASS** buttons. Need beats Greed, and the highest 1-100 roll in the winning choice takes the piece.
+- **Bots answer at once.** A gamebot rolls Need when the piece is an upgrade it can wear: its class can use it, a
+  weapon fits its spec line, and it beats what it wears in that slot (the same check its own loot, merchant and
+  Realm Exchange decisions use). Otherwise it rolls Greed, and it passes with a full bag. A companion bot rolls Greed.
+  A `/spawn` helper is not in the roll.
+- **The roll ends when you answer**, or after 60 seconds, when a roll you did not answer counts as Greed, so a missed
+  window never loses a drop. A win goes straight to your backpack. With a full backpack the piece waits on the ground
+  for you alone. If everyone passes it stays on the ground for anyone.
+- **Everything else is still dealt in turn** (trophies, stacks, anything that is not gear), with no roll and no window.
+  Your turn now goes straight to your backpack while `/autoloot` is on, and waits on the ground with it off, where a
+  normal pickup or `/look take` gets it. A group of bots alone still deals everything in turn.
+- **The original client** has no window: the roll is a chat line, answered with `/loot need`, `/loot greed` or
+  `/loot pass` (add the roll's number when more than one is open; `/loot` lists them).
+
+Tests only: unit tests for the rolls and a headless check of the window's lines and answers. Not yet seen in game,
+and the window's layout has not been looked at on a screen.
+
+**New client: fewer hitches while you play.** The new client read each sound file from disk on the main thread
+the first time it played (a swing, a pain cry, a door, a zone sound), and the name plates re-read `settings.cfg` from
+disk once a second. Each read usually takes a few milliseconds, but in the owner's 2026-11-16 session, while the
+server was writing slowly to its database, single reads took 200-600 ms, and each one froze a frame. Sound files are
+now read on a worker thread: a first play starts when its file is in, and a character's sound that would start more
+than a quarter second late is skipped. The bot name options are read once and again when Options saves them. Tests
+only: not yet seen in game.
+
 ## Beta 1.1.18 — 2026-11-15
 
 **The 15-19 battleground is Killaloe (#83).** Abermenai was the Uthgard name. The zone stays region 253. On startup

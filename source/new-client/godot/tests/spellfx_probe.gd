@@ -4,6 +4,7 @@ extends Node
 ## every 0.15 s from the cast start to after the hit (f_000.png ...), camera behind the caster like the clip.
 ##   --skip-login --zone=200 --figure=elf_m --ui-test --probe=spellfx_probe [--target=badger cub] [--out=...]
 func _ready() -> void:
+	preload("res://game/sound_loader.gd").blocking = true   # a first play counts: read its file at once
 	var v := get_tree().current_scene
 	await get_tree().create_timer(5.0).timeout
 	PlayerData.character["base"] = "ELF-MAGI"

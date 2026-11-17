@@ -1022,7 +1022,19 @@ namespace DOL.AI.Brain
 			}
 		}
 
-		public virtual int ModifyDamageWithTaunt(int damage) { return damage; }
+		/// <summary>
+		/// A taunting pet draws more of its target's attention from the same damage (issue #35: every pet with a
+		/// [taunt] order; the commander keeps its own multiplier). The necromancer's pet taunts with its own spell.
+		/// </summary>
+		public virtual int ModifyDamageWithTaunt(int damage)
+		{
+			if (Body is not GameSummonedPet { Taunting: true } pet || pet is NecromancerPet)
+				return damage;
+			int scale = pet is CommanderPet
+				? GS.ServerProperties.Properties.PET_BD_COMMANDER_TAUNT_VALUE
+				: GS.ServerProperties.Properties.PET_TAUNT_VALUE;
+			return scale > 100 ? (int)(damage * scale / 100.0) : damage;
+		}
 
 		protected override void BringFriends(GameLiving trigger) { }
 

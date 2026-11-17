@@ -15,6 +15,9 @@ namespace DOL.GS
         internal string BotReleaseReason { get; set; }
         public int AppearanceTemplateId { get; private set; }
 
+        /// <summary>The abomination's size: half again a normal figure (template 206 says 50).</summary>
+        public const byte AbominationSize = 75;
+
         public override GameObject TargetObject
         {
             get => base.TargetObject;
@@ -85,6 +88,9 @@ namespace DOL.GS
                     break;
                 case "abomination":
                     LoadEquipmentTemplate("abomination_fiery_sword");
+                    // Issue #117 (owner, 2026-11-17): the abomination should tower over the other servants.
+                    if (Size < AbominationSize)
+                        Size = AbominationSize;
                     break;
                 default:
                     LoadEquipmentTemplate("barehand_weapon");
@@ -365,11 +371,29 @@ namespace DOL.GS
 
         public override bool Interact(GamePlayer player)
         {
+            // Issue #35: the owner's right-click opens the pet's order dialog (taunt only).
+            if (PetOrders.TryInteract(this, player))
+                return true;
             return WhisperReceive(player, "arawn");
+        }
+
+        /// <summary>Taunt on or off from the order dialog: the pet's taunt stance (TauntEffect), which casts its taunt on each new target.</summary>
+        public override void SetTaunting(bool taunting)
+        {
+            TauntEffect tauntEffect = EffectList.GetOfType<TauntEffect>();
+            if (taunting && tauntEffect == null)
+                new TauntEffect().Start(this);
+            else if (!taunting && tauntEffect != null)
+                tauntEffect.Stop();
+            base.SetTaunting(taunting);
+            if (taunting && TargetObject != null)
+                Taunt();
         }
 
         public override bool WhisperReceive(GameLiving source, string text)
         {
+            if (PetOrders.TryWhisper(this, source, text))
+                return true;
             // Everything below this comment should not exist in a strict 1.65 level. Feel free to add it back in if desired.
             return false;
             GamePlayer owner = (Brain as IControlledBrain).Owner as GamePlayer;

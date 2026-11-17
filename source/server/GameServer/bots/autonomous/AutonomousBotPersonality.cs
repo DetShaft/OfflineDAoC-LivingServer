@@ -56,6 +56,7 @@ public static class AutonomousBotPersonality
 
     public static BotPersonalityType TypeFor(long botId)
     {
+        botId = AutonomousBotAlts.PlayerOf(botId);                  // a player's alts share its personality (#57)
         int roll = (int)(Mix(botId, 1) % 100);
         for (int index = 0; index < TypeSharePercent.Length; index++)
         {
@@ -87,6 +88,7 @@ public static class AutonomousBotPersonality
 
     public static BotPersonality For(long botId)
     {
+        botId = AutonomousBotAlts.PlayerOf(botId);                  // a player's alts share its personality (#57)
         BotPersonalityType type = TypeFor(botId);
         int Trait(int index)
         {

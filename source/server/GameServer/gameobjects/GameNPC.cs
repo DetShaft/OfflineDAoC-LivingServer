@@ -2658,6 +2658,10 @@ namespace DOL.GS
 			if (!base.Interact(player))
 				return false;
 
+			// Your own pet opens its order dialog (issue #35; the Bonedancer commander has its own).
+			if (PetOrders.TryInteract(this, player))
+				return true;
+
 			if (!GameServer.ServerRules.IsSameRealm(this, player, true) && Faction != null && Faction.GetStandingToFaction(player) >= Faction.Standing.HOSTILE &&
 				!Quests.QuestTalkTruce.Holds(this, player)) // a quest step's talk target still talks
 			{
@@ -2719,6 +2723,10 @@ namespace DOL.GS
 		public override bool WhisperReceive(GameLiving source, string text)
 		{
 			if (!base.WhisperReceive(source, text))
+				return false;
+
+			// An order whispered (or a dialog [keyword] clicked) to your own pet (issue #35).
+			if (PetOrders.TryWhisper(this, source, text))
 				return false;
 
 			if (source is not GamePlayer player || source.TargetObject is not GameLiving targetLiving)

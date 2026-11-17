@@ -73,6 +73,31 @@ public sealed class UT_BonedancerPetEquipment
         Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Null);
     }
 
+    // Issue #35 step 2 (owner, 2026-11-17): taunting gives a commander with a one-handed weapon its shield, and only then.
+    [Test]
+    public void TauntingWithAOneHandedWeapon_RaisesAShield()
+    {
+        CommanderPet commander = new CommanderPet(Template(50, "skeletal commander"));
+        commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.OneHandHammer, false);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Null, "no shield before taunting");
+
+        commander.SetTaunting(true);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon)?.Object_Type, Is.EqualTo((int)eObjectType.Shield));
+        Assert.That(commander.TauntShielded, Is.True);
+        Assert.That(commander.DialogMenu(), Does.Contain("behind my shield"));
+
+        commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.TwoHandSword, false);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Null, "a two-hander takes no shield");
+        Assert.That(commander.Taunting, Is.True, "it keeps taunting without one");
+
+        commander.CommanderSwitchWeapon(CommanderPet.eWeaponType.OneHandSword, false);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Not.Null);
+
+        commander.SetTaunting(false);
+        Assert.That(commander.Inventory.GetItem(eInventorySlot.LeftHandWeapon), Is.Null);
+        Assert.That(commander.TauntShielded, Is.False);
+    }
+
     [Test]
     public void OneHandedSwapBroadcastsAndDropsTheOtherWeaponsStyles()
     {
@@ -173,6 +198,33 @@ public sealed class UT_BonedancerPetEquipment
         table[("Hammer", (int)eCharacterClass.Warrior)] = new();
         table[("Hammer", (int)eCharacterClass.Thane)] = new() { Leveled("Thane Hammer", eObjectType.Hammer, 501, 1) };
         Assert.That(CommanderPet.LevelStyles(10, new[] { "Hammer" }, Lookup).Select(s => s.Name), Is.EqualTo(new[] { "Thane Hammer" }));
+    }
+
+    [Test]
+    public void TheFullestTeacherLineWinsOverAPartialOne()
+    {
+        // Issue #113: the Thane's hammer line holds Placate alone. A commander must not settle for it.
+        var table = new Dictionary<(string, int), List<Style>>
+        {
+            [("Hammer", (int)eCharacterClass.Thane)] = new() { Leveled("Placate", eObjectType.Hammer, 163, 6) },
+            [("Hammer", (int)eCharacterClass.Skald)] = new()
+            {
+                Leveled("Thor's Anvil", eObjectType.Hammer, 161, 2), Leveled("Placate", eObjectType.Hammer, 163, 6),
+                Leveled("Ruiner", eObjectType.Hammer, 165, 10),
+            },
+        };
+        List<Style> Lookup(string spec, int classId) =>
+            table.TryGetValue((spec, classId), out List<Style> list) ? new List<Style>(list) : new List<Style>();
+
+        var styles = CommanderPet.LevelStyles(12, new[] { "Hammer" }, Lookup).Select(s => s.Name).ToList();
+        Assert.That(styles, Is.EqualTo(new[] { "Thor's Anvil", "Placate", "Ruiner" }));
+    }
+
+    [Test]
+    public void CommanderTauntShieldIsThePlainMidgardShield()
+    {
+        // Issue #112: the commander's shield matches the plain shield other Midgard pets carry.
+        Assert.That((int)CommanderPet.CommanderShieldModel, Is.EqualTo(PetKit.ShieldModel(eRealm.Midgard)));
     }
 
     [Test]

@@ -40,10 +40,20 @@ namespace DOL.GS
 		/// </summary>
 		public int SubPetCapacity => ControlledNpcList?.Length ?? 0;
 
+		/// <summary>The combined minion levels a commander with up to two slots can hold.</summary>
+		public const int TwoSlotLevelBudget = 75;
+
 		/// <summary>
-		/// True when commander is taunting.
+		/// The combined minion levels a three-slot commander can hold: live's 150. The old flat 75 let a Dread Commander
+		/// or a level-40 specialty commander keep only two of a level-50 Bonedancer's level-37 minions (owner,
+		/// 2026-11-17: "be able to command 3 minions").
 		/// </summary>
-		public bool Taunting { get; protected set; } = false;
+		public const int ThreeSlotLevelBudget = 150;
+
+		/// <summary>Combined minion levels this commander can hold.</summary>
+		public int SubPetLevelBudget => LevelBudgetFor(SubPetCapacity);
+
+		public static int LevelBudgetFor(int slots) => slots >= 3 ? ThreeSlotLevelBudget : TwoSlotLevelBudget;
 
 
 		/// <summary>
@@ -57,8 +67,33 @@ namespace DOL.GS
 		/// </summary>
 		public Style PreferredCombatStyle { get; private set; }
 
-		/// <summary>Player-facing taunt toggle for the commander window / /commander command.</summary>
-		public void SetTaunting(bool taunting) => Taunting = taunting;
+		/// <summary>
+		/// Player-facing taunt toggle for the commander window / /commander command. A commander with a one-handed
+		/// weapon takes up its shield while it taunts, and with it the shield styles of its level (issue #35).
+		/// </summary>
+		public override void SetTaunting(bool taunting)
+		{
+			base.SetTaunting(taunting);
+			SyncCommanderTauntShield();
+		}
+
+		/// <summary>The shield goes on only while taunting with a one-handed weapon out; no commander spawns with one.</summary>
+		private void SyncCommanderTauntShield()
+		{
+			if (CommanderType == eCommanderType.Unknown || Inventory == null)
+				return;
+			bool want = Taunting && ActiveWeaponSlot == eActiveWeaponSlot.Standard &&
+				EquippedWeaponType() is eWeaponType.OneHandAxe or eWeaponType.OneHandHammer or eWeaponType.OneHandSword;
+			bool has = Inventory.GetItem(eInventorySlot.LeftHandWeapon) != null;
+			bool was = TauntShielded;
+			if (want && !has)
+				CommanderEquipOffhand(eWeaponType.CommanderShield);
+			else if (!want && has)
+				ClearCommanderOffhand();
+			TauntShielded = want;
+			if (was != want && _commanderReady)
+				RefreshLevelStyles();
+		}
 
 		/// <summary>Player-facing minion-assist toggle for the commander window / /commander command.</summary>
 		public void SetMinionsAssisting(bool assisting)
@@ -93,6 +128,12 @@ namespace DOL.GS
 		public IList<eWeaponType> AvailableWeaponTypes()
 		{
 			var list = new List<eWeaponType>();
+			// The Bone Captain (dread archer) is an archer: its dialog offers the bow alone (owner, 2026-11-17).
+			if (CommanderType == eCommanderType.DreadArcher)
+			{
+				list.Add(eWeaponType.Bow);
+				return list;
+			}
 			if (CanUseWeaponSlot(eActiveWeaponSlot.Standard))
 			{
 				list.Add(eWeaponType.OneHandAxe);
@@ -172,13 +213,16 @@ namespace DOL.GS
 		}
 
 		/// <summary>True when this style's weapon requirement or spec line matches the item.</summary>
-		public bool StyleMatchesWeapon(Style style) => StyleFits(style, ActiveWeapon);
+		public bool StyleMatchesWeapon(Style style) => StyleFits(style, ActiveWeapon, Inventory?.GetItem(eInventorySlot.LeftHandWeapon));
 
-		public static bool StyleFits(Style style, DbInventoryItem weapon)
+		/// <summary>True when the style fits these hands. A shield style needs the taunt shield in the left hand.</summary>
+		public static bool StyleFits(Style style, DbInventoryItem weapon, DbInventoryItem leftHand = null)
 		{
 			if (style == null)
 				return false;
 			int requirement = style.WeaponTypeRequirement;
+			if (requirement == (int)eObjectType.Shield)
+				return leftHand != null && leftHand.Object_Type == (int)eObjectType.Shield;
 			if (requirement == Style.SpecialWeaponType.AnyWeapon)
 				return weapon != null;
 			if (requirement == Style.SpecialWeaponType.DualWield || weapon == null)
@@ -195,9 +239,10 @@ namespace DOL.GS
 			return !string.IsNullOrEmpty(weaponSpec) && spec.Equals(weaponSpec, StringComparison.OrdinalIgnoreCase);
 		}
 
-		public List<Style> StylesForEquippedWeapon() => StylesMatching(AllCommanderStyles(), ActiveWeapon);
+		public List<Style> StylesForEquippedWeapon() =>
+			StylesMatching(AllCommanderStyles(), ActiveWeapon, Inventory?.GetItem(eInventorySlot.LeftHandWeapon));
 
-		public static List<Style> StylesMatching(IEnumerable<Style> styles, DbInventoryItem weapon)
+		public static List<Style> StylesMatching(IEnumerable<Style> styles, DbInventoryItem weapon, DbInventoryItem leftHand = null)
 		{
 			var list = new List<Style>();
 			if (styles == null)
@@ -207,7 +252,7 @@ namespace DOL.GS
 			{
 				if (style == null || !seen.Add(style.ID))
 					continue;
-				if (StyleFits(style, weapon))
+				if (StyleFits(style, weapon, leftHand))
 					list.Add(style);
 			}
 			list.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
@@ -345,8 +390,12 @@ namespace DOL.GS
 					: "My minions pick their own targets. Shall they [assist] me again?");
 			}
 
+			string spells = SpellPriorityLine(CommanderType, PreferredSpell, HasDamageSpell, CommSpellDebuff != null, CommSpellOther != null);
+			if (spells != null)
+				lines.Add(spells);
+
 			lines.Add(Taunting
-				? "I am holding the enemy's eye. Shall I [stop taunting]?"
+				? (TauntShielded ? "I hold the enemy's eye behind my shield." : "I am holding the enemy's eye.") + " Shall I [stop taunting]?"
 				: "Shall I [taunt] the enemy away from you?");
 			return string.Join("\n", lines);
 		}
@@ -379,6 +428,12 @@ namespace DOL.GS
 			{
 				SetTaunting(false);
 				return "I will no longer taunt.";
+			}
+			eCommanderPreferredSpell? spell = ParseSpellChoice(CommanderType, key, HasDamageSpell, CommSpellDebuff != null, CommSpellOther != null);
+			if (spell is eCommanderPreferredSpell chosen)
+			{
+				SetPreferredSpell(chosen);
+				return "I will cast my " + SpellChoiceWord(CommanderType, chosen) + " spells first.";
 			}
 			if (key is "auto" or "clear" or "choose")
 			{
@@ -430,6 +485,9 @@ namespace DOL.GS
 		/// <summary>Where level styles come from. Tests replace it; the server reads the style table.</summary>
 		public static Func<string, int, List<Style>> StyleSource = SkillBase.GetStyleList;
 
+		/// <summary>The taunt shield's model: Midgard's plain elm heater shield (issue #112).</summary>
+		public const ushort CommanderShieldModel = 1054;
+
 		/// <summary>
 		/// Styles a commander of this level knows in each weapon line: every style of the line
 		/// up to the commander's level, so a higher commander knows more of them. The npc template's
@@ -480,23 +538,35 @@ namespace DOL.GS
 		}
 
 		/// <summary>
-		/// One weapon line's styles, lowest level first: the first Midgard teacher that has the line,
-		/// else the classless rows, else any class that has it (a database that files the line under
-		/// other classes still gives the commander its styles).
+		/// One weapon line's styles, lowest level first: the fullest line any Midgard teacher has
+		/// (the first teacher wins a tie), else the classless rows, else any class that has it (a
+		/// database that files the line under other classes still gives the commander its styles).
+		/// Issue #113: the Thane's hammer line holds Placate alone, so taking the first teacher that
+		/// had any hammer style could leave a hammer commander with only Placate.
 		/// </summary>
 		private static List<Style> StyleLine(string spec, Func<string, int, List<Style>> stylesOf)
 		{
-			IEnumerable<int> classes = StyleTeachers.Append(0).Concat(Enumerable.Range(1, 80).Except(StyleTeachers));
-			foreach (int classId in classes)
+			List<Style> best = null;
+			foreach (int classId in StyleTeachers)
 			{
-				List<Style> line = stylesOf(spec, classId);
-				if (line != null && line.Any(style => style != null))
-				{
-					return line.Where(style => style != null)
-						.OrderBy(style => style.SpecLevelRequirement).ThenBy(style => style.ID).ToList();
-				}
+				List<Style> line = Clean(stylesOf(spec, classId));
+				if (line.Count > (best?.Count ?? 0))
+					best = line;
+			}
+			if (best != null)
+				return best;
+			foreach (int classId in Enumerable.Range(0, 81).Except(StyleTeachers))
+			{
+				List<Style> line = Clean(stylesOf(spec, classId));
+				if (line.Count > 0)
+					return line;
 			}
 			return new List<Style>();
+
+			static List<Style> Clean(List<Style> line) => line == null
+				? new List<Style>()
+				: line.Where(style => style != null)
+					.OrderBy(style => style.SpecLevelRequirement).ThenBy(style => style.ID).ToList();
 		}
 
 		/// <summary>The weapon lines this commander can hold.</summary>
@@ -519,6 +589,8 @@ namespace DOL.GS
 				if (spec != null && !specs.Contains(spec))
 					specs.Add(spec);
 			}
+			if (TauntShielded)
+				specs.Add(Specs.Shields);
 			return specs;
 		}
 
@@ -566,6 +638,9 @@ namespace DOL.GS
 			}
 			_levelStyles = added;
 			Styles = kept;
+			// Issue #113: the play log shows what a commander can pick with the weapon it holds.
+			if (log.IsDebugEnabled)
+				log.Debug($"CommanderPet.RefreshLevelStyles(): {Name} level {Level} holding {EquippedWeaponType()}: {string.Join(", ", PickableStylesForEquippedWeapon().Select(s => s.Name))}");
 			if (PreferredCombatStyle != null && !Styles.Any(s => s.ID == PreferredCombatStyle.ID))
 				SetPreferredCombatStyle(null);
 		}
@@ -644,6 +719,10 @@ namespace DOL.GS
 			// Get a bow if we can use one
 			if (CanUseWeaponSlot(eActiveWeaponSlot.Distance))
 				CommanderSwitchWeapon(eWeaponType.Bow);
+
+			// The Dread Commander wears a cloak (owner, 2026-11-17).
+			if (CommanderType == eCommanderType.DreadCommander)
+				CommanderEquipCloak();
 
 			_commanderReady = true;
 			RefreshLevelStyles();
@@ -960,10 +1039,12 @@ namespace DOL.GS
 			else if (weaponType is eWeaponType.CommanderShield or eWeaponType.GuardianBuckler)
 			{
 				temp.Id_nb = WEAPON_KEYS[(int)weaponType];
-				// 3460 is a campfire in the client, so the commander's shield never
-				// showed. 3554 is the skull shield the Necromancer's reanimated servant carries.
-				weaponName = weaponType == eWeaponType.CommanderShield ? "bone skull shield" : "bone round buckler";
-				temp.Model = weaponType == eWeaponType.CommanderShield ? 3554 : 1045;
+				// 3460 is a campfire in the client, so the commander's shield never showed. 3554
+				// rendered as an ornate gold-and-bronze round shield (issue #112, owner 2026-11-17);
+				// the commander now carries the plain elm heater shield other Midgard pets get
+				// (PetKit.ShieldModel). Size and block are unchanged.
+				weaponName = weaponType == eWeaponType.CommanderShield ? "elm heater shield" : "bone round buckler";
+				temp.Model = weaponType == eWeaponType.CommanderShield ? CommanderShieldModel : 1045;
 				temp.Object_Type = (int)eObjectType.Shield;
 				temp.Type_Damage = 1;
 				temp.SPD_ABS = 0;
@@ -1137,6 +1218,7 @@ namespace DOL.GS
 						BroadcastLivingEquipmentUpdate();
 				}
 
+				SyncCommanderTauntShield();
 				if (PreferredCombatStyle != null && !StyleMatchesWeapon(PreferredCombatStyle))
 					SetPreferredCombatStyle(null);
 				return true;
@@ -1160,6 +1242,36 @@ namespace DOL.GS
 				BroadcastLivingEquipmentUpdate();
 		}
 
+		/// <summary>Plain cloak model (the one the realm teleporters wear).</summary>
+		public const int CommanderCloakModel = 57;
+
+		/// <summary>An in-memory cloak, like the commander's in-memory weapons: nothing is written to the database.</summary>
+		public static DbItemTemplate CreateCommanderCloak() => new()
+		{
+			Id_nb = "BD_Commander_Cloak",
+			Name = "bone commander cloak",
+			Model = CommanderCloakModel,
+			Object_Type = (int)eObjectType.Magical,
+			Item_Type = (int)eInventorySlot.Cloak,
+			Level = 1,
+			Quality = 100,
+			Condition = 50000,
+			MaxCondition = 50000,
+			Durability = 50000,
+			MaxDurability = 50000,
+		};
+
+		private void CommanderEquipCloak()
+		{
+			DbInventoryItem cloak = GameInventoryItem.Create(CreateCommanderCloak());
+			if (cloak == null)
+				return;
+
+			Inventory ??= new GameNPCInventory(new GameNpcInventoryTemplate());
+			Inventory.RemoveItem(Inventory.GetItem(eInventorySlot.Cloak));
+			Inventory.AddItem(eInventorySlot.Cloak, cloak);
+		}
+
 		private void ClearCommanderOffhand()
 		{
 			if (Inventory?.GetItem(eInventorySlot.LeftHandWeapon) == null)
@@ -1175,8 +1287,10 @@ namespace DOL.GS
 			if (CommanderType == eCommanderType.Unknown || Inventory == null)
 				return;
 
-			// 1.65: no shield with either weapon (and no helm: the commander templates carry none).
+			// 1.65: no shield with either weapon (and no helm: the commander templates carry none). Issue #35: the
+			// one exception is the shield a taunting commander takes up with a one-handed weapon.
 			ClearCommanderOffhand();
+			SyncCommanderTauntShield();
 		}
 		#endregion
 
@@ -1191,9 +1305,124 @@ namespace DOL.GS
 		public enum eCommanderPreferredSpell
 		{
 			Damage,
-			Debuff,
-			Other, // Lifedrain for guardian, dd+snare for lich
+			Debuff, // Lich (Bone Magus): debuffs; Guardian (Bone Keeper): suppress (snares and debuffs)
+			Other, // Guardian (Bone Keeper): lifedrain; Lich (Bone Magus): snares
 			None // No selected spell, use base CheckSpells()
+		}
+
+		public bool HasDamageSpell => CommSpellDamage != null || CommSpellDamageDebuff != null || CommSpellDot != null;
+
+		/// <summary>The dialog word for a spell choice of this commander (issue #35, owner's Bone Magus / Bone Keeper notes).</summary>
+		public static string SpellChoiceWord(eCommanderType type, eCommanderPreferredSpell choice) => (type, choice) switch
+		{
+			(eCommanderType.DreadLich, eCommanderPreferredSpell.Other) => "snare",
+			(eCommanderType.DreadLich, eCommanderPreferredSpell.Debuff) => "debuff",
+			(eCommanderType.DreadGuardian, eCommanderPreferredSpell.Other) => "lifedrain",
+			(eCommanderType.DreadGuardian, eCommanderPreferredSpell.Debuff) => "suppress",
+			(_, eCommanderPreferredSpell.Damage) => "damage",
+			_ => null,
+		};
+
+		/// <summary>The spell kinds this commander can be told to cast first: only those it has a spell for.</summary>
+		public static List<eCommanderPreferredSpell> SpellChoices(eCommanderType type, bool hasDamage, bool hasDebuff, bool hasOther)
+		{
+			var choices = new List<eCommanderPreferredSpell>();
+			if (type == eCommanderType.DreadLich)
+			{
+				if (hasOther)
+					choices.Add(eCommanderPreferredSpell.Other);
+				if (hasDebuff)
+					choices.Add(eCommanderPreferredSpell.Debuff);
+				if (hasDamage)
+					choices.Add(eCommanderPreferredSpell.Damage);
+			}
+			else if (type == eCommanderType.DreadGuardian)
+			{
+				if (hasOther)
+					choices.Add(eCommanderPreferredSpell.Other);
+				if (hasDebuff)
+					choices.Add(eCommanderPreferredSpell.Debuff);
+			}
+			return choices;
+		}
+
+		/// <summary>"I cast my snare spells first. I can favor [debuff] or [damage] spells instead." Null without a choice.</summary>
+		public static string SpellPriorityLine(eCommanderType type, eCommanderPreferredSpell current, bool hasDamage, bool hasDebuff, bool hasOther)
+		{
+			List<eCommanderPreferredSpell> choices = SpellChoices(type, hasDamage, hasDebuff, hasOther);
+			if (choices.Count < 2)
+				return null;
+			var others = choices.Where(choice => choice != current).Select(choice => "[" + SpellChoiceWord(type, choice) + "]").ToList();
+			string first = choices.Contains(current)
+				? "I cast my " + SpellChoiceWord(type, current) + " spells first."
+				: "I cast whatever spell suits.";
+			return first + " I can favor " + JoinChoices(others) + " spells instead.";
+		}
+
+		public static eCommanderPreferredSpell? ParseSpellChoice(eCommanderType type, string key, bool hasDamage, bool hasDebuff, bool hasOther)
+		{
+			if (string.IsNullOrWhiteSpace(key))
+				return null;
+			key = key.Trim().ToLowerInvariant();
+			eCommanderPreferredSpell? choice = (type, key) switch
+			{
+				(eCommanderType.DreadLich, "snare" or "snares") => eCommanderPreferredSpell.Other,
+				(eCommanderType.DreadLich, "debuff" or "debuffs") => eCommanderPreferredSpell.Debuff,
+				(eCommanderType.DreadLich, "damage") => eCommanderPreferredSpell.Damage,
+				(eCommanderType.DreadGuardian, "lifedrain" or "drain") => eCommanderPreferredSpell.Other,
+				(eCommanderType.DreadGuardian, "suppress") => eCommanderPreferredSpell.Debuff,
+				_ => null,
+			};
+			return choice is eCommanderPreferredSpell found && SpellChoices(type, hasDamage, hasDebuff, hasOther).Contains(found) ? found : null;
+		}
+
+		/// <summary>
+		/// The spell kinds in the order the commander tries them: the favored kind first, then debuffs and snares
+		/// (each only while its effect is not on the target, which the brain checks), then damage.
+		/// </summary>
+		public static List<eCommanderPreferredSpell> SpellOrder(eCommanderPreferredSpell favored)
+		{
+			var order = new List<eCommanderPreferredSpell>();
+			if (favored != eCommanderPreferredSpell.None)
+				order.Add(favored);
+			foreach (eCommanderPreferredSpell kind in new[] { eCommanderPreferredSpell.Debuff, eCommanderPreferredSpell.Other, eCommanderPreferredSpell.Damage })
+			{
+				if (!order.Contains(kind))
+					order.Add(kind);
+			}
+			return order;
+		}
+
+		/// <summary>Which preference a spell of this type serves for this commander. None when it is not one of them.</summary>
+		public static eCommanderPreferredSpell KindOfSpell(eCommanderType type, eSpellType spellType, string spellName)
+		{
+			bool guardian = type == eCommanderType.DreadGuardian;
+			switch (spellType)
+			{
+				case eSpellType.Lifedrain:
+					return guardian ? eCommanderPreferredSpell.Other : eCommanderPreferredSpell.Damage;
+				case eSpellType.DirectDamage:
+					// The Bone Keeper's "Pet Lifetap" is a direct damage spell.
+					if (guardian && spellName != null && spellName.IndexOf("life", StringComparison.OrdinalIgnoreCase) >= 0)
+						return eCommanderPreferredSpell.Other;
+					return eCommanderPreferredSpell.Damage;
+				case eSpellType.DirectDamageWithDebuff:
+				case eSpellType.DamageOverTime:
+					return eCommanderPreferredSpell.Damage;
+				case eSpellType.SpeedDecrease:
+				case eSpellType.DamageSpeedDecrease:
+					return guardian ? eCommanderPreferredSpell.Debuff : eCommanderPreferredSpell.Other;
+				case eSpellType.Disease:
+				case eSpellType.StrengthDebuff:
+				case eSpellType.ConstitutionDebuff:
+				case eSpellType.DexterityDebuff:
+				case eSpellType.StrengthConstitutionDebuff:
+				case eSpellType.DexterityQuicknessDebuff:
+				case eSpellType.CombatSpeedDebuff:
+					return eCommanderPreferredSpell.Debuff;
+				default:
+					return eCommanderPreferredSpell.None;
+			}
 		}
 
 		// Both guardian and lich default to debuff spells
@@ -1218,30 +1447,28 @@ namespace DOL.GS
 			CommSpellDamageDebuff = null;
 			CommSpellDebuff = null;
 			CommSpellOther = null;
+			CommSpellDot = null;
 
 			foreach (Spell spell in HarmfulSpells)
 			{
-				if (spell != null)
+				if (spell == null)
+					continue;
+				switch (KindOfSpell(CommanderType, spell.SpellType, spell.Name))
 				{
-					switch (spell.SpellType)
-					{
-                        case eSpellType.DamageOverTime:
+					case eCommanderPreferredSpell.Damage:
+						if (spell.SpellType == eSpellType.DamageOverTime)
 							CommSpellDot = spell;
-							break;
-                        case eSpellType.DirectDamage:
-							CommSpellDamage = spell;
-							break;
-                        case eSpellType.DirectDamageWithDebuff:
+						else if (spell.SpellType == eSpellType.DirectDamageWithDebuff)
 							CommSpellDamageDebuff = spell;
-							break;
-                        case eSpellType.Disease:
-							CommSpellDebuff = spell;
-							break;
-                        case eSpellType.Lifedrain:
-                        case eSpellType.DamageSpeedDecrease:
-							CommSpellOther = spell;
-							break;
-					}
+						else
+							CommSpellDamage = spell;
+						break;
+					case eCommanderPreferredSpell.Debuff:
+						CommSpellDebuff = spell;
+						break;
+					case eCommanderPreferredSpell.Other:
+						CommSpellOther = spell;
+						break;
 				}
 			}
 
@@ -1262,7 +1489,7 @@ namespace DOL.GS
 			switch (PreferredSpell)
 			{
 				case eCommanderPreferredSpell.Damage:
-					if (CommSpellDamage == null && CommSpellDamageDebuff == null && CommSpellDot == null)
+					if (!HasDamageSpell)
 						PreferredSpell = eCommanderPreferredSpell.None;
 					break;
 				case eCommanderPreferredSpell.Debuff:

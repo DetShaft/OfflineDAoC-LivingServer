@@ -41,15 +41,22 @@ var pending := 0.0                           # time gathered since its last tick
 
 
 ## Options > INTERFACE > BOTS: "names_gamebots", "names_companions", "map_dots" (all on by default).
+## Read from the settings file once, and again when Options saves (options_changed). It used to be re-read every
+## second, on the main thread, by the name plates: on a busy disk that read held a frame 130-530 ms (owner's
+## perf_live.log 2026-11-16, "name plates" 36 times in 46 minutes).
 static func option(key: String) -> bool:
-	var now := Time.get_ticks_msec() / 1000.0
-	if now - _opts_at > 1.0:
-		_opts_at = now
+	if _opts_at < 0.0:
+		_opts_at = 0.0
 		var cfg := ConfigFile.new()
 		cfg.load(UiArt.settings_path)
 		for k in ["names_gamebots", "names_companions", "map_dots"]:
 			_opts[k] = bool(cfg.get_value("bots", k, true))
 	return bool(_opts.get(key, true))
+
+
+## Options changed a setting: the next option() reads the file again.
+static func options_changed() -> void:
+	_opts_at = -1.0
 
 
 func setup(rec: Dictionary) -> void:

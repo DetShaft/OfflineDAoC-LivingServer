@@ -253,16 +253,17 @@ namespace DOL.GS.Commands
             if (args.Length < 3)
             {
                 client.Out.SendMessage($"Current spell preference: {commander.PreferredSpell}", eChatType.CT_System, eChatLoc.CL_SystemWindow);
-                client.Out.SendMessage("Usage: /commander spell <damage|debuff|other|drain|suppress|snares|debilitating>",
+                client.Out.SendMessage("Usage: /commander spell <snare|debuff|damage> (Bone Magus) or <lifedrain|suppress> (Bone Keeper)",
                     eChatType.CT_System, eChatLoc.CL_SystemWindow);
                 return;
             }
 
             string key = args[2].ToLowerInvariant();
-            CommanderPet.eCommanderPreferredSpell preferred = key switch
+            // The dialog words first (Bone Magus: snare, debuff, damage; Bone Keeper: lifedrain, suppress), then the old ones.
+            CommanderPet.eCommanderPreferredSpell preferred = CommanderPet.ParseSpellChoice(commander.CommanderType, key, true, true, true) ?? key switch
             {
-                "damage" or "suppress" => CommanderPet.eCommanderPreferredSpell.Damage,
-                "debuff" or "debilitating" or "disease" => CommanderPet.eCommanderPreferredSpell.Debuff,
+                "damage" => CommanderPet.eCommanderPreferredSpell.Damage,
+                "debuff" or "debilitating" or "disease" or "suppress" => CommanderPet.eCommanderPreferredSpell.Debuff,
                 "other" or "drain" or "snare" or "snares" or "lifedrain" => CommanderPet.eCommanderPreferredSpell.Other,
                 "none" or "auto" => CommanderPet.eCommanderPreferredSpell.None,
                 _ => (CommanderPet.eCommanderPreferredSpell)(-1),

@@ -31,6 +31,11 @@ SCAN_ROOTS = (
     ROOT / "source/new-client/godot/game/anim_lod.gd",
     ROOT / "source/new-client/godot/game/fig3_figure.gd",
     ROOT / "source/new-client/godot/game/npcs/npc_manager.gd",
+    ROOT / "source/new-client/godot/game/world_host/bot_view.gd",
+    ROOT / "source/new-client/godot/game/character_sounds.gd",
+    ROOT / "source/new-client/godot/game/zone_audio.gd",
+    ROOT / "source/new-client/godot/game/zone_door.gd",
+    ROOT / "source/new-client/godot/game/sound_loader.gd",
 )
 PATCHES = ROOT / "tools/fork-build/content-patches.json"
 DLL_PATH = "new-client/godot/.godot/mono/temp/bin/Debug/MMOEngine.dll"

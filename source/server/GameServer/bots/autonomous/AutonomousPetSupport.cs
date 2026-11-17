@@ -1802,7 +1802,7 @@ public static class AutonomousPetSupport
         }
 
         int slotsToFill = Math.Min(desiredCount, commander.SubPetCapacity) - activeCount;
-        int remainingBudget = 75 - activeLevels;
+        int remainingBudget = commander.SubPetLevelBudget - activeLevels;
         if (slotsToFill <= 0 || remainingBudget <= 0)
             return default;
 

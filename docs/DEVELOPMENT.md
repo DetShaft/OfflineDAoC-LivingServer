@@ -173,6 +173,14 @@ Run workflow with the tag. **Dry run** is on by default: it builds and tests, th
 notes it would write, with a read-only token. On publish the workflow runs from the tag's commit; by hand, from the
 branch you pick (GitHub only offers it once the file is on main).
 
+### Keeping up with upstream
+
+This fork's parent is `chris4aker/OfflineDAoC-LivingServer`. The `upstream-drift` workflow runs every Monday (or by
+hand from Actions) and lists the upstream commits made after the one named in `.github/upstream-reviewed.txt`, with
+the files they touch, as a warning in the run summary. It never merges anything. Take what fits by cherry-pick on a
+branch, then move `.github/upstream-reviewed.txt` to the newest upstream commit you reviewed. Upstream's tags are not
+fetched: `v1.1.4-beta` names a different commit in each repository, and fork releases carry their own numbers.
+
 ### Recommended settings for main
 
 Not applied by any script; the owner sets them under Settings → Branches (or Rules):

@@ -2450,6 +2450,8 @@ namespace DOL.GS.Spells
 
 			hitChance += (spellLevel - target.Level) / 2.0;
 			hitChance += m_caster.GetModified(eProperty.ToHitBonus);
+			// Issue #35: a Bonedancer's commander (fully) and minions (half) make up the to-hit their lower level costs.
+			hitChance += BonedancerPetAccuracy.SpellBonus(m_caster);
 
 			if (playerCaster == null || target is not GamePlayer)
 			{
@@ -2543,7 +2545,9 @@ namespace DOL.GS.Spells
 				{
 					GamePlayer owner = npcTargetBrain.GetPlayerOwner();
 
-					if (owner != null)
+					if (owner != null && target is GameBot)
+						CombatLogAttribution.SendToOwner(owner, $"{target.Name} resists the effect!");
+					else if (owner != null)
 						MessageToLiving(owner, $"Your {target.Name} resists the effect!", eChatType.CT_SpellResisted);
 				}
 			}
@@ -2621,7 +2625,16 @@ namespace DOL.GS.Spells
 					 && (type is eChatType.CT_YouHit or eChatType.CT_SpellResisted or eChatType.CT_Spell))
 			{
 				GamePlayer playerOwner = npcCasterBrain.GetPlayerOwner();
-				playerOwner?.MessageToSelf(message, type);
+
+				// A bot plays its own character: its lines name it, in the owner's others' combat (owner 2026-11-16).
+				if (Caster is GameBot bot)
+				{
+					// Live shows no spell lines for another player's casting unless the details setting is on.
+					if (CombatLogAttribution.ShowDetails)
+						CombatLogAttribution.SendToOwner(playerOwner, CombatLogAttribution.ThirdPerson(bot, message));
+				}
+				else
+					playerOwner?.MessageToSelf(message, type);
 			}
 		}
 
