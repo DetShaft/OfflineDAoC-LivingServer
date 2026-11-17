@@ -22,12 +22,8 @@ def main():
             for slot, entry in parts.items():
                 v, tex = int(entry[0]), str(entry[1])
                 want = v
-                if slot == 'body':
-                    want = nc.ROBE_BODY_MESH if tex.lower().startswith('robbody') else 1
-                elif slot in ('gloves', 'boots') and row is not None:
-                    col = nc.CATA_MESH_COLS['glove' if slot == 'gloves' else 'boot']
-                    pick = row[col].strip() if len(row) > col else ''
-                    want = int(pick) if pick.isdigit() and 1 <= int(pick) <= 8 else 1
+                if slot == 'body' or slot in ('gloves', 'boots') and row is not None:
+                    want = nc.cata_mesh(slot, tex, row)            # the same rule build_armor uses (#45)
                 if want != v:
                     changed[(slot, v, want)] = changed.get((slot, v, want), 0) + 1
                     entry[0] = want
