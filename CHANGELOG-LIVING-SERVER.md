@@ -8,6 +8,19 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.20 — 2026-11-17
+
+All tests only: not yet seen in game.
+- **Killaloe (#89, #90, #114, #115):** the 15-19 battleground is Killaloe in the new client, with keep skins, the Dun Killaloe
+  pad, props and field mobs. Players arrive at the right height, a keep door brings the player's group bots through, and
+  a dropped token reaches the nearby Siegemaster.
+- **Bonedancer commanders (#35, #112, #113, #120):** the level-40 commander rows are written on first start, the Bone Magus
+  no longer kicks the player, every commander has three minions, the Dread Commander wears its cloak, and commanders take
+  a plain shield and the full hammer styles.
+- **Necromancer and pets (#117, #118, #119):** servants take weapons, shields and styles, the Abomination is bigger,
+  and the pet dialog lists a pet's styles.
+- **Realm alts (#116):** a player's characters in one realm share a guild and a friends list.
+
 ## Beta 1.1.19 — 2026-11-17
 
 **Also in 1.1.19** (all tests only: not yet seen in game):
