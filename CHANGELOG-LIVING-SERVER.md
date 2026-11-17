@@ -10,6 +10,15 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.19 (in development)
 
+**Every pet class gets an order dialog (#35).** Right-click your pet in the new client, type `/pet`, or whisper it,
+and it answers with clickable orders, like the Bonedancer commander's dialog: [aggressive], [defensive] or [passive],
+[assist] (it attacks whatever you attack, the pet window's Assist) or [stop assisting], and [follow], [stay] or
+[come] for pets that walk with you. Animist turrets and Theurgist elementals offer stance and assist only, since they
+do not follow. Each class's pet greets you in its own voice, and a charmed creature as a charmed one. Orders go
+through the same calls as the pet window, so the two stay in step. `/pet <order>` gives one order directly. The
+commander keeps its own dialog, and the Necromancer's pet is unchanged. Weapon kits and styles for other pets are not
+in this step: which pets carried weapons needs a per-class decision. Tests only: not yet seen in game.
+
 **Group gear is rolled for, need or greed, in a loot window (#72).** Jay, 2026-11-16: stopping to type `/look` for
 loot is not good design. When a weapon, armor piece, shield, instrument or jewel drops in a group with you in it, the
 server opens a roll and the new client opens a **Loot Rolls** window by itself: one row per drop with the piece's
