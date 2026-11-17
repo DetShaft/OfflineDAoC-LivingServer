@@ -2447,9 +2447,9 @@ namespace DOL.GS.ServerProperties
 		public static bool BOT_INCOMING_FIRE_REACTION;
 
 		/// <summary>
-		/// Cleric/Druid/Healer support bots assist with nukes or melee when nobody needs healing.
+		/// Back-line support bots (Cleric, Druid, Healer, Shaman, Bard) assist when nobody needs healing (issue #48).
 		/// </summary>
-		[ServerProperty("bots", "healer_idle_combat_enabled", "Off by default since 1.1.16 (healer AI was rough; see issue #48). When on: when a Cleric, Druid or Healer is the exclusive support in a group: if nobody needs healing, the group is fighting, mana is at least 40%, and stance is not Passive, the healer may nuke, debuff or melee the group's target instead of standing idle. Healing, cures and resurrection still come first. False keeps healers support-only (buff/follow only while grouped).", false)]
+		[ServerProperty("bots", "support_idle_combat_enabled", "Replaces healer_idle_combat_enabled (issue #48; the new name means a False saved under the old one does not carry over). When a Cleric, Druid, Healer, Shaman or Bard holds the back line in a group: if nobody needs healing, the group is fighting, mana is at least 40% and stance is not Passive, it may nuke or debuff the group's target from its post (Bards: instant damage spells only, instrument kept in hand). Pure healers swing only at an enemy already in reach; Shamans and Bards never melee; none of them walks toward the enemy. Healing, cures and resurrection still come first. False keeps them support-only.", true)]
 		public static bool HEALER_IDLE_COMBAT;
 
 		/// <summary>
