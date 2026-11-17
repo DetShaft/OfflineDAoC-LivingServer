@@ -19,6 +19,8 @@ namespace DOL.GS
     /// <item>Taunting gives a pet that holds a one-handed weapon a shield (and a small block chance if it had none)
     /// plus the shield styles a fighter of its realm knows at the pet's level. Stopping takes them away again.
     /// A pet with no one-handed weapon taunts without one.</item>
+    /// <item>The Necromancer's Reanimated Servant and Necroservant spawn with a thrust or slash weapon and a shield that
+    /// they keep (issue #117).</item>
     /// </list>
     /// The Bonedancer commander keeps its own weapons (CommanderPet).
     /// </summary>
@@ -68,14 +70,77 @@ namespace DOL.GS
 
         /// <summary>Shield styles up to this level, from the realm's fighter. Tests pass their own style source.</summary>
         public static List<Style> ShieldStyles(int level, eRealm realm, Func<string, int, List<Style>> stylesOf = null)
+            => LineStyles(Specs.Shields, ShieldTeacher(realm), level, stylesOf);
+
+        /// <summary>One weapon line's styles up to this level, as this class learns them.</summary>
+        public static List<Style> LineStyles(string spec, eCharacterClass teacher, int level, Func<string, int, List<Style>> stylesOf = null)
         {
             stylesOf ??= CommanderPet.StyleSource;
-            List<Style> line = stylesOf?.Invoke(Specs.Shields, (int)ShieldTeacher(realm));
+            List<Style> line = stylesOf?.Invoke(spec, (int)teacher);
             if (line == null)
                 return new List<Style>();
             return line.Where(style => style != null && style.SpecLevelRequirement <= level)
                 .OrderBy(style => style.SpecLevelRequirement).ThenBy(style => style.ID).ToList();
         }
+
+        #region Necromancer servants
+
+        // Issue #117 (owner, 2026-11-17): the spell tooltips say "Thrust & Shield Styles" for Call Reanimated Servant
+        // and "Slash & Shield Styles" for Call Necroservant. These two servants spawn with a one-handed weapon of that
+        // line and a small shield, and know that line's and the shield's styles up to their level, as an Armsman
+        // learns them. The shield is theirs for good: taunting neither adds nor removes it.
+
+        /// <summary>Gladius: a plain Albion thrust weapon.</summary>
+        public const int ServantThrustModel = 30;
+
+        /// <summary>Short sword: a plain Albion slashing weapon.</summary>
+        public const int ServantSlashModel = 3;
+
+        /// <summary>The Albion fighter whose styles the servants learn.</summary>
+        public const eCharacterClass ServantStyleTeacher = eCharacterClass.Armsman;
+
+        /// <summary>The weapon line a Necromancer servant fights with, null for the servants that carry no shield kit.</summary>
+        public static string ServantWeaponSpec(string petName) => (petName ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "reanimated servant" => Specs.Thrust,
+            "necroservant" => Specs.Slash,
+            _ => null,
+        };
+
+        public static int ServantWeaponModel(string spec) => spec == Specs.Thrust ? ServantThrustModel : ServantSlashModel;
+
+        /// <summary>The weapon line's and the shield's styles a servant knows at this level.</summary>
+        public static List<Style> ServantStyles(string spec, int level, Func<string, int, List<Style>> stylesOf = null)
+        {
+            var styles = new List<Style>();
+            if (string.IsNullOrEmpty(spec))
+                return styles;
+            var seen = new HashSet<int>();
+            foreach (Style style in LineStyles(spec, ServantStyleTeacher, level, stylesOf)
+                .Concat(LineStyles(Specs.Shields, ServantStyleTeacher, level, stylesOf)))
+            {
+                if (seen.Add(style.ID))
+                    styles.Add(style);
+            }
+            return styles;
+        }
+
+        /// <summary>True for a servant that keeps its shield whatever its taunt.</summary>
+        public static bool KeepsShield(GameSummonedPet pet) => pet is NecromancerPet && ServantWeaponSpec(pet.Name) != null;
+
+        private static void ArmServant(GameSummonedPet pet, string spec)
+        {
+            DbInventoryItem right = pet.Inventory?.GetItem(eInventorySlot.RightHandWeapon);
+            Equip(pet, ServantWeaponModel(spec), ShieldModel(eRealm.Albion), right?.Effect ?? 0);
+            if (pet.BlockChance < ShieldBlockChance)
+                pet.BlockChance = ShieldBlockChance;
+            var styles = new List<Style>(pet.Styles ?? new List<Style>());
+            var have = new HashSet<int>(styles.Where(style => style != null).Select(style => style.ID));
+            styles.AddRange(ServantStyles(spec, pet.Level).Where(style => have.Add(style.ID)));
+            pet.Styles = styles;
+        }
+
+        #endregion
 
         #region Live
 
@@ -107,6 +172,12 @@ namespace DOL.GS
                 pet.Taunting = false;
                 pet.TauntShielded = false;
                 pet.KitWeapon = W.None;
+                string servantSpec = pet is NecromancerPet ? ServantWeaponSpec(pet.Name) : null;
+                if (servantSpec != null)
+                {
+                    ArmServant(pet, servantSpec);
+                    return;
+                }
                 PetOrders.Kit kit = PetOrders.KitFor((eCharacterClass)summonerClass.ID, pet.Name);
                 DbInventoryItem right = pet.Inventory?.GetItem(eInventorySlot.RightHandWeapon);
                 if (kit.Weapons.Count > 0)
@@ -143,7 +214,7 @@ namespace DOL.GS
         /// <summary>Gives or takes the taunt shield (and its styles) so it matches the pet's taunt and weapon.</summary>
         public static void SyncTauntShield(GameSummonedPet pet)
         {
-            if (pet == null || pet is CommanderPet)
+            if (pet == null || pet is CommanderPet || KeepsShield(pet))
                 return;
             bool want = pet.Taunting && Holding(pet) != W.None && pet.LeftHandSwingChance <= 0;
             if (want == pet.TauntShielded)

@@ -15,6 +15,9 @@ namespace DOL.GS
         internal string BotReleaseReason { get; set; }
         public int AppearanceTemplateId { get; private set; }
 
+        /// <summary>The abomination's size: half again a normal figure (template 206 says 50).</summary>
+        public const byte AbominationSize = 75;
+
         public override GameObject TargetObject
         {
             get => base.TargetObject;
@@ -85,6 +88,9 @@ namespace DOL.GS
                     break;
                 case "abomination":
                     LoadEquipmentTemplate("abomination_fiery_sword");
+                    // Issue #117 (owner, 2026-11-17): the abomination should tower over the other servants.
+                    if (Size < AbominationSize)
+                        Size = AbominationSize;
                     break;
                 default:
                     LoadEquipmentTemplate("barehand_weapon");

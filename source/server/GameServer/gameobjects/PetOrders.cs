@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DOL.AI.Brain;
 using DOL.GS.PacketHandler;
+using DOL.GS.Styles;
 
 namespace DOL.GS
 {
@@ -200,13 +201,13 @@ namespace DOL.GS
 
         /// <summary>The dialog: the answer (or greeting) on top, then a line for each order this pet takes.</summary>
         public static string Menu(Kind kind, string top, eAggressionState stance, bool assisting, eWalkState walk,
-            Kit kit = null, KitState state = default)
+            Kit kit = null, KitState state = default, IReadOnlyList<string> styles = null)
         {
             kit ??= Kit.Plain;
             var lines = new List<string> { top };
             if (kind == Kind.TauntOnly)
             {
-                AddKitLines(lines, kit, state);
+                AddKitLines(lines, kit, state, styles);
                 return string.Join("\n", lines);
             }
             if (assisting)
@@ -236,11 +237,35 @@ namespace DOL.GS
                     _ => "I follow you. Shall I [stay] here?",
                 });
             }
-            AddKitLines(lines, kit, state);
+            AddKitLines(lines, kit, state, styles);
             return string.Join("\n", lines);
         }
 
-        private static void AddKitLines(List<string> lines, Kit kit, KitState state)
+        /// <summary>
+        /// The styles line (issue #118): every pet that fights in melee says which styles it can use, or that it has
+        /// none. A caster pet (no weapons to choose, no taunt) and a pet with no styles stays silent about them.
+        /// The Enchanter's Underhill Ally, a healer hybrid, has no styles of its own, so it says so; giving it styles
+        /// later only needs its template's styles, and this line shows them.
+        /// </summary>
+        public static string StylesLine(Kit kit, IReadOnlyList<string> styles)
+        {
+            kit ??= Kit.Plain;
+            if (styles != null && styles.Count > 0)
+                return "In a fight I use " + JoinAll(styles) + ".";
+            return kit.Weapons.Count > 0 || kit.Taunts ? "I know no weapon styles." : null;
+        }
+
+        /// <summary>The names of the styles a pet knows, lowest level first, each once.</summary>
+        public static List<string> StyleNames(IEnumerable<Style> styles)
+        {
+            if (styles == null)
+                return new List<string>();
+            return styles.Where(style => style != null && !string.IsNullOrWhiteSpace(style.Name))
+                .OrderBy(style => style.SpecLevelRequirement).ThenBy(style => style.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(style => style.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private static void AddKitLines(List<string> lines, Kit kit, KitState state, IReadOnlyList<string> styles = null)
         {
             if (kit.Weapons.Count > 0)
             {
@@ -255,6 +280,9 @@ namespace DOL.GS
                     : "I hold " + Article(WeaponWord(state.Holding)) + " " + WeaponWord(state.Holding) + ".";
                 lines.Add(held + " I can take up " + Join(offered) + " instead.");
             }
+            string styleLine = StylesLine(kit, styles);
+            if (styleLine != null)
+                lines.Add(styleLine);
             if (!kit.Taunts)
                 return;
             if (state.Taunting)
@@ -269,6 +297,14 @@ namespace DOL.GS
 
         private static string Article(string word) =>
             word.Length > 0 && "aeiou".IndexOf(char.ToLowerInvariant(word[0])) >= 0 ? "an" : "a";
+
+        private static string JoinAll(IReadOnlyList<string> items) => items.Count switch
+        {
+            0 => string.Empty,
+            1 => items[0],
+            2 => items[0] + " and " + items[1],
+            _ => string.Join(", ", items.Take(items.Count - 1)) + " and " + items[^1],
+        };
 
         private static string Join(IReadOnlyList<string> items) => items.Count switch
         {
@@ -391,7 +427,7 @@ namespace DOL.GS
                 ? new KitState(PetKit.Holding(summoned), summoned.Taunting, summoned.TauntShielded)
                 : default;
             string text = Menu(KindFor(ownerClass), top, brain.AggressionState, PetAssistMode.IsOn(player), brain.WalkState,
-                KitOf(player, pet), state);
+                KitOf(player, pet), state, StyleNames(pet.Styles));
             player.Out.SendMessage(text, eChatType.CT_Say, eChatLoc.CL_PopupWindow);
         }
 

@@ -6,7 +6,8 @@ namespace DOL.GS
     /// <summary>
     /// What the client is shown of an NPC's equipment. Necromancer pets used to show private client weapons here (a
     /// blackened mace and shield on the necroservant, a flaming sword on the abomination); in 1.65 only the abomination
-    /// carries a weapon (its template's two-handed sword), the other servants nothing (owner 2026-10-13). Every NPC now
+    /// carries a weapon (its template's two-handed sword), the other servants nothing (owner 2026-10-13). Since issue #117
+    /// (owner 2026-11-17) the Reanimated Servant and the Necroservant carry a weapon and shield again (PetKit). Every NPC now
     /// shows its own inventory; the hooks stay so the packet code has one place to ask.
     /// </summary>
     public static class NecromancerPetAppearance
