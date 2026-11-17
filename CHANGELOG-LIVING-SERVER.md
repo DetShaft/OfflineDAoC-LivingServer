@@ -8,7 +8,20 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
-## Beta 1.1.19 (in development)
+## Beta 1.1.19 — 2026-11-17
+
+**Also in 1.1.19** (all tests only: not yet seen in game):
+- **Combat log (#92, #98):** a `/spawn` helper's spells and melee are named in the combat log, under Others' combat,
+  instead of being credited to you. Helpers' damage numbers are hidden by default (server setting
+  `bot_combat_log_details`).
+- **Savage (#91):** the new client offers the Savage at character creation and shows Savage and base-class names in the
+  Friends, guild and LFG lists.
+- **Armour (#101, #105):** gloves and boots use the item's own mesh in the new client, through one rule for every
+  dressing path.
+- **Launcher (#70):** one Active tab with Population, Groups and RvR subtabs.
+- **Trainer (#71):** skill tooltips on the trainer's training preview in the new client.
+- **Gamebot alts (#57, #104):** level-50 bot players roll a new low-level alt, and alts are never chosen as beggars.
+- **Upstream check (#66):** a weekly workflow reports new commits in the upstream repository.
 
 **Level-40 Bonedancer commanders and pet accuracy (#35).** Jay, 2026-11-17:
 - Each Bonedancer specialization line now teaches its own level-40 commander, following live's tooltips. All three
