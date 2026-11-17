@@ -452,8 +452,8 @@
   {
     "Path": "new-client/godot/game/zone_viewer.gd",
     "Released": "39e4c91d75a99240a5de057b6c289477a66a446d6a3e146fdee3e135a664a068",
-    "Fixed": "339e9cf866146985218a0189dc37bf30eeb42a9dc84defd7760996205282735d",
-    "Size": 89823,
+    "Fixed": "27750528f98db061bb4584848c3c5976f93d99cab7ba1d13dcc3d7b0fd983013",
+    "Size": 90683,
     "File": "content/godot/game/zone_viewer.gd",
     "ReplaceAny": true
   },
