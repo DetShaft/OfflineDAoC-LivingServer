@@ -10,6 +10,22 @@ Older entries below keep the names they were written with.
 
 ## Beta 1.1.19 (in development)
 
+**Level-40 Bonedancer commanders and pet accuracy (#35).** Jay, 2026-11-17:
+- Each Bonedancer specialization line now teaches its own level-40 commander, following live's tooltips. All three
+  summon at 85% of the caster's level for 20% power and control three minions.
+  - **Bone Magus** (Bone Mystics, Darkness): a caster with snare, debuff and direct-damage spells. It keeps its
+    183-damage lifedrain, since the commander is meant to be the Bonedancer's main damage.
+  - **Bone Keeper** (Bone Guardians, Suppression): lifedrain, plus Shroud of Cowardice and Annihilate Strength to
+    suppress with.
+  - **Bone Captain** (Bone Warriors, Bone Army): a bowman.
+  - The released world had only an unused Bone Magus row, so the server adds the missing rows on its first start.
+- **Spell accuracy:** a pet's spells were resisted more the lower its level. Against a level-50 player, a level-42
+  commander was resisted about 24% of the time, twice a player's 12.5%.
+  - A commander now makes up the whole level gap to its Bonedancer, so it lands spells about as often as its owner.
+  - Minions make up half the gap: a level-37 minion goes from 32% resisted to 22%. That keeps four pets from
+    dropping a player at once.
+
+Tests only: not yet seen in game.
 **Pet weapons, taunt and commander spell choices (#35, step 2).** Jay, 2026-11-17, per class:
 - Spiritmaster pets choose a one-handed [sword], [axe] or [hammer]. They no longer roll a spear or a two-hander.
 - The Enchanter's Underhill Ally and Compatriot choose a one-handed [blade], [mace] or [dagger] and start with a blade.

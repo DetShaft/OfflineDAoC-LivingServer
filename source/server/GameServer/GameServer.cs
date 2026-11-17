@@ -748,7 +748,8 @@ namespace DOL.GS
 					log.Info("Server rules: true");
 
 				//---------------------------------------------------------------
-				//Load the skills
+				//Load the skills (issue #35: the level-40 Bonedancer commanders' rows go in first)
+				BonedancerSpecialtyCommanders.Ensure();
 				SkillBase.LoadSkills();
                 BotPoisonSupply.Load();
 				if (log.IsInfoEnabled)
