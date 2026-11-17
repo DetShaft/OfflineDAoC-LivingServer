@@ -2450,6 +2450,8 @@ namespace DOL.GS.Spells
 
 			hitChance += (spellLevel - target.Level) / 2.0;
 			hitChance += m_caster.GetModified(eProperty.ToHitBonus);
+			// Issue #35: a Bonedancer's commander (fully) and minions (half) make up the to-hit their lower level costs.
+			hitChance += BonedancerPetAccuracy.SpellBonus(m_caster);
 
 			if (playerCaster == null || target is not GamePlayer)
 			{
