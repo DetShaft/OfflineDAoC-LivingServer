@@ -280,9 +280,37 @@ namespace DOL.GS.Keeps
 
             if (!GameServer.KeepManager.IsEnemy(this, player) || player.Client.Account.PrivLevel != 1)
             {
-                TraverseDoor(player);
+                if (TraverseDoor(player))
+                    TraverseGroupBots(player);
             }
             return base.Interact(player);
+        }
+
+        /// <summary>The farthest a player's bot may be from the door to come through with them.</summary>
+        public const int GroupBotTraverseRange = 1200;
+
+        /// <summary>
+        /// Keep doors never open; the owning realm is moved through on interact. A player's bots can't interact, so
+        /// they stopped at the door, got stuck in the doorway and were snapped past it by the follow catch-up (#114,
+        /// Killaloe 2026-11-17). The bots in the player's group, and the companions they own, now come through with
+        /// them when they are close to the door.
+        /// </summary>
+        private void TraverseGroupBots(GamePlayer player)
+        {
+            var bots = new System.Collections.Generic.HashSet<GameBot>();
+            if (player.Group != null)
+                foreach (GameLiving member in player.Group.GetMembersInTheGroup())
+                    if (member is GameBot bot)
+                        bots.Add(bot);
+            foreach (GameBot owned in BotManager.GetBotsForOwner(player))
+                bots.Add(owned);
+            foreach (GameBot bot in bots)
+            {
+                if (bot.ObjectState != eObjectState.Active || !bot.IsAlive || bot.IsStunned || bot.IsMezzed || bot.Realm != player.Realm ||
+                    bot.CurrentRegionID != CurrentRegionID || !bot.IsWithinRadius(this, GroupBotTraverseRange))
+                    continue;
+                TraverseDoor(bot);
+            }
         }
 
         public bool TryTraverse(GameBot bot)

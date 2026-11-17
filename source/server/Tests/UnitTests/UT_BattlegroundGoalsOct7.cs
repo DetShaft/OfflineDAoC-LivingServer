@@ -21,6 +21,19 @@ namespace DOL.UnitTests
         public void BracketsAreByLevelOnly(int level, string expected) =>
             Assert.That(BattlegroundBrackets.ForLevel(level)?.Name, Is.EqualTo(expected));
 
+        [TestCase(eRealm.Albion)] [TestCase(eRealm.Midgard)] [TestCase(eRealm.Hibernia)]
+        public void KillaloeArrivalsAreOnItsOwnGroundNotTheSharedLayout(eRealm realm)
+        {
+            var killaloe = BattlegroundBrackets.ForRegion(253);
+            var thidranki = BattlegroundBrackets.ForRegion(252);
+            foreach (GameLocation spot in new[] { BattlegroundBrackets.Entry(killaloe, realm), BattlegroundBrackets.BotArrival(killaloe, realm) })
+            {
+                Assert.That(spot.RegionID, Is.EqualTo(253));
+                Assert.That(spot.Z, Is.InRange(8200, 8300), "Killaloe's portal keeps stand at Z 8288, not the shared ~4000.");
+            }
+            Assert.That(BattlegroundBrackets.BotArrival(thidranki, realm).Z, Is.LessThan(5000), "the other battlegrounds keep the shared layout");
+        }
+
         [Test]
         public void KillaloeRenameReplacesTheOldNameAndStops()
         {

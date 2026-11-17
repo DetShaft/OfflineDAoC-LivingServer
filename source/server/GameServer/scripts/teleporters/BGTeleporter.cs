@@ -41,7 +41,7 @@ namespace DOL.GS.Scripts
                 case "KillaloeAlb":    
                     if (!t.InCombat)
                     {
-	                    t.MoveTo(253, 38113, 53507, 4160, 3268);
+	                    t.MoveTo(BattlegroundBrackets.Entry(BattlegroundBrackets.ForRegion(253), eRealm.Albion));
                     }
                     else { t.Client.Out.SendMessage("You can't port while in combat.", eChatType.CT_Say, eChatLoc.CL_PopupWindow); }
                     break;
@@ -73,7 +73,7 @@ namespace DOL.GS.Scripts
                 case "KillaloeMid":    
 	                if (!t.InCombat)
 	                {
-		                t.MoveTo(253, 53568, 23643, 4530, 3268);
+		                t.MoveTo(BattlegroundBrackets.Entry(BattlegroundBrackets.ForRegion(253), eRealm.Midgard));
 	                }
 	                else { t.Client.Out.SendMessage("You can't port while in combat.", eChatType.CT_Say, eChatLoc.CL_PopupWindow); }
 	                break;
@@ -105,7 +105,7 @@ namespace DOL.GS.Scripts
 				case "KillaloeHib":    
 					if (!t.InCombat)
 					{
-						t.MoveTo(253, 17367, 18248, 4320, 3268);
+						t.MoveTo(BattlegroundBrackets.Entry(BattlegroundBrackets.ForRegion(253), eRealm.Hibernia));
 					}
 					else { t.Client.Out.SendMessage("You can't port while in combat.", eChatType.CT_Say, eChatLoc.CL_PopupWindow); }
 					break;
