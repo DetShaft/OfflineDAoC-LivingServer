@@ -26,6 +26,7 @@ and prints a one-command rollback.
 | `paint_*.py` | Paint each pet skin; `paint_pet_weapons.py` paints the four pet weapons |
 | `export_obj.py`, `blender_render.py`, `weapon_preview.py`, `blender_weapons.py` | Headless Blender preview renders (OBJ bridge; NIFs are never rewritten by Blender) |
 | `install_pet_art.py`, `update_skins.py`, `install_walkingdead.py`, `install_vnext.py` | Install pet skins, models and NIFs |
+| `install_dr_pet_models.py` | Necromancer and Hunter pets drawn with live's Darkness Rising / Catacombs figures (issues #117, #119): new monsters.csv rows that clone the stock rows and fill in live's Catacombs columns, plus the pet templates' model. `check` is a dry run |
 | `install_void_sun.py`, `add_magician_combat_anims.py` | Zombie magician void blast effect and animation sets |
 | `install_blood_shield.py`, `install_sluagh_visuals2.py` | Blood Shield effect for Cairn armor buffs; summon hand glows and cast times |
 | `install_pet_weapons.py`, `install_pet_shield_skins.py` | Private Necroservant and Zombie Guardian weapons (objects/items rows, pskins for emblem shields) |
