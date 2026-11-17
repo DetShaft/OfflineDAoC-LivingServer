@@ -46,6 +46,52 @@ def ensure_keep_textures(zone_dir):
             shutil.copy2(src, dest)
 
 
+def piece_texture_names(models_dir, stems):
+    """Texture names the converted Albion pieces use (their nif_materials slots)."""
+    names = set()
+    for stem in stems:
+        src = models_dir / ("%s.gltf" % stem)
+        if not src.is_file():
+            continue
+        doc = json.loads(src.read_text(encoding="utf-8"))
+        for spec in (doc.get("extras") or {}).get("nif_materials") or []:
+            for value in (spec.get("slots") or {}).values():
+                if value.get("tex"):
+                    names.add(str(value["tex"]).lower())
+    return names
+
+
+def ensure_realm_textures(zone_dir, wanted):
+    """Convert the realm textures the keeps need from the client (DAOC_CLIENT) into textures/original and
+    textures/x4plus. Returns the names that exist afterwards. Without a client, only what is already there."""
+    orig = zone_dir / "textures" / "original"
+    x4 = zone_dir / "textures" / "x4plus"
+    orig.mkdir(parents=True, exist_ok=True)
+    x4.mkdir(parents=True, exist_ok=True)
+    have = {p.stem.lower() for p in orig.glob("*.png")}
+    missing = sorted(n for n in wanted if n not in have)
+    if missing:
+        try:
+            from texture_index import TextureIndex
+            idx = TextureIndex()
+        except Exception as exc:                          # no client on this machine: keep the Albion names
+            print("realm textures: no client texture index (%s); %d stay Albion" % (exc, len(missing)))
+            idx = None
+        for name in missing:
+            base = name[:-4] if name.endswith(("__x2", "__d2")) else name
+            img = idx.image(base) if idx is not None else None
+            if img is None:
+                continue
+            img.save(orig / ("%s.png" % name))
+            have.add(name)
+        print("realm textures: converted %d of %d" % (len([n for n in missing if n in have]), len(missing)))
+    for name in sorted(have & set(wanted)):
+        src, dest = orig / ("%s.png" % name), x4 / ("%s.png" % name)
+        if src.is_file() and (not dest.is_file() or dest.stat().st_mtime < src.stat().st_mtime):
+            shutil.copy2(src, dest)
+    return have
+
+
 def needed_realm_stems(pieces):
     needed = set()
     for piece in pieces:
@@ -56,12 +102,15 @@ def needed_realm_stems(pieces):
 def write_realm_models(zone_dir, pieces):
     models_dir = zone_dir / "models"
     written = {}
-    for stem, realm in sorted(needed_realm_stems(pieces)):
+    needed = sorted(needed_realm_stems(pieces))
+    base_names = piece_texture_names(models_dir, {stem for stem, _ in needed})
+    available = ensure_realm_textures(zone_dir, kk.realm_texture_names(base_names, {realm for _, realm in needed}))
+    for stem, realm in needed:
         src = models_dir / ("%s.gltf" % stem)
         if not src.is_file():
             raise FileNotFoundError(src)
         dest = models_dir / ("%s.gltf" % kk.realm_stem(stem, realm))
-        info = kk.filter_keep_gltf(src, dest, realm)
+        info = kk.filter_keep_gltf(src, dest, realm, available)
         written[(stem, realm)] = {
             "file": dest,
             "doors": len(info["doors"]),
@@ -84,6 +133,11 @@ def is_piece_model(file_name):
                 return True
     nif_like = str(file_name or "")
     return nif_like.startswith("killaloe:border") or nif_like.startswith("killaloe:n-border") or nif_like.startswith("killaloe:hborder")
+
+
+def is_abermenai_keep_model(file_name):
+    """Abermenai's realm front keeps (bfrontkeep1/2, nfrontkeep1, hfrontkeep/2): replaced by the live lvl4 pieces."""
+    return "frontkeep" in Path(file_name or "").stem.lower()
 
 
 def ensure_piece_models(zone, zone_dir, pieces, written):
@@ -119,7 +173,10 @@ def patch_zone(dest_zone):
     pieces = kk.all_piece_fixtures()
     written = write_realm_models(dest_zone, pieces)
     index = ensure_piece_models(zone, dest_zone, pieces, written)
-    old_ids = set(kk.OLD_KEEP_FIXTURE_IDS)
+    # Abermenai's keep fixtures (its frontkeep NIFs), when the zone was built with zone 253's own props. Killaloe's
+    # props (csv237) have no keep, and their ids 1-3 are the rope bridges, so fixtures go by model, not by id.
+    old_models = {i for i, m in enumerate(zone["models"]) if is_abermenai_keep_model(m.get("file"))}
+    old_ids = set(kk.OLD_KEEP_FIXTURE_IDS) if old_models else set()
     keep_names = (
         "Albion Portal Keep", "Midgard Portal Keep", "Hibernia Portal Keep", "Dun Killaloe",
     )
@@ -127,7 +184,7 @@ def patch_zone(dest_zone):
     for f in zone["fixtures"]:
         fid = int(f.get("id") or 0)
         name = str(f.get("name") or "")
-        if fid in old_ids or 5001 <= fid <= 5100:
+        if f.get("m") in old_models or 5001 <= fid <= 5100:
             continue
         if any(name.startswith(prefix) for prefix in keep_names):
             continue

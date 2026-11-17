@@ -165,6 +165,9 @@ namespace CEM.Client {
     /// <param name="nif"></param>
     /// <returns></returns>
     public static Stream FindCSV(Zone2 zone, string file) {
+      string? overridden = ZoneFileOverrides.FilePath(zone.ID, file);
+      if (overridden != null)
+        return new FileStream(overridden, FileMode.Open, FileAccess.Read);
       return OpenFirst(BuildPathPermutations(AddonPaths(zone), new[] { string.Format("zones/zone{0:D3}/csv{0:D3}.mpk", zone.ID), string.Format("zones/zone{0:D3}/dat{0:D3}.mpk", zone.ID) }, new[] { file }));
     }
 
@@ -175,7 +178,25 @@ namespace CEM.Client {
     /// <returns></returns>
     public static Stream FindNIF(Zone2 zone, string nif) {
       var files = new[] { nif, Path.Combine(nif.ToLower().Replace(".nif", ".npk"), nif) };
-      return OpenFirst(BuildPathPermutations(AddonPaths(zone), NIFFolders(zone), files));
+      if (ZoneFileOverrides.Overrides(zone.ID))
+        return OpenExtraNif(nif) ?? OpenFirst(BuildPathPermutations(AddonPaths(zone), NIFFolders(zone), files));
+      return OpenFirst(BuildPathPermutations(AddonPaths(zone), NIFFolders(zone), files)) ?? OpenExtraNif(nif);
+    }
+
+    /// <summary>A NIF from the --nif-dirs folders (loose or inside its .npk), or null.</summary>
+    private static Stream OpenExtraNif(string nif) {
+      var (file, entry) = ZoneFileOverrides.NifLocation(nif);
+      if (file == null)
+        return null;
+      if (entry == null)
+        return new FileStream(file, FileMode.Open, FileAccess.Read);
+      try {
+        MPKFileEntry sub = TinyMPK.FromFile(file).GetFile(entry);
+        return sub == null ? null : new MemoryStream(sub.Data);
+      }
+      catch {
+        return null;
+      }
     }
 
     /// <summary>

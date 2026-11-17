@@ -79,7 +79,9 @@ namespace DOL.GS
         }
 
         /// <summary>Each realm's portal-keep arrival point; identical in all four battleground regions.</summary>
-        public static GameLocation Entry(Bracket bracket, eRealm realm) => realm switch
+        public static GameLocation Entry(Bracket bracket, eRealm realm) => bracket.RegionId == KillaloeRegionId
+            ? KillaloeEntry(bracket, realm)
+            : realm switch
         {
             eRealm.Albion => new GameLocation(bracket.Name + " Alb", bracket.RegionId, 38113, 53507, 4160, 3268),
             eRealm.Midgard => new GameLocation(bracket.Name + " Mid", bracket.RegionId, 53568, 23643, 4530, 3268),
@@ -93,11 +95,38 @@ namespace DOL.GS
         /// through it); bots could not path out (NoPathFound), were sent home as stuck and teleported straight back,
         /// so no bot ever reached a battleground's central keep. These spots are on the field mesh that reaches it.
         /// </summary>
-        public static GameLocation BotArrival(Bracket bracket, eRealm realm) => realm switch
+        public static GameLocation BotArrival(Bracket bracket, eRealm realm) => bracket.RegionId == KillaloeRegionId
+            ? KillaloeBotArrival(bracket, realm)
+            : realm switch
         {
             eRealm.Albion => new GameLocation(bracket.Name + " Alb field", bracket.RegionId, 36428, 51260, 3952, 1883),
             eRealm.Midgard => new GameLocation(bracket.Name + " Mid field", bracket.RegionId, 53150, 26093, 4263, 668),
             eRealm.Hibernia => new GameLocation(bracket.Name + " Hib field", bracket.RegionId, 19714, 19085, 4094, 3699),
+            _ => null,
+        };
+
+        public const ushort KillaloeRegionId = 253;
+
+        /// <summary>
+        /// Killaloe's portal keeps are not on the shared layout: they sit on the live pads (killaloe_keeps.py) on ground
+        /// at Z 8288, so the shared spots (Z ~4000) put arrivals 4000 units under the field (owner's log 2026-11-17:
+        /// every bot that ported in hit "no walkable mesh exists within 768 units" and was sent home). Players land
+        /// beside the Albion keep's captured channeler, and at the same spot in the other two keeps.
+        /// </summary>
+        private static GameLocation KillaloeEntry(Bracket bracket, eRealm realm) => realm switch
+        {
+            eRealm.Albion => new GameLocation(bracket.Name + " Alb", bracket.RegionId, 28605, 66740, 8288, 2488),
+            eRealm.Midgard => new GameLocation(bracket.Name + " Mid", bracket.RegionId, 69461, 43471, 8288, 1407),
+            eRealm.Hibernia => new GameLocation(bracket.Name + " Hib", bracket.RegionId, 18723, 21031, 8288, 3899),
+            _ => null,
+        };
+
+        /// <summary>Killaloe bots: open ground 1600 units out from each portal keep's gatehouse, facing away from it.</summary>
+        private static GameLocation KillaloeBotArrival(Bracket bracket, eRealm realm) => realm switch
+        {
+            eRealm.Albion => new GameLocation(bracket.Name + " Alb field", bracket.RegionId, 30062, 64471, 8282, 2488),
+            eRealm.Midgard => new GameLocation(bracket.Name + " Mid field", bracket.RegionId, 67074, 42217, 8272, 1407),
+            eRealm.Hibernia => new GameLocation(bracket.Name + " Hib field", bracket.RegionId, 19790, 23508, 8287, 3899),
             _ => null,
         };
 

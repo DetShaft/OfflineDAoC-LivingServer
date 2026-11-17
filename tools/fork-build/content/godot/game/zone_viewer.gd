@@ -915,6 +915,8 @@ func _clicked_self(at: Vector2) -> bool:
 ## {1}. Do you accept?", "You pay {0} {1}.", "{0} says, \"There, {1} is ready for combat.\""), on a merchant a sale.
 func _on_item_dropped(slot: int, screen_pos: Vector2) -> void:
 	var n: Npc = npcs.pick(player.camera, screen_pos) if npcs else null
+	if n == null:
+		n = _give_target_near(screen_pos)
 	if Server.active:                                       # the server: onto an NPC = give it (slot 1000 + its id), else
 		var count := int(PlayerData.entry(slot).get("count", 1))   # onto the ground (slot 1) - PlayerMoveItem
 		Server.client.call("MoveItem", slot, 1000 + int(n.spawn.get("oid", 0)) if n else 1, count)
@@ -957,6 +959,23 @@ func _on_item_dropped(slot: int, screen_pos: Vector2) -> void:
 					func(): PlayerData.message.emit("You decline to have your %s repaired." % String(it.name), "system"))
 	elif String(n.spawn.get("items", "")) != "":
 		PlayerData.sell(slot, String(n.spawn.name))
+
+
+## An item let go just off the NPC you have targeted, close by, goes to that NPC instead of the ground (#115,
+## Killaloe 2026-11-17: tokens dragged onto the Siegemaster fell at the player's feet when the pick ray missed him).
+## The server keeps an item no NPC wants in the backpack, so a near miss costs nothing.
+func _give_target_near(screen_pos: Vector2) -> Npc:
+	if npcs == null or not is_instance_valid(npcs.target) or not npcs.target.state.alive or player.camera == null:
+		return null
+	var t: Npc = npcs.target
+	if t.global_position.distance_to(player.global_position) > 12.0:
+		return null
+	var head := t.global_position + Vector3.UP * 1.0
+	if player.camera.is_position_behind(head):
+		return null
+	if player.camera.unproject_position(head).distance_to(screen_pos) > 160.0:
+		return null
+	return t
 
 
 ## Right-click on an NPC: merchants open their shop window (old server: "[Right click to display a shop window]").

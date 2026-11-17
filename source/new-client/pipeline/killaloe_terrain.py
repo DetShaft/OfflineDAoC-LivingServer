@@ -9,8 +9,8 @@ would not be inside zone 237's rectangle.
 
 The region id and the client zone id therefore stay 253. When the retail files are
 present, build_zone.py copies Killaloe's height, water, sector and painted ground
-into the zone 253 output. Fixtures and the three realm exits stay the ones in zone
-253. The retail offset is not copied. Generated content/zones/zone253 is not committed.
+into the zone 253 output, and its fixtures, nifs, lights and bounds from csv237.mpk. Abermenai's
+zonejump exits are dropped. The retail offset is not copied. Generated content/zones/zone253 is not committed.
 
 This module does not import the rest of the pipeline, so the path rules can be tested
 without the client and without numpy.
@@ -27,10 +27,18 @@ SECTOR = 8192
 
 # ter and tex are the painted ground. dat holds the heightmap, water and sector.
 REQUIRED = ('ter237.mpk', 'tex237.mpk', 'dat237.mpk')
-# Members copied out of dat237.mpk. zonejump, fixtures, nifs and lights stay zone 253.
+# Members copied out of dat237.mpk.
 BORROWED_DAT = ('terrain.pcx', 'offset.pcx', 'water.pcx', 'grassmap.pcx', 'densemap.pcx', 'sector.dat')
 NEEDED_IN_DAT = ('terrain.pcx', 'offset.pcx', 'water.pcx', 'sector.dat')
-KEPT_FROM_BATTLEGROUND = ('zonejump.csv', 'fixtures.csv', 'nifs.csv', 'lights.csv')
+# Killaloe's own props (225 trees, stones and the three rope bridges), its lights and bounds, from csv237.mpk.
+# Zone 253's are Abermenai's: not one of its 415 fixtures shares a spot with Killaloe's, so on this ground its
+# bridges and keeps stood in the wrong places (owner, 2026-11-15). Fixture X/Y are zone-local, so they need no
+# offset. Abermenai's zonejump exits are dropped: Killaloe has none, and its portal keeps' teleporters are the way out.
+CSV_ARCHIVE = 'csv237.mpk'
+BORROWED_CSV = ('fixtures.csv', 'nifs.csv', 'lights.csv', 'bound.csv')
+NEEDED_IN_CSV = ('fixtures.csv', 'nifs.csv')
+DROPPED_FROM_BATTLEGROUND = ('zonejump.csv',)
+KEPT_FROM_BATTLEGROUND = ()
 
 RETAIL_DIR = 'e:\\Electronic Arts\\Dark Age of Camelot\\frontiers\\zones\\zone237'
 # Sizes measured on the live client (read-only). Named so a build can be checked against them.

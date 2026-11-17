@@ -303,11 +303,16 @@ namespace CEM.World
             }
         }
 
+        private string? ClientData_ZoneFile(string file) => CEM.Client.ZoneFileOverrides.FilePath(ID, file);
+
         /// <summary>
-        /// Opens a file in the zoneXXX/datXXX.mpk/
+        /// Opens a file in the zoneXXX/datXXX.mpk/, or the --zone-files override folder's copy
         /// </summary>
         public Stream OpenDatFile(string file)
         {
+            string? overridden = ClientData_ZoneFile(file);
+            if (overridden != null)
+                return new FileStream(overridden, FileMode.Open, FileAccess.Read);
             string path = string.Format("zones/zone{0:D3}/dat{0:D3}.mpk/{1}", ID, file);
             return ClientData.OpenFirst(ClientData.BuildPathPermutations(ClientData.AddonPaths(this), new[] { path }));
         }

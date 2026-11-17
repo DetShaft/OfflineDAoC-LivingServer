@@ -452,8 +452,8 @@
   {
     "Path": "new-client/godot/game/zone_viewer.gd",
     "Released": "39e4c91d75a99240a5de057b6c289477a66a446d6a3e146fdee3e135a664a068",
-    "Fixed": "339e9cf866146985218a0189dc37bf30eeb42a9dc84defd7760996205282735d",
-    "Size": 89823,
+    "Fixed": "27750528f98db061bb4584848c3c5976f93d99cab7ba1d13dcc3d7b0fd983013",
+    "Size": 90683,
     "File": "content/godot/game/zone_viewer.gd",
     "ReplaceAny": true
   },
@@ -620,8 +620,8 @@
   {
     "Path": "new-client/godot/game/ui/map_window.gd",
     "Released": "6bce74393a05f2aeeacef2269895d5f32282b1c8989232372493170dca957ae4",
-    "Fixed": "87abb8844482a29bcdf6a5ae39311bfdaa7b4e943540b3f96eb207a1bb739ed2",
-    "Size": 22712,
+    "Fixed": "65377ab9d81a7cf3a2808beb1896d9e292b953be6c8a613c673f972abf00b7cf",
+    "Size": 22896,
     "File": "content/godot/game/ui/map_window.gd",
     "ReplaceAny": true
   },
@@ -636,8 +636,8 @@
   {
     "Path": "new-client/godot/game/zone_loader.gd",
     "Released": "cf7fecaf8afb095621014f551558af67499a690ce2a93e01117d34de6a82fff0",
-    "Fixed": "0ada958665e5a362e6a70c0be96f03d6e71f152468eb87b18dc4d43c21ede153",
-    "Size": 36766,
+    "Fixed": "d2277140550bc9eda763c58311e94e7ffddc7363a3013e4482e9475f3afa9b69",
+    "Size": 37077,
     "File": "content/godot/game/zone_loader.gd",
     "ReplaceAny": true
   },
