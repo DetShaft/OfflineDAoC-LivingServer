@@ -78,8 +78,9 @@ namespace DOL.GS
         private static bool HasCombatPartner(GameBot bot)
         {
             Group group = bot?.Group;
-            if (group == null)
+            if (group == null || bot.CharacterClass == null)
                 return false;
+            bool pureHealer = For((eCharacterClass)bot.CharacterClass.ID) == BotPartyRole.Support;
 
             foreach (GameLiving member in group.GetMembersInTheGroup())
             {
@@ -93,8 +94,13 @@ namespace DOL.GS
                 if (member is GamePlayer)
                     return true;
 
+                // A Shaman or Bard still counts as a pure healer's combat partner (issue #48): in a Healer + Shaman
+                // party the healer keeps the back line and the Shaman, with no partner of its own, fights. Two
+                // Shamans/Bards are not each other's partners, so one of them is not left without a fighter.
                 if (member is GameBot other && other.CharacterClass != null &&
-                    !HoldsBackLine((eCharacterClass)other.CharacterClass.ID))
+                    (pureHealer
+                        ? For((eCharacterClass)other.CharacterClass.ID) != BotPartyRole.Support
+                        : !HoldsBackLine((eCharacterClass)other.CharacterClass.ID)))
                     return true;
             }
 

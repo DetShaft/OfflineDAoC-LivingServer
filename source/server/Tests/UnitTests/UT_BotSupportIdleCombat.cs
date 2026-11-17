@@ -314,6 +314,39 @@ namespace DOL.UnitTests
         }
 
         [Test]
+        public void HealerAndShamanParty_HealerKeepsTheBackLine_ShamanFights()
+        {
+            Bot healer = MakeBot(new ClassHealer());
+            Bot shaman = MakeBot(new ClassShaman());
+            var group = new Group(healer);
+            Add(group, healer);
+            Add(group, shaman);
+            Assert.That(BotPartyRoles.IsSupport(healer), Is.True, "the Shaman counts as the healer's combat partner");
+            Assert.That(BotPartyRoles.IsSupport(shaman), Is.False, "a pure healer is not the Shaman's combat partner");
+        }
+
+        [Test]
+        public void ShamanAndBardParty_BothFight()
+        {
+            Bot shaman = MakeBot(new ClassShaman());
+            Bot bard = MakeBot(new ClassBard());
+            var group = new Group(shaman);
+            Add(group, shaman);
+            Add(group, bard);
+            Assert.That(BotPartyRoles.IsSupport(shaman), Is.False);
+            Assert.That(BotPartyRoles.IsSupport(bard), Is.False);
+        }
+
+        [Test]
+        public void AStaleHealerPost_DoesNotCountAsWalkingToIt()
+        {
+            Bot healer = MakeBot(new ClassCleric()); // solo: holds no post
+            typeof(BotBrain).GetField("_healerPost", Hidden).SetValue(B(healer), (Vector3?)new Vector3(10, 10, 0));
+            Assert.That(B(healer).IsWalkingToHealerPost, Is.False);
+            Assert.That(typeof(BotBrain).GetField("_healerPost", Hidden).GetValue(B(healer)), Is.Null, "cleared");
+        }
+
+        [Test]
         public void SoloShamanIsNotSupport()
         {
             Bot shaman = MakeBot(new ClassShaman());

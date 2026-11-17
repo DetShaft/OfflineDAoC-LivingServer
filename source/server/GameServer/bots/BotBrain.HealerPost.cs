@@ -15,8 +15,22 @@ namespace DOL.AI.Brain
         private long _nextHealerPostCheck;
 
         /// <summary>True while the bot walks to its healer post (the autonomous group controller leaves that walk alone).</summary>
-        public bool IsWalkingToHealerPost => _healerPost != null && Body?.IsMoving == true &&
-                                             Body.CurrentRegionID == _healerPostRegion;
+        public bool IsWalkingToHealerPost
+        {
+            get
+            {
+                // A post left over from a fight the bot no longer holds a post in (it left the group, joined a raid,
+                // stopped being support) must not keep the controller from stopping later movement.
+                if (_healerPost == null)
+                    return false;
+                if (!HoldsHealerPostRole())
+                {
+                    _healerPost = null;
+                    return false;
+                }
+                return Body?.IsMoving == true && Body.CurrentRegionID == _healerPostRegion;
+            }
+        }
 
         /// <summary>A grouped back-line support outside a companion raid (raid squads keep their own posts).</summary>
         internal bool HoldsHealerPostRole() =>
