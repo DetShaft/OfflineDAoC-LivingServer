@@ -313,6 +313,27 @@ namespace DOL.GS.Keeps
             }
         }
 
+        /// <summary>
+        /// Moves a bot of a player's group through this door to the given side, as a player is moved (issue #114). The
+        /// side is the player's, not worked out from the bot: a bot stuck in the doorway itself is within the 32 units
+        /// where IsObjectInFront is always true. The caller (PlayerBotKeepDoorPassage) checks that the door is the bot's
+        /// realm's or open, and that it lies between the bot and the player.
+        /// </summary>
+        public bool PassFollower(GameBot bot, bool toFront)
+        {
+            if (bot == null || !bot.IsAlive || bot.IsStunned || bot.IsMezzed || Component?.Keep == null ||
+                bot.CurrentRegionID != CurrentRegionID)
+                return false;
+            int distance = DoorIndex == 1 ? 150 : 100;
+            Point2D point = GetPointFromHeading(Heading, toFront ? distance : -distance);
+            int z = Z;
+            Zone zone = CurrentRegion?.GetZone(point.X, point.Y);
+            if (zone != null && AutonomousNavigationSurface.TryFloor(PathfindingProvider.Instance, zone,
+                    new System.Numerics.Vector3(point.X, point.Y, Z), out System.Numerics.Vector3 floor))
+                z = (int)Math.Round(floor.Z);
+            return bot.MoveTo(CurrentRegionID, point.X, point.Y, z, bot.Heading);
+        }
+
         public bool TryTraverse(GameBot bot)
         {
             if (bot?.IsAutonomousWorldBot != true || !bot.IsAlive || bot.IsStunned || bot.IsMezzed ||

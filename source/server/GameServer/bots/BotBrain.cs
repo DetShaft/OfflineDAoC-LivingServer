@@ -1229,6 +1229,35 @@ namespace DOL.AI.Brain
         /// <summary>Beyond this distance from its slot, a gamebot following the player paths instead of walking straight.</summary>
         public const int GamebotPathFollowDistance = 600;
 
+        /// <summary>
+        /// The slot moved along the navmesh from the player toward it: it stops at a wall instead of lying behind it, and
+        /// falls back to the player's own spot off the mesh (issue #114).
+        /// </summary>
+        private static Vector3 GamebotFormationDestination(GamePlayer leader, Vector3 slot)
+        {
+            Vector3 origin = new(leader.X, leader.Y, leader.Z);
+            IPathfindingMgr nav = PathfindingProvider.Instance;
+            if (leader.CurrentZone == null || !nav.IsAvailable || !nav.HasNavmesh(leader.CurrentZone))
+                return slot;
+            return nav.GetMoveAlongSurface(leader.CurrentZone, origin, slot, nav.DefaultFilters) ?? origin;
+        }
+
+        /// <summary>
+        /// A straight walk stays on the navmesh and does not cross a closed door (issue #114: near its slot a gamebot
+        /// walked straight, through keep walls and shut gates). Without a navmesh the straight walk is kept.
+        /// </summary>
+        private bool WalkableStraight(Vector3 from, Vector3 to)
+        {
+            Zone zone = Body.CurrentZone;
+            IPathfindingMgr nav = PathfindingProvider.Instance;
+            if (zone == null || !nav.IsAvailable || !nav.HasNavmesh(zone))
+                return true;
+            // Off the mesh a path would find nothing either: keep the straight walk.
+            if (!AutonomousNavigationSurface.TryFloor(nav, zone, from, out _))
+                return true;
+            return nav.HasLineOfSight(zone, from, to, nav.BlockingDoorAvoidanceFilters);
+        }
+
         private void FollowFormation(bool ambientWander = false)
         {
             // Any FOLLOW entry or support path must honor a temporary caster's
@@ -1319,6 +1348,13 @@ namespace DOL.AI.Brain
                 Vector3 floor = CompanionFollowPolicy.FormationDestination(BotBody, new(destination.X, destination.Y, destination.Z));
                 destination = new Point3D((int)floor.X, (int)floor.Y, (int)floor.Z);
             }
+            else if (!ambientWander && BotBody.IsAutonomousWorldBot && BotBody.IsPlayerLedGroup && leader.CurrentZone != null)
+            {
+                // Issue #114: a gamebot's slot is kept on ground reachable from the player, as companions' slots are. A slot
+                // inside a wall or a gatehouse (Killaloe keeps) had no path, and in a battleground a bot with no path stands.
+                Vector3 floor = GamebotFormationDestination(leader, new(destination.X, destination.Y, destination.Z));
+                destination = new Point3D((int)floor.X, (int)floor.Y, (int)floor.Z);
+            }
             int arrivalTolerance = ambientWander ? 12 : 20;
             if (Body.GetDistanceTo(destination) > arrivalTolerance)
             {
@@ -1331,7 +1367,8 @@ namespace DOL.AI.Brain
                 // Play test 2026-10-27: a gamebot in the player's group, told "come with me" from across the zone, walked in a
                 // straight line (WalkTo) into hills and, once, off the edge of the map. Far from its formation slot it paths.
                 bool farGamebot = !ambientWander && BotBody.IsAutonomousWorldBot && BotBody.IsPlayerLedGroup &&
-                                  Body.GetDistanceTo(destination) > GamebotPathFollowDistance;
+                                  (Body.GetDistanceTo(destination) > GamebotPathFollowDistance ||
+                                   !WalkableStraight(new(Body.X, Body.Y, Body.Z), new(destination.X, destination.Y, destination.Z)));
                 if (companionTravel && !ambientWander || farGamebot)
                     Body.PathTo(destination, speed);
                 else
@@ -1426,6 +1463,10 @@ namespace DOL.AI.Brain
             BotBody?.EnsureAutonomousRecoveryTimers();
 
             if (AutonomousStuckWatchdog.Observe(BotBody))
+                return;
+
+            // A keep door between this bot and the player who leads its group: through it, as the player went (#114).
+            if (PlayerBotKeepDoorPassage.TryPass(BotBody))
                 return;
 
             AutonomousBotRealmAbilities.UseActives(BotBody);
