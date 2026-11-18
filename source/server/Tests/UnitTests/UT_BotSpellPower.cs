@@ -727,6 +727,18 @@ namespace DOL.UnitTests
             }
         }
 
+        // Issue #136: a bot's own Quickcast (armed by its brain, not an effect) works as a player's: double power.
+        [Test] public void BotArmedQuickcastDoublesPowerLikeAPlayers()
+        {
+            Bot bot = MakeBot(typeof(ClassSpiritmaster), 50);
+            var spell = S(30, 3);
+            var handler = new SpellHandler(bot, spell, new SpellLine("test", "test", "", true));
+            Field(typeof(SpellHandler), handler, "_botQuickcast", true);
+            Assert.That(handler.IsQuickCasting, Is.True);
+            Assert.That(handler.PowerCost(bot), Is.EqualTo(60));
+            Assert.That(bot.TryConsumeQuickcast(spell), Is.False, "nothing was armed");
+        }
+
         private Bot MakeBot(Type cls, byte level, bool temporary = false)
         {
             Bot bot = Actor<Bot>(); bot.Class = (ICharacterClass)Activator.CreateInstance(cls); bot.Level = level;

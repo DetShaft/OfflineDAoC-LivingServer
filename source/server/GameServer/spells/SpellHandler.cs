@@ -56,12 +56,14 @@ namespace DOL.GS.Spells
 		protected bool m_startReuseTimer = true;
 
 		private QuickCastECSGameEffect _quickcast;
+		// A bot's Quickcast (issue #136): armed by its brain for one cast (GameBot.ArmQuickcast), never by an effect.
+		private bool _botQuickcast;
 		private long _castStartTick;
 		private long _castEndTick;
 		private long _calculatedCastTime;
 		private long _puslingSpellLastEndOfCastMessage;
 
-		public bool IsQuickCasting => Caster is not GameBot && _quickcast != null;
+		public bool IsQuickCasting => _botQuickcast || Caster is not GameBot && _quickcast != null;
 		public long CastStartTick => _castStartTick;
 		public bool StartReuseTimer => m_startReuseTimer;
 
@@ -485,8 +487,9 @@ namespace DOL.GS.Spells
 			CancelFocusSpells();
 			_quickcast = m_caster is GameBot ? null :
 				EffectListService.GetAbilityEffectOnTarget(m_caster, eEffect.QuickCast) as QuickCastECSGameEffect;
+			_botQuickcast = m_caster is GameBot quickcastBot && quickcastBot.TryConsumeQuickcast(m_spell);
 
-			if (IsQuickCasting)
+			if (_quickcast != null)
 				_quickcast.ExpireTick = GameLoop.GameLoopTime + _quickcast.Duration;
 
 			if (playerCaster != null)
@@ -597,7 +600,7 @@ namespace DOL.GS.Spells
 							return false;
 						}
 					}
-					else
+					else if (!IsQuickCasting)
 						return false;
 				}
 			}
@@ -1202,7 +1205,11 @@ namespace DOL.GS.Spells
 				return 0;
 
 			if (Caster is GameBot botCaster)
-				return BotSpellPower.Cost(botCaster, Spell, SpellLine);
+			{
+				int botCost = BotSpellPower.Cost(botCaster, Spell, SpellLine);
+				// A bot's Quickcast doubles the cost as a player's does (issue #136).
+				return IsQuickCasting && Spell.CastTime > 0 ? botCost * 2 : botCost;
+			}
 
 			double powerCost = m_spell.Power;
 			GamePlayer playerCaster = Caster as GamePlayer;

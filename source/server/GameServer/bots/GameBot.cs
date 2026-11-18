@@ -2105,6 +2105,47 @@ namespace DOL.GS
 
         public int PowerCost(Spell spell) => BotSpellPower.Cost(this, spell, null);
 
+        // Issue #136: the bot's own Quickcast, armed by its brain for the next cast of one spell. The spell handler
+        // consumes it (SpellHandler.CheckBeginCast): a flat 2 second, uninterruptible cast at double power. The
+        // 30 second reuse is the player's (QuickCastAbilityHandler.DISABLE_DURATION) and starts when it is armed.
+        private int _quickcastSpellId;
+        private long _quickcastArmedUntil;
+        private long _quickcastReadyAt;
+
+        public bool HasQuickcast => HasAbility(Abilities.Quickcast);
+        public bool QuickcastReady => HasQuickcast && GameLoop.GameLoopTime >= _quickcastReadyAt;
+
+        public bool ArmQuickcast(Spell spell)
+        {
+            if (spell == null || spell.CastTime <= 0 || !QuickcastReady)
+                return false;
+            _quickcastSpellId = spell.ID;
+            _quickcastArmedUntil = GameLoop.GameLoopTime + 1_500;
+            _quickcastReadyAt = GameLoop.GameLoopTime + DOL.GS.SkillHandler.QuickCastAbilityHandler.DISABLE_DURATION;
+            return true;
+        }
+
+        /// <summary>A cast that was not started after all gives the Quickcast back.</summary>
+        public void DisarmQuickcast()
+        {
+            if (_quickcastArmedUntil <= 0)
+                return;
+            _quickcastArmedUntil = 0;
+            _quickcastReadyAt = 0;
+        }
+
+        public bool TryConsumeQuickcast(Spell spell)
+        {
+            if (spell == null || spell.CastTime <= 0 || spell.ID != _quickcastSpellId ||
+                GameLoop.GameLoopTime >= _quickcastArmedUntil)
+                return false;
+            _quickcastArmedUntil = 0;
+            return true;
+        }
+
+        /// <summary>Issue #136: a caster running from a melee attacker sprints until then (BotSprint).</summary>
+        public long KiteSprintUntil { get; set; }
+
         private Dictionary<int, SpellLine> _powerSpellLines = new();
 
         // Combat still uses its existing dispatch line (no damage/spec behavior
@@ -2809,8 +2850,8 @@ namespace DOL.GS
             else if (IsTemporaryGroupHelper && !BotSongTwistPolicy.IsMobileSong(this, spell))
                 (Brain as BotBrain)?.MarkTemporaryCompanionRestActivity();
 
-            // Quickcast is explicitly disabled for all bot kinds. Clear a
-            // lingering externally applied effect without changing human casts.
+            // A bot never uses the player's Quickcast effect; its own is armed by its brain (ArmQuickcast, issue #136).
+            // Clear a lingering externally applied effect without changing human casts.
             EffectListService.GetAbilityEffectOnTarget(this, eEffect.QuickCast)?.End();
 
             if (IsRecoveryResting && !IsTemporaryGroupHelper &&

@@ -78,10 +78,18 @@ namespace DOL.GS
             return ChaseWindow(IsChasing(bot), GameLoop.GameLoopTime, ref state.ChaseSince, ref state.ChaseCooldownUntil);
         }
 
+        public static bool Kites(GameBot bot) =>
+            bot.KiteSprintUntil > GameLoop.GameLoopTime && bot.IsAlive && !bot.IsStealthed && !bot.IsOnStableMasterRoute;
+
         /// <summary>For NpcMovementComponent.MaxSpeed.</summary>
         public static short Apply(GameBot bot, short normal, short current)
         {
-            if (bot == null || !bot.IsPlayerLedGroup)
+            if (bot == null)
+                return current;
+            // Issue #136: a caster running from a melee attacker sprints, whoever leads it (all bot kinds).
+            if (Kites(bot))
+                return Speed(normal, current, true);
+            if (!bot.IsPlayerLedGroup)
                 return current;
             return Speed(normal, current, FollowsSprintingLeader(bot) || Chases(bot));
         }
