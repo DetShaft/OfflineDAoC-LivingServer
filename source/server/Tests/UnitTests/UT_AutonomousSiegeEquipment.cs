@@ -100,6 +100,25 @@ namespace DOL.UnitTests
         public void PurchasesUseActualRealmSpecificMerchantKitIds(eRealm realm,string id) => Assert.That(BotSiegeRuntime.Kit(realm,BotSiegeKind.Ballista),Is.EqualTo(id));
 
         [Test]
+        public void PlayersKeepARamFromAsFarAsTheyCanReachIt()
+        {
+            // #134 review: a player who takes the ram from its far side (up to 400 units) must not be released by the
+            // 256-unit control check 1.5 s later. Bots and other engines keep their usual distances.
+            var ram=new GameSiegeRam { ObjectState=GameObject.eObjectState.Active };
+            var ballista=new GameSiegeBallista { ObjectState=GameObject.eObjectState.Active };
+            var player=(GamePlayer)RuntimeHelpers.GetUninitializedObject(typeof(GamePlayer));
+            Assert.That(ram.ControlDistanceFor(player),Is.EqualTo(ram.InteractDistance));
+            Assert.That(ram.ControlDistanceFor(player),Is.GreaterThanOrEqualTo(400));
+            Assert.That(ram.ControlDistanceFor(null),Is.EqualTo(ram.SIEGE_WEAPON_CONTROLE_DISTANCE));
+            Assert.That(ballista.ControlDistanceFor(player),Is.EqualTo(ballista.SIEGE_WEAPON_CONTROLE_DISTANCE));
+        }
+        [Test]
+        public void NoBotTakeoverWithoutABotOwner()
+        {
+            var ram=new GameSiegeRam { ObjectState=GameObject.eObjectState.Active };
+            Assert.That(ram.CanTakeOverFromBot(null),Is.False);
+        }
+        [Test]
         public void NativeRepairRemainsFiniteAndCannotGiveInfiniteHealth()
         {
             var weapon=new GameSiegeRam { ObjectState=GameObject.eObjectState.Active };

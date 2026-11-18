@@ -42,6 +42,16 @@ namespace DOL.GS
 			BaseDamage = 0;
 		}
 		public int SIEGE_WEAPON_CONTROLE_DISTANCE = 256;
+
+		/// <summary>
+		/// How far a real player may stand from this engine and keep control of it. Same as
+		/// SIEGE_WEAPON_CONTROLE_DISTANCE except where an engine lets players reach it from farther away (the ram, #134).
+		/// Bots keep the normal distance, so their siege positioning is unchanged.
+		/// </summary>
+		protected virtual int PlayerControlDistance => SIEGE_WEAPON_CONTROLE_DISTANCE;
+
+		public int ControlDistanceFor(GameLiving controller) =>
+			controller is GamePlayer ? Math.Max(SIEGE_WEAPON_CONTROLE_DISTANCE, PlayerControlDistance) : SIEGE_WEAPON_CONTROLE_DISTANCE;
 		public const int TIME_TO_DECAY = 60 * 1000 * 3; //3 min
 		public const int DECAYPERIOD = 240000; //ms
 		#region enum
@@ -632,7 +642,7 @@ namespace DOL.GS
 				OwnerOut?.SendMessage("The siegeweapon needs to be repaired!", eChatType.CT_Say, eChatLoc.CL_SystemWindow);
 				return false;
 			}
-			if (!this.IsWithinRadius(owner, SIEGE_WEAPON_CONTROLE_DISTANCE))
+			if (!this.IsWithinRadius(owner, ControlDistanceFor(owner)))
 			{
 				OwnerOut?.SendMessage("You are too far from your siege equipment to control it any longer!", eChatType.CT_System, eChatLoc.CL_SystemWindow);
 				return false;
@@ -709,7 +719,7 @@ namespace DOL.GS
 			}
 			if (Owner is GameBot && (!Owner.IsAlive || Owner.ObjectState != eObjectState.Active || Owner.CurrentRegion != CurrentRegion))
 			{ ReleaseControl(); return 0; }
-			if(this.GetDistanceTo(Owner)>SIEGE_WEAPON_CONTROLE_DISTANCE)
+			if(this.GetDistanceTo(Owner)>ControlDistanceFor(Owner))
 			{
 				ReleaseControl();
 				return 0;
@@ -733,19 +743,30 @@ namespace DOL.GS
 
 		public override bool Interact(GamePlayer player)
 		{
-			// A bot running a friendly engine hands it over to the real player who comes to use it (#134: the player
-			// could not get into a ram a gamebot had set up at the Killaloe keep door; it stayed "already under control").
-			YieldToPlayer(player);
-
 			if (!base.Interact(player))
 				return false;
 
 			if (Owner == player)
 				return false;
 
+			// A bot running a friendly engine hands it over to the real player who comes to use it (#134: the player
+			// could not get into a ram a gamebot had set up at the Killaloe keep door; it stayed "already under control").
+			// It lets go only once the interact has succeeded and the player is free to take control, so a refused
+			// takeover never leaves the engine with nobody on it.
+			if (CanTakeOverFromBot(player))
+				YieldToPlayer(player);
+
 			TakeControl(player);
 			return true;
 		}
+
+		/// <summary>
+		/// True when a bot runs this engine and the player could take control the moment the bot lets go.
+		/// </summary>
+		public bool CanTakeOverFromBot(GamePlayer player) =>
+			player != null && Owner is GameBot && player.IsAlive && !player.IsIncapacitated &&
+			(player.SiegeWeapon == null || player.SiegeWeapon == this) &&
+			IsWithinRadius(player, ControlDistanceFor(player));
 
 		/// <summary>
 		/// A gamebot or companion operating this engine lets go of it when a real player of its realm asks to use it,

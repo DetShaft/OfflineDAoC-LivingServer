@@ -134,6 +134,8 @@ public static partial class AutonomousBotGroupCoordinator
         // The camp the party is huddled around, and when that rest ends.
         public string AnchoredCampId { get; set; } = string.Empty;
         public long AnchorUntilTick { get; set; }
+        // The campfire the party lit at that camp (#56); it goes out by itself.
+        public BotCampfire Campfire { get; set; }
         public long NextDungeonBossCheckTick { get; set; }
         public HashSet<string> DungeonBossesTried { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, long> RejectedDungeonCamps { get; } = new(StringComparer.Ordinal);
@@ -1313,6 +1315,18 @@ public static partial class AutonomousBotGroupCoordinator
             return;
         session.AnchoredCampId = session.Camp.Id;
         session.AnchorUntilTick = CampAnchorPolicy.OpenUntil(now);
+        SharedCamp camp = session.Camp;
+        if (BotCampfire.Wanted(camp.IsDungeon, WorldMgr.GetRegion(camp.RegionId)?.IsDungeon == true))
+        {
+            try
+            {
+                session.Campfire = BotCampfire.LightOrRekindle(session.Campfire, camp.RegionId, camp.X, camp.Y, camp.Z, 0);
+            }
+            catch (Exception e)
+            {
+                Log.Warn($"AUTONOMOUS_GROUP_CAMPFIRE failed group={session.Id} camp=\"{camp.Id}\": {e.Message}");
+            }
+        }
     }
 
     private static long MemberKey(GameBot bot) => bot.DatabaseID > 0 ? bot.DatabaseID : bot.ObjectID;
