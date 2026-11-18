@@ -8,6 +8,21 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.21 — 2026-11-18
+
+All tests only: not yet seen in game.
+- **Group bots and keep doors (#114, #127):** bots in your group pass a keep door that is between them and you, and no
+  longer stand on the wrong side of a shut door.
+- **Group bots in a fight (#126, #128, #136):** bots in your group sprint beside you and to chase. Melee hybrids keep swinging
+  through instant spells, grouped Clerics smite, and an instant taunt no longer cancels the tank's swing. Casters kite a
+  player who rushes them with control spells, Quickcast and sprint, while pets and melee bots peel.
+- **Healers (#56, #126):** a healer holds a post closer to the group.
+- **Killaloe main keep (#127):** the converter applied the keep's collision transform twice, so its collision sat 90
+  degrees off the drawn keep. The converter is fixed. The keep model files are converted game content and are not in
+  the package, so the fix reaches a game only when its zone files are converted again.
+- **New client (#99, #76, #126):** Options > CHAT has a switch for helpers' damage numbers in the combat log, `/bug`
+  opens a prefilled GitHub issue in the browser, and Target Closest Enemy also finds enemy-realm guards and players.
+
 ## Beta 1.1.20 — 2026-11-17
 
 All tests only: not yet seen in game.
