@@ -32,6 +32,10 @@ namespace DOL.AI.Brain
             }
         }
 
+        /// <summary>True while the bot holds a healer post in a fight (PlayerBotKeepDoorPassage leaves it there).</summary>
+        public bool IsHoldingHealerPost =>
+            _healerPost != null && Body?.CurrentRegionID == _healerPostRegion && HoldsHealerPostRole();
+
         /// <summary>A grouped back-line support outside a companion raid (raid squads keep their own posts).</summary>
         internal bool HoldsHealerPostRole() =>
             BotBody != null && BotPartyRoles.IsSupport(BotBody) && !CompanionRaid.IsMember(BotBody);

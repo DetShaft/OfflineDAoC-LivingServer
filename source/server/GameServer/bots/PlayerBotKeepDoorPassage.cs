@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using DOL.AI.Brain;
 using DOL.GS.Keeps;
 using DOL.Logging;
 
@@ -39,6 +40,8 @@ namespace DOL.GS
         public const int HeadwayDistance = 60;
         public const long CheckIntervalMilliseconds = 500;
         public const long CooldownMilliseconds = 3_000;
+        /// <summary>A bot shooting at a target this close is fighting, not stalled.</summary>
+        public const int FightRadius = 2_000;
 
         private sealed class State
         {
@@ -94,6 +97,13 @@ namespace DOL.GS
             return stalled ? Reason.Stalled : Reason.None;
         }
 
+        /// <summary>
+        /// Pure rule: the bot stands still on purpose, so standing still is not a stall and it is not moved through a
+        /// door: told to stay, casting, holding its healer post, or fighting (melee in reach or a ranged attack).
+        /// </summary>
+        public static bool HoldsPosition(bool toldToStay, bool casting, bool holdingHealerPost, bool fighting) =>
+            toldToStay || casting || holdingHealerPost || fighting;
+
         /// <summary>From BotBrain.Think. True when the bot was moved through a door this turn.</summary>
         public static bool TryPass(GameBot bot)
         {
@@ -117,10 +127,19 @@ namespace DOL.GS
                 return false;
             state.NextCheck = now + CheckIntervalMilliseconds;
 
-            // A bot fighting something on its own side of the door stays in that fight.
-            if (bot.IsAttacking && bot.TargetObject is GameLiving target && target.IsAlive &&
-                bot.IsWithinRadius(target, Math.Max(bot.MeleeAttackRange, 200) + 100))
+            // A bot standing still on purpose stays where it is (Squire review on PR #129): told to stay, casting,
+            // holding its healer post, or fighting something on its own side of the door, in melee or at range.
+            BotBrain brain = bot.Brain as BotBrain;
+            bool fighting = bot.IsAttacking && bot.TargetObject is GameLiving target && target.IsAlive &&
+                            bot.IsWithinRadius(target, bot.ActiveWeaponSlot == eActiveWeaponSlot.Distance
+                                ? FightRadius : Math.Max(bot.MeleeAttackRange, 200) + 100);
+            bool casting = bot.IsCasting || bot.castingComponent?.HasPendingSkillRequests == true;
+            if (HoldsPosition(brain?.WalkState == eWalkState.Stay, casting, brain?.IsHoldingHealerPost == true, fighting))
+            {
+                state.At = position;
+                state.Since = now;
                 return false;
+            }
 
             bool stalled = now - state.Since >= StallMilliseconds;
             Vector2 bot2 = new(bot.X, bot.Y), leader2 = new(leader.X, leader.Y);

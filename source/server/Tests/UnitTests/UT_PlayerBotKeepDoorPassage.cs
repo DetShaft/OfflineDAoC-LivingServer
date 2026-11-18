@@ -77,6 +77,17 @@ namespace DOL.UnitTests
         }
 
         [Test]
+        public void ABotStandingStillOnPurpose_IsNotPassed()
+        {
+            // Squire review on PR #129: a bot told to stay, casting, holding a healer post or fighting is not stalled.
+            Assert.That(PlayerBotKeepDoorPassage.HoldsPosition(false, false, false, false), Is.False);
+            Assert.That(PlayerBotKeepDoorPassage.HoldsPosition(toldToStay: true, false, false, false), Is.True);
+            Assert.That(PlayerBotKeepDoorPassage.HoldsPosition(false, casting: true, false, false), Is.True);
+            Assert.That(PlayerBotKeepDoorPassage.HoldsPosition(false, false, holdingHealerPost: true, false), Is.True);
+            Assert.That(PlayerBotKeepDoorPassage.HoldsPosition(false, false, false, fighting: true), Is.True);
+        }
+
+        [Test]
         public void DistanceToSegment()
         {
             Assert.That(PlayerBotKeepDoorPassage.DistanceToSegment(new Vector2(0, 5), new Vector2(-10, 0), new Vector2(10, 0)), Is.EqualTo(5).Within(0.01));

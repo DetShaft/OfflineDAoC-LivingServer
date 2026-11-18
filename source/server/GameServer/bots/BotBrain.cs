@@ -1239,7 +1239,8 @@ namespace DOL.AI.Brain
             IPathfindingMgr nav = PathfindingProvider.Instance;
             if (leader.CurrentZone == null || !nav.IsAvailable || !nav.HasNavmesh(leader.CurrentZone))
                 return slot;
-            return nav.GetMoveAlongSurface(leader.CurrentZone, origin, slot, nav.DefaultFilters) ?? origin;
+            // Shut doors block the clamp, so the slot stays on the player's side of a closed gate (no pass back and forth).
+            return nav.GetMoveAlongSurface(leader.CurrentZone, origin, slot, nav.BlockingDoorAvoidanceFilters) ?? origin;
         }
 
         /// <summary>

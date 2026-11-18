@@ -180,8 +180,9 @@ namespace DOL.GS
             if (leader.IsMoving) point = Predict(point, For(bot).LeaderVelocity, leader.MaxSpeed);
             Vector3 origin = new(leader.X, leader.Y, leader.Z);
             if (leader.CurrentZone == null) return point;
+            // Shut doors block the clamp (#114), so the slot stays on the player's side of a closed gate.
             return PathfindingProvider.Instance.GetMoveAlongSurface(leader.CurrentZone, origin, point,
-                PathfindingProvider.Instance.DefaultFilters) ?? origin;
+                PathfindingProvider.Instance.BlockingDoorAvoidanceFilters) ?? origin;
         }
 
         public static bool SendsDruidPet(GameBot bot) => Applies(bot) &&
