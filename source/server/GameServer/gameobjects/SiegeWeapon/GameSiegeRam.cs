@@ -234,6 +234,12 @@ namespace DOL.GS
 		/// </summary>
 		public override int InteractDistance => 400;
 
+		/// <summary>
+		/// A player who can reach the ram from 400 units keeps control of it there too; with the usual 256 the range
+		/// check released the ram 1.5 s after "You take control" and the fire check said "too far".
+		/// </summary>
+		protected override int PlayerControlDistance => InteractDistance;
+
 		public void UpdateRamStatus()
 		{
 			//speed of reload/arming changed by number of riders
