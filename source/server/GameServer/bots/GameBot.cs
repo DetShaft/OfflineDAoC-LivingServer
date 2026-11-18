@@ -2112,7 +2112,7 @@ namespace DOL.GS
         private long _quickcastArmedUntil;
         private long _quickcastReadyAt;
 
-        public bool HasQuickcast => HasAbility(Abilities.Quickcast);
+        public bool HasQuickcast => HasAbility(DOL.GS.Abilities.Quickcast);
         public bool QuickcastReady => HasQuickcast && GameLoop.GameLoopTime >= _quickcastReadyAt;
 
         public bool ArmQuickcast(Spell spell)
