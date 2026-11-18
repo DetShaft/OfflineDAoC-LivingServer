@@ -1582,6 +1582,13 @@ func _target_ground(oid: int) -> void:
 const LOOT_RANGE := 1500 * 0.025                 # game.dll 0x4375c4: Nearest Loot's radius, 1500 units
 
 
+## The Target Closest Enemy key against the server: monsters, and also the other realms' guards and players/gamebots
+## (they are realm 1-3, so the realm-0-only test never found them; issue #126, Jay 2026-11-18 in Killaloe). Your own
+## realm stays off the key.
+func tab_enemy(n: Npc) -> bool:
+	return int(n.spawn.realm) == 0 or not n.is_friendly()
+
+
 ## The Nearest Loot key (keyboard.dat F7 / - / H): the nearest ground object within 1500 units targeted, as game.dll
 ## 0x4375c4 -> 0x43646f mode 3: any ground object but a gravestone (0x43e2ff: its name holding "'s Grave"), else
 ## "No lootable object in range." (owner 2026-10-17).
