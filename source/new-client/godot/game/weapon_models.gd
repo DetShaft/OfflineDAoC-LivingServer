@@ -208,7 +208,7 @@ static func make(model: int, drawn := false, left := false) -> Node3D:
 		if players.size() > 0:
 			var ap := players[0] as AnimationPlayer
 			for clip in ap.get_animation_list():
-				ap.get_animation(clip).loop_mode = Animation.LOOP_LINEAR if clip in ["idle", "combat_idle"] else Animation.LOOP_NONE
+				Fig3Figure.set_loop(ap, clip, Animation.LOOP_LINEAR if clip in ["idle", "combat_idle"] else Animation.LOOP_NONE)
 			var want := "combat_idle" if drawn and ap.has_animation("combat_idle") else "idle"
 			if ap.has_animation(want):
 				ap.play(want)
