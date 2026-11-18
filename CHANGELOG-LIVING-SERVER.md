@@ -8,6 +8,20 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.22 — 2026-11-18
+
+All tests only: not yet seen in game.
+- **Bots after a keep door (#114):** moving a bot restarted its brain and left it with no AI state, so a grouped bot
+  stood still after passing a keep door until it was attacked or invited again. A bot now resumes following (or staying)
+  after any move.
+- **Shield hand (#143, #144):** bots that can't dual wield (Minstrel, Cleric and every other shield class) no longer put a
+  second weapon in the shield hand. A bot found with one gets its shield back and the weapon goes to its backpack.
+- **Siege (#115, #133, #134):** whisper ram, ballista, catapult or trebuchet to the Siegemaster to hand in a token, group
+  bots hit level-1 keep doors with you, and a bot yields its ram to the player.
+- **Stutter (#95, #34):** SQLite checkpoints run off the game loop, and the new client no longer rebuilds the animation cache
+  in cities.
+- **Bot camps (#56):** outdoor camps light a campfire where the party rests.
+
 ## Beta 1.1.21 — 2026-11-18
 
 All tests only: not yet seen in game.
