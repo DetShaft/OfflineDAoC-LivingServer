@@ -2630,7 +2630,7 @@ namespace DOL.GS.Spells
 				if (Caster is GameBot bot)
 				{
 					// Live shows no spell lines for another player's casting unless the details setting is on.
-					if (CombatLogAttribution.ShowDetails)
+					if (CombatLogAttribution.ShowDetailsFor(playerOwner))
 						CombatLogAttribution.SendToOwner(playerOwner, CombatLogAttribution.ThirdPerson(bot, message));
 				}
 				else

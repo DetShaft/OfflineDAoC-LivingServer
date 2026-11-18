@@ -32,7 +32,7 @@ namespace DOL.GS.Spells
 
                 if (owner != null && ad.Attacker is GameBot)
                 {
-                    if (CombatLogAttribution.ShowDetails)
+                    if (CombatLogAttribution.ShowDetailsFor(owner))
                         CombatLogAttribution.SendToOwner(owner, $"{ad.Attacker.Name} hits {target.GetName(0, false)} for {ad.Damage} damage!");
                 }
                 else if (owner != null)
@@ -83,7 +83,7 @@ namespace DOL.GS.Spells
 
                 if (owner != null && ad.Attacker is GameBot)
                 {
-                    if (CombatLogAttribution.ShowDetails)
+                    if (CombatLogAttribution.ShowDetailsFor(owner))
                         CombatLogAttribution.SendToOwner(owner, $"{ad.Attacker.Name} hits {target.GetName(0, false)} for {ad.Damage} damage!");
                 }
                 else if (owner != null)

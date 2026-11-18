@@ -644,8 +644,8 @@
   {
     "Path": "new-client/godot/game/ui/options_window.gd",
     "Released": "181026fdbbdc157398fe384cbbf44926cacfdb35de5413d27f9778edef2f8c69",
-    "Fixed": "5bfec0e4e5672866fe2d51cd18479a6770d7c656f6dedd1395d2e2443d3e8257",
-    "Size": 29268,
+    "Fixed": "762789f9d9409917b0b303180e0e5913922baed88d56fabca8569e0afe82b147",
+    "Size": 30372,
     "File": "content/godot/game/ui/options_window.gd",
     "ReplaceAny": true
   },
