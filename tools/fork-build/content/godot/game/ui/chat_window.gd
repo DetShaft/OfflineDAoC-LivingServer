@@ -257,9 +257,53 @@ func _client_command(text: String) -> bool:
 			Server.quit_world(false)
 		"train" when rest == "":                            # the trainer window, anywhere (TrainWindowHandler; owner
 			Server.client.call("TrainWindow")              # 2026-10-14: /train didn't open it away from a trainer)
+		"bug", "petition":                                  # issue #76: a prefilled GitHub issue in the browser
+			_report_bug(rest)
 		_:
 			return false
 	return true
+
+
+const ISSUE_URL := "https://github.com/DetShaft/OfflineDAoC-LivingServer/issues/new"
+const BUG_TEXT_MAX := 1200                                  # browsers and GitHub cut very long issue links
+
+
+## /bug <what went wrong> (issue #76): opens GitHub's new-issue form in your browser, filled in with your words and
+## where you are (version, character, zone and /loc). No token is kept anywhere: you file it with your own GitHub
+## account, and you see and can edit everything before it is sent. Nothing from your account, logs or bot roster is
+## attached. The server's /report still stores a report locally.
+func _report_bug(text: String) -> void:
+	if text == "":
+		PlayerData.message.emit("Usage: /bug <what went wrong> - opens a GitHub issue form in your browser, filled in with your words and your location.", "help")
+		return
+	var where := ""
+	var v := get_tree().current_scene
+	if v and v.has_method("loc_line"):
+		where = String(v.call("loc_line"))
+	var cls := String(ClassDb.cls(PlayerData._class_id()).get("name", ""))
+	var url := bug_report_url(text, {"version": GameUI.LIVING_SERVER_CLIENT_PATCH, "name": PlayerData.display_name(),
+			"class": cls, "level": PlayerData.level, "realm": String(PlayerData.character.get("realm", "")), "where": where})
+	var err := OS.shell_open(url)
+	if err == OK:
+		PlayerData.message.emit("A GitHub issue form opened in your browser. Check it, add a screenshot if you like, and submit it there.", "system")
+	else:
+		DisplayServer.clipboard_set(url)
+		PlayerData.message.emit("Could not open your browser. The issue link is on your clipboard: paste it into a browser.", "system")
+
+
+## The new-issue link for a /bug report. Pure (context: version, name, class, level, realm, where).
+static func bug_report_url(text: String, context: Dictionary) -> String:
+	text = text.strip_edges()
+	if text.length() > BUG_TEXT_MAX:
+		text = text.substr(0, BUG_TEXT_MAX) + "..."
+	var title := text.substr(0, 70) + ("..." if text.length() > 70 else "")
+	var lines := ["Reported in game with /bug (new client).", "", "**What went wrong**", text, "", "**Where**",
+			"- Version: %s" % context.get("version", "?"),
+			"- Character: %s, level %s %s (%s)" % [context.get("name", "?"), context.get("level", "?"), context.get("class", "?"),
+				context.get("realm", "?")],
+			"- Location: %s" % context.get("where", "?"), "",
+			"_Add screenshots or log files here by dragging them into this box._"]
+	return "%s?title=%s&body=%s" % [ISSUE_URL, ("[In game] " + title).uri_encode(), "\n".join(lines).uri_encode()]
 
 
 ## A line typed by a macro (the quickbar): as if typed here.
