@@ -4677,6 +4677,57 @@ namespace DOL.GS
                 eInventorySlot.LeftHandWeapon, PreferredOffhandWeaponType);
         }
 
+        /// <summary>
+        /// For a class that cannot wield a weapon in its left hand, that hand holds a shield or
+        /// nothing (issues #143 and #144: Minstrels dual wielding, a Cleric with two one-handers).
+        /// A weapon found there is stowed in the backpack, never deleted. If the class can use a
+        /// shield, the best one it already owns goes back into the hand. A gamebot earns its gear,
+        /// so no new shield is made, except for the Sluaghbinder's class-career shield as before
+        /// (Bulwark and mace-and-shield Covenant; a scythe plan intentionally has no offhand).
+        /// </summary>
+        private bool EnsureShieldHandOffhand()
+        {
+            if (BotWeaponStats.CanWieldOffhandWeapon(this))
+                return false;
+
+            bool changed = false;
+            DbInventoryItem left = Inventory.GetItem(eInventorySlot.LeftHandWeapon);
+            if (left != null && (eObjectType)left.Object_Type != eObjectType.Shield)
+            {
+                if (!TryMoveEquippedItemToBackpack(eInventorySlot.LeftHandWeapon))
+                    return false;
+                changed = true;
+                if (log.IsInfoEnabled)
+                    log.Info($"BOT_OFFHAND_WEAPON_STOWED bot=\"{Name}\" class=\"{ClassName}\" item=\"{left.Name}\"");
+            }
+
+            if (SluaghbinderUsesScythe || BestShieldLevel <= 0 ||
+                Inventory.GetItem(eInventorySlot.LeftHandWeapon) != null)
+                return changed;
+
+            DbInventoryItem shield = Inventory.AllItems
+                .Where(item => item != null && (eObjectType)item.Object_Type == eObjectType.Shield &&
+                               IsBackpackSlot((eInventorySlot)item.SlotPosition) &&
+                               item.LevelRequirement <= Level && HasAbilityToUseItem(item.Template))
+                .OrderByDescending(AutonomousBotEconomy.EquipmentValue)
+                .FirstOrDefault();
+            if (shield != null &&
+                Inventory.MoveItem((eInventorySlot)shield.SlotPosition, eInventorySlot.LeftHandWeapon,
+                    Math.Max(1, shield.Count)))
+            {
+                RefreshItemBonuses();
+                return true;
+            }
+
+            if (CharacterClass.ID == (int)eCharacterClass.Sluaghbinder &&
+                !Inventory.AllItems.Any(item => item != null && (eObjectType)item.Object_Type == eObjectType.Shield))
+            {
+                BotEquipment.SetShield(this, BestShieldLevel);
+                changed = true;
+            }
+            return changed;
+        }
+
         private bool StowInvalidInactiveWeaponSlots(eInventorySlot primarySlot)
         {
             bool changed = false;
@@ -4805,16 +4856,7 @@ namespace DOL.GS
             }
 
             changed |= EnsureConfiguredMeleeOffhand();
-            bool hasSluaghbinderShield = Inventory.AllItems.Any(item =>
-                item != null && (eObjectType)item.Object_Type == eObjectType.Shield);
-            if (CharacterClass.ID == (int)eCharacterClass.Sluaghbinder &&
-                !SluaghbinderUsesScythe && BestShieldLevel > 0 && !hasSluaghbinderShield)
-            {
-                // Bulwark and mace-and-shield Covenant use the class-career
-                // shield.  A scythe plan intentionally has no active offhand.
-                BotEquipment.SetShield(this, BestShieldLevel);
-                changed = true;
-            }
+            changed |= EnsureShieldHandOffhand();
             changed |= StowInvalidInactiveWeaponSlots(target);
 
             bool primaryReady = BotWeaponStats.FitsConfiguredSlot(this, Inventory.GetItem(target), target);

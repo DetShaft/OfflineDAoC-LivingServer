@@ -98,12 +98,22 @@ namespace DOL.GS
                 eObjectType.LargeWeapons or eObjectType.CelticSpear or eObjectType.Scythe ? second :
                 first != 0 ? first : second;
 
+        /// <summary>
+        /// True when the bot's class can attack with a weapon in its left hand, the same rule the
+        /// server applies to a real player's inventory (GamePlayerInventory, LeftHandWeapon).
+        /// </summary>
+        public static bool CanWieldOffhandWeapon(GameBot bot) =>
+            bot?.CharacterClass?.CanUseLefthandedWeapon == true;
+
         public static bool FitsConfiguredSlot(GameBot bot, DbInventoryItem item, eInventorySlot slot)
         {
             if (!CanUseMelee(bot, item)) return false;
             if (slot is eInventorySlot.RightHandWeapon or eInventorySlot.LeftHandWeapon &&
                 (item.Item_Type == Slot.TWOHAND || item.Hand == 1)) return false;
             if (slot == eInventorySlot.TwoHandWeapon && item.Item_Type != Slot.TWOHAND) return false;
+            // Only classes that can fight with a weapon in the left hand (dual wield, Celtic dual,
+            // left axe) may hold one there. Everyone else keeps that hand for a shield (#143, #144).
+            if (slot == eInventorySlot.LeftHandWeapon && !CanWieldOffhandWeapon(bot)) return false;
             if (slot == eInventorySlot.LeftHandWeapon && bot.BotSpec?.SpecType == eSpecType.LeftAxe)
                 return item.Object_Type is (int)eObjectType.Axe or (int)eObjectType.LeftAxe;
             if (slot is eInventorySlot.RightHandWeapon or eInventorySlot.TwoHandWeapon &&
