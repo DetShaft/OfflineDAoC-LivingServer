@@ -572,8 +572,8 @@
   {
     "Path": "new-client/godot/game/fig3_figure.gd",
     "Released": "e2961fc3113b939f6bfa4363b866cd1851971ae0add8adbed7a91dd3148784ff",
-    "Fixed": "b03543fd618f867970df7137a1f8d6c570938e23de7cabdf193f1aaee4e246ac",
-    "Size": 34042,
+    "Fixed": "3ffd9d80780da38f6b2b28df29368899a678392373a193b497a631fb968acfa3",
+    "Size": 34796,
     "File": "content/godot/game/fig3_figure.gd",
     "ReplaceAny": true
   },
@@ -696,5 +696,21 @@
     "Size": 7491,
     "File": "content/godot/game/ui/loot_roll_window.gd",
     "Create": true
+  },
+  {
+    "Path": "new-client/godot/game/npcs/npc.gd",
+    "Released": "7230be3944000f2c226110cc0f44205f158de7992811af202c7f0366583bd812",
+    "Fixed": "8a29a7fa459aaea4ecbf861a7df807116babd817982c050a68b9df6cf454cea2",
+    "Size": 46145,
+    "File": "content/godot/game/npcs/npc.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/weapon_models.gd",
+    "Released": "6ac37b10d026eac8050ef623f801112920860f9b8fc3c9bfcd7be405513a90f0",
+    "Fixed": "209fce8a62ada047091fdac18092609aecba28e9d28571f160722ffd89704d04",
+    "Size": 13924,
+    "File": "content/godot/game/weapon_models.gd",
+    "ReplaceAny": true
   }
 ]

@@ -146,8 +146,8 @@ func _build_model() -> void:
 				anim = players[0]
 				Fig3Figure.add_rest_reset(anim)
 				for clip in anim.get_animation_list():   # (animnifs.csv: idle / walk loop, load / fire clamp)
-					anim.get_animation(clip).loop_mode = Animation.LOOP_LINEAR if clip in ["idle", "walk", "run"] \
-							else Animation.LOOP_NONE
+					Fig3Figure.set_loop(anim, clip, Animation.LOOP_LINEAR if clip in ["idle", "walk", "run"] \
+							else Animation.LOOP_NONE)
 	elif info.has("gltf"):
 		model = manager.instance_model(String(info.gltf))
 		tb = _pb("mob_instance", tb)
@@ -161,8 +161,8 @@ func _build_model() -> void:
 			if players.size() > 0:
 				anim = players[0]
 				Fig3Figure.add_rest_reset(anim)
-				for clip in anim.get_animation_list():
-					anim.get_animation(clip).loop_mode = Animation.LOOP_LINEAR if Fig3Figure.loops(clip) else Animation.LOOP_NONE
+				for clip in anim.get_animation_list():   # (shared clips: only when it differs, #34)
+					Fig3Figure.set_loop(anim, clip, Animation.LOOP_LINEAR if Fig3Figure.loops(clip) else Animation.LOOP_NONE)
 			tb = _pb("mob_anims", tb)
 			height = maxf(_model_height(model), _idle_top(model))
 			var hover := figure_look(model, info, state.index if state else get_instance_id())

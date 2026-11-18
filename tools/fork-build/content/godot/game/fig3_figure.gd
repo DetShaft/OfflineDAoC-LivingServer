@@ -158,7 +158,7 @@ func load_figure(prefix: String, texture_set := "x4plus") -> bool:
 	if players.size() > 0:
 		anim = players[0]
 		for clip in anim.get_animation_list():
-			anim.get_animation(clip).loop_mode = Animation.LOOP_LINEAR if loops(clip) else Animation.LOOP_NONE
+			set_loop(anim, clip, Animation.LOOP_LINEAR if loops(clip) else Animation.LOOP_NONE)
 		add_rest_reset(anim)
 		if anim.has_animation("idle"):
 			anim.play("idle")
@@ -554,6 +554,17 @@ static func armor_parts(model: int, female: bool) -> Dictionary:
 		var parsed = JSON.parse_string(FileAccess.get_file_as_string(ROOT + "/armor.json"))
 		_armor = parsed.get("models", {}) if parsed is Dictionary else {"_": {}}
 	return _armor.get(str(model), {}).get("f" if female else "m", {})
+
+
+## A clip's loop mode, set only when it differs (#34, city stutter). Every copy of a figure or model shares its scene's
+## animations, and setting loop_mode emits the Animation's `changed` even to the same value: every AnimationPlayer
+## sharing that library then rebuilt its animation caches. Each new figure in Camelot set them all again, so one view
+## built meant a cache rebuild for every figure of that race already drawn - the 1.5 ms per drawn NPC stalls in Jay's
+## perf_live.log (1.1.13-1.1.15). The first copy sets the modes; the rest find them set and change nothing.
+static func set_loop(anim: AnimationPlayer, clip: String, mode: Animation.LoopMode) -> void:
+	var a := anim.get_animation(clip)
+	if a != null and a.loop_mode != mode:
+		a.loop_mode = mode
 
 
 ## Every animated character (player, NPC, monster, bot) gets this: a "RESET" animation holding every bone at its
