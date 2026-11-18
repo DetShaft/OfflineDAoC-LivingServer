@@ -319,10 +319,13 @@ def collidee_shapes(nif):
     def find_static(b, pm):
         if b is None:
             return
-        m = local_matrix(b) @ pm
         if (b.get('name') or '').lower() == '!collidee_static':
-            extra.append((b, m))
+            # the parent's matrix: walk() applies the node's own transform (issue #127: passing the node's world
+            # matrix applied mainKeep_lvl4's 90-degree '!collidee_static' turn twice, so the new client's main keep
+            # walls stood a quarter turn off the drawn keep and blocked its doorway)
+            extra.append((b, pm))
             return
+        m = local_matrix(b) @ pm
         for c in b.get('children') or []:
             find_static(c, m)
     for r in nif.roots:
