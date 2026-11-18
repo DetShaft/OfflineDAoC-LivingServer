@@ -3263,6 +3263,11 @@ namespace DOL.AI.Brain
 
             EnforceCompanionEngagementRange();
 
+            // Issue #136: a caster (healers included) controls and kites a player-shaped attacker in melee reach,
+            // and a pet goes after whoever is on its owner. Melee stays the last resort.
+            if (TryCasterSurvival())
+                return;
+
             if (HoldsExclusiveSupportRole())
             {
                 PerformGroupSupport();
@@ -3279,7 +3284,8 @@ namespace DOL.AI.Brain
                     Body.castingComponent?.SpellHandler?.Spell))
                 return;
 
-            GameLiving protectionTarget = FindProtectionTarget();
+            // Issue #136: pure melee and shield users peel a player-shaped attacker off their healers, then casters.
+            GameLiving protectionTarget = FindPeelTarget() ?? FindProtectionTarget();
             if (protectionTarget != null)
                 AddToAggroList(protectionTarget, 10000);
 
@@ -3647,6 +3653,9 @@ namespace DOL.AI.Brain
 
         private bool TryEngageUnderMeleePressure(GameLiving target)
         {
+            // The attacker is held (stunned, mezzed, rooted): cast, do not walk into melee (issue #136).
+            if (_survivalHoldsRange)
+                return false;
             if (target?.IsAlive != true || !Body.IsWithinRadius(target, Body.MeleeAttackRange + 35))
                 return false;
 
@@ -3794,6 +3803,10 @@ namespace DOL.AI.Brain
                 return;
             Body.styleComponent.NextCombatStyle = BotMeleeStylePolicy.Select(BotBody,
                 Body.attackComponent.attackAction.LastAttackData, false);
+            // A peel opens with a stun style (shield styles mostly) when one is usable (issue #136).
+            if (_peelTarget != null && Body.TargetObject == _peelTarget &&
+                BotCasterSurvival.PeelStunStyle(BotBody, Body.attackComponent.attackAction.LastAttackData) is { } stun)
+                Body.styleComponent.NextCombatStyle = stun;
         }
 
         private bool SwitchToUsableMeleeWeapon()
@@ -4436,7 +4449,7 @@ namespace DOL.AI.Brain
                         Body.StopAttack();
                         return true;
                     }
-                    // Bots never use Quickcast. Instants remain available above;
+                    // Quickcast is used only by the caster survival turn (issue #136, BotBrain.CasterSurvival);
                     // an interrupted ordinary cast waits for its legal window.
                 }
             }
