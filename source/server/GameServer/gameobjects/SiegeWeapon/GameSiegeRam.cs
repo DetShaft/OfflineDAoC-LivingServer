@@ -206,9 +206,33 @@ namespace DOL.GS
 						if (npc is GameBot member && member != op && member.IsAlive && member.Realm == Realm &&
 							(op.Group?.IsInTheGroup(member) == true || op.IsAutonomousWorldBot && member.IsAutonomousWorldBot))
 							crew++;
+				// A player's ram is crewed by the player's group bots standing at it too (#133: they man the ram with the
+				// player; bots cannot mount). The same for every realm.
+				if (Owner is GamePlayer driver && driver.Group != null)
+					crew += PlayerGroupCrew(driver);
 				return System.Math.Min(MAX_PASSENGERS, crew);
 			}
 		}
+
+		/// <summary>The radius around the ram in which a group bot counts as its crew.</summary>
+		public const int GroupCrewRadius = 400;
+
+		/// <summary>Group bots of the driving player within <see cref="GroupCrewRadius"/> of the ram, alive, same realm.</summary>
+		public int PlayerGroupCrew(GamePlayer driver)
+		{
+			int crew = 0;
+			foreach (GameLiving member in driver.Group.GetMembersInTheGroup())
+				if (member is GameBot bot && bot.IsAlive && bot.Realm == Realm && bot.ObjectState == eObjectState.Active &&
+					bot.CurrentRegionID == CurrentRegionID && IsWithinRadius(bot, GroupCrewRadius))
+					crew++;
+			return crew;
+		}
+
+		/// <summary>
+		/// A ram is a big model set against a door: from its side the player is often more than the usual 192 units from
+		/// its centre, and the interact failed with "too far away" (#134).
+		/// </summary>
+		public override int InteractDistance => 400;
 
 		public void UpdateRamStatus()
 		{

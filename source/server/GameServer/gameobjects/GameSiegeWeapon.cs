@@ -593,6 +593,9 @@ namespace DOL.GS
         /// <returns></returns>
         public int GetActionDelay(SiegeTimer.eAction action)
 		{
+			// A ram's crew changes as group bots come and go (#133): read it each time the ram winds up again.
+			if (action == SiegeTimer.eAction.Arming && this is GameSiegeRam ram)
+				ram.UpdateRamStatus();
 			if (action == SiegeTimer.eAction.Fire && GroundTarget.IsValid)
                 return (int)( ActionDelay[(int)action] + this.GetDistanceTo( GroundTarget ) );
 			
@@ -730,6 +733,10 @@ namespace DOL.GS
 
 		public override bool Interact(GamePlayer player)
 		{
+			// A bot running a friendly engine hands it over to the real player who comes to use it (#134: the player
+			// could not get into a ram a gamebot had set up at the Killaloe keep door; it stayed "already under control").
+			YieldToPlayer(player);
+
 			if (!base.Interact(player))
 				return false;
 
@@ -737,6 +744,20 @@ namespace DOL.GS
 				return false;
 
 			TakeControl(player);
+			return true;
+		}
+
+		/// <summary>
+		/// A gamebot or companion operating this engine lets go of it when a real player of its realm asks to use it,
+		/// so the player can take control. The bot stays nearby; at a ram it counts as crew for the player's group.
+		/// </summary>
+		public bool YieldToPlayer(GamePlayer player)
+		{
+			if (player == null || Owner is not GameBot bot || player.Realm != Realm || !IsAlive ||
+				ObjectState != eObjectState.Active || player.Client?.Account?.PrivLevel == 1 && !IsWithinRadius(player, InteractDistance))
+				return false;
+			ReleaseControl();
+			player.Out.SendMessage($"{bot.Name} lets you take over {GetName(0, false)}.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
 			return true;
 		}
 		public override void LoadFromDatabase(DataObject obj)
