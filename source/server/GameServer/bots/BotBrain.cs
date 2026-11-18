@@ -665,6 +665,40 @@ namespace DOL.AI.Brain
             FSM.SetCurrentState(eFSMStateType.IDLE);
         }
 
+        /// <summary>
+        /// The FSM state this brain had when it was last stopped (issue #114). ABrain.Stop sets WAKING_UP, which a bot
+        /// brain has no state for, so the FSM was left with no state at all. GameObject.MoveTo stops and restarts the
+        /// brain, so every bot moved through a keep door (GameKeepDoor.PassFollower and the player's group carried along
+        /// on a door click) came out with no state: FSM.Think did nothing and a bot in a player's group stood frozen in
+        /// the gate passage until it was attacked, ordered or invited again. The next Think puts the bot back in a state.
+        /// </summary>
+        private eFSMStateType? _stateBeforeStop;
+
+        /// <summary>
+        /// Pure rule (issue #114): the state a bot brain resumes in after a stop and restart that left its FSM with no
+        /// state. Its aggro list was cleared by the stop, so a fight resumes as following its leader (the follow state
+        /// re-enters a fight the leader is still in). A bot told to stay stays; passive stays passive.
+        /// </summary>
+        public static eFSMStateType ResumeStateAfterRestart(eFSMStateType before, bool hasLiveLeader, bool toldToStay)
+        {
+            if (before == eFSMStateType.PASSIVE)
+                return eFSMStateType.PASSIVE;
+            if (toldToStay || !hasLiveLeader)
+                return eFSMStateType.IDLE;
+            return before is eFSMStateType.FOLLOW or eFSMStateType.AGGRO ? eFSMStateType.FOLLOW : eFSMStateType.IDLE;
+        }
+
+        /// <summary>From Think: a brain restarted with no FSM state (see <see cref="_stateBeforeStop"/>) gets one back.</summary>
+        private void ResumeStateAfterRestart()
+        {
+            if (_stateBeforeStop is not eFSMStateType before)
+                return;
+            _stateBeforeStop = null;
+            if (FSM.GetCurrentState() != null)
+                return;
+            FSM.SetCurrentState(ResumeStateAfterRestart(before, AssistedPlayer?.IsAlive == true, WalkState == eWalkState.Stay));
+        }
+
         public override bool Start()
         {
             if (!base.Start())
@@ -683,9 +717,12 @@ namespace DOL.AI.Brain
                 GameEventMgr.RemoveHandler(_subscribedAssistedPlayer, GameLivingEvent.AttackedByEnemy, new DOLEventHandler(OnOwnerAttacked));
             _subscribedAssistedPlayer = null;
 
+            eFSMStateType? before = FSM.GetCurrentState()?.StateType;
             if (base.Stop())
             {
                 ClearAggroList();
+                // A state from before an earlier stop is kept when this stop finds none (two stops in a row).
+                _stateBeforeStop = before is eFSMStateType.WAKING_UP or null ? _stateBeforeStop : before;
                 return true;
             }
 
@@ -1424,6 +1461,7 @@ namespace DOL.AI.Brain
 
         public override void Think()
         {
+            ResumeStateAfterRestart();
             if (BotGroupRelease.TryUnstick(BotBody)) return; // Fork: first, whatever below would keep a released bot from its player
             // Living Server linkdead (bot_living_breaks): the bot stands still and does nothing until it
             // "reconnects" (30-90 s) or is attacked (AutonomousBotSchedule.OnAttacked wakes it).
