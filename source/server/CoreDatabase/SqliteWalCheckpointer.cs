@@ -52,7 +52,8 @@ namespace DOL.Database
             string path = Path.GetFullPath(databasePath);
             return Running.GetOrAdd(path, p =>
             {
-                log.Info($"SQLITE_CHECKPOINTER started path=\"{p}\" interval={IntervalMilliseconds}ms");
+                if (log.IsInfoEnabled)
+                    log.Info($"SQLITE_CHECKPOINTER started path=\"{p}\" interval={IntervalMilliseconds}ms");
                 return new SqliteWalCheckpointer(p);
             });
         }
