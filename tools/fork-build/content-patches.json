@@ -468,8 +468,8 @@
   {
     "Path": "new-client/godot/game/ui/chat_window.gd",
     "Released": "43f3740344e2427b2745567a65168e6816bf2eb4ea0e6aa6f372ea4ed44173b8",
-    "Fixed": "13aa4fecb53f90a900f5b9a947a144766e245491262612ec580f03ca8656c4bd",
-    "Size": 16654,
+    "Fixed": "df694e99b89a2f4fd89b690dbb18e61528d135a84841aa0e01e28802fcadeebd",
+    "Size": 19354,
     "File": "content/godot/game/ui/chat_window.gd",
     "ReplaceAny": true
   },
