@@ -3433,7 +3433,10 @@ namespace DOL.AI.Brain
                 bool continueMinstrelMelee = MinstrelBotCombatPolicy.ContinueAfterInstantDamage(
                     UsesMinstrelHybridCombat, spellAction, Body.IsCasting,
                     Body.castingComponent?.SpellHandler?.Spell, hasPendingSpell, pendingSpell);
-                if (spellAction && !continueSavageMelee && !preserveRangedDraw && !continueMinstrelMelee)
+                bool continueHybridMelee = BotHybridMeleePolicy.ContinueMeleeAfterInstant(
+                    !rangedCaster, spellAction, Body.IsCasting,
+                    Body.castingComponent?.SpellHandler?.Spell, hasPendingSpell, pendingSpell);
+                if (spellAction && !continueSavageMelee && !preserveRangedDraw && !continueMinstrelMelee && !continueHybridMelee)
                 {
                     Body.StopAttack();
                 }
@@ -4283,7 +4286,10 @@ namespace DOL.AI.Brain
                 if (TryBardPveAddMez()) return true;
                 if (TryShamanPveAddRoot()) return true;
                 if (TryShortCombatShield()) return true;
-                if (BotBody.CharacterClass.ID == (int)eCharacterClass.Cleric)
+                // A solo Cleric saves power for its own heals. In a group the support idle-combat rules already keep a
+                // power floor (MaySupportIdleCombatAssist), so the extra dice roll only kept a healthy group's Cleric
+                // from ever smiting: 5% a turn below 55% power (issue #126, Jay 2026-11-18).
+                if (BotBody.CharacterClass.ID == (int)eCharacterClass.Cleric && !BotPartyRoles.IsSupport(BotBody))
                 {
                     if (!Util.Chance(Math.Max(5, Body.ManaPercent - 50)))
                         return false;
