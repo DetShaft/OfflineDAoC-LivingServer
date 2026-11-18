@@ -14,17 +14,20 @@ namespace DOL.GS
     /// </summary>
     public static class HealerPost
     {
-        /// <summary>The nearest an enemy may stand to a post (open ground / dungeon).</summary>
-        public const int OpenStandoff = 500;
-        public const int TightStandoff = 280;
+        /// <summary>
+        /// The nearest an enemy may stand to a post (open ground / dungeon). Jay (v1.1.20, #56/#126): at 500 the healers
+        /// stood so far off that they looked out of the fight; 350 keeps them just out of melee reach.
+        /// </summary>
+        public const int OpenStandoff = 350;
+        public const int TightStandoff = 220;
 
         /// <summary>
         /// The farthest a group member may stand from a post (open ground / dungeon). Heals reach 1500-2000; this leaves
         /// room for the fight to drift before the healer has to move, and keeps it close enough for line of sight in a
         /// dungeon.
         /// </summary>
-        public const int OpenReach = 1300;
-        public const int TightReach = 900;
+        public const int OpenReach = 750;
+        public const int TightReach = 600;
 
         /// <summary>A post that has stopped being good is replaced no more often than this, so the healer does not dither.</summary>
         public const int RecheckMilliseconds = 1500;
@@ -53,8 +56,9 @@ namespace DOL.GS
 
         /// <summary>
         /// The post for this fight: the healer's own spot when it is already good (it does not move at all), otherwise
-        /// the good point nearest to it on rings around the fight. Null when no point works (the group is spread wider
-        /// than one healer can cover); the caller then keeps its usual formation.
+        /// a good point on rings around the fight, as close to the group as the standoff allows and then as close to the
+        /// healer as possible (#56: healers belong near the group, not off to the side). Null when no point works (the
+        /// group is spread wider than one healer can cover); the caller then keeps its usual formation.
         /// </summary>
         public static Vector2? Pick(Vector2 self, IReadOnlyList<Vector2> members, IReadOnlyList<Vector2> enemies, bool tight)
         {
@@ -66,6 +70,7 @@ namespace DOL.GS
                 return self;
 
             Vector2 fight = Centroid(enemies.Count > 0 ? enemies : members);
+            Vector2 group = Centroid(members);
             int standoff = Standoff(tight);
             int step = tight ? 60 : 120;
             Vector2? best = null;
@@ -79,7 +84,7 @@ namespace DOL.GS
                     Vector2 point = fight + new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle)) * radius;
                     if (!IsGood(point, members, enemies, tight))
                         continue;
-                    float distance = Vector2.DistanceSquared(self, point);
+                    float distance = Vector2.Distance(group, point) + 0.5f * Vector2.Distance(self, point);
                     if (distance < bestDistance)
                     {
                         best = point;
