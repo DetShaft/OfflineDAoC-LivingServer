@@ -845,13 +845,19 @@ func clear_target() -> void:
 	PlayerData.set_target({})
 
 
-## Tab-style: the nearest enemy (realm 0, targetable) in front of the player within range.
+## Who the Target Closest Enemy key may pick: a monster (realm 0). ServerWorld adds the other realms' guards and
+## players/gamebots, which the server lets you fight (issue #126, Jay 2026-11-18: tab never found them in Killaloe).
+func tab_enemy(n: Npc) -> bool:
+	return int(n.spawn.realm) == 0
+
+
+## Tab-style: the nearest enemy (tab_enemy, targetable) in front of the player within range.
 func nearest_enemy(max_range := 60.0) -> Npc:
 	var best: Npc = null
 	var best_d := max_range
 	for i in active:
 		var n: Npc = active[i]
-		if int(n.spawn.realm) != 0 or (int(n.spawn.flags) & Npc.FLAG_CANTTARGET) or n == target or n.state.stealthed \
+		if not tab_enemy(n) or (int(n.spawn.flags) & Npc.FLAG_CANTTARGET) or n == target or n.state.stealthed \
 				or not n.state.alive:
 			continue
 		var d := n.global_position.distance_to(player.global_position)
