@@ -147,8 +147,15 @@ namespace DOL.GS
         public long MovementStartTick { get; set; }
         public long MovementElapsedTicks => IsMoving ? GameLoop.GameLoopTime - MovementStartTick : 0;
         public bool FixedSpeed { get; set; }
-        public override short MaxSpeed => FixedSpeed ? MaxSpeedBase : Owner is GameBot bot
-            ? AutonomousGroupPace.Apply(bot, CompanionFollowPolicy.SpeedLimit(bot, base.MaxSpeed)) : base.MaxSpeed;
+        public override short MaxSpeed => FixedSpeed ? MaxSpeedBase : Owner is GameBot bot ? BotSpeed(bot) : base.MaxSpeed;
+
+        // Group pace and companion speed matching, then sprint (#128: bots in the player's group sprint with the player).
+        private short BotSpeed(GameBot bot)
+        {
+            short normal = base.MaxSpeed;
+            return BotSprint.Apply(bot, normal, AutonomousGroupPace.Apply(bot, CompanionFollowPolicy.SpeedLimit(bot, normal)));
+        }
+
         public bool IsMovingOnPath => IsFlagSet(MovementState.OnPath);
         public bool IsNearSpawn => Owner.IsWithinRadius(Owner.SpawnPoint, 25);
         public bool IsDestinationValid { get; private set; }
