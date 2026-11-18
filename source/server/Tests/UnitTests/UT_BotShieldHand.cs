@@ -63,7 +63,7 @@ public class UT_BotShieldHand
         public override void RefreshItemBonuses() { }
         public override void SwitchWeapon(eActiveWeaponSlot slot) { }
         public override bool HasAbilityToUseItem(DbItemTemplate item) =>
-            (eObjectType)item.Object_Type != eObjectType.Shield || GetAbilityLevel(Abilities.Shield) >= item.Type_Damage;
+            (eObjectType)item.Object_Type != eObjectType.Shield || GetAbilityLevel(DOL.GS.Abilities.Shield) >= item.Type_Damage;
     }
 
     private static ShieldHandBot Make(eRealm realm, eCharacterClass cls, int shieldLevel = 0)
@@ -79,7 +79,7 @@ public class UT_BotShieldHand
         bot.Class = (ICharacterClass)Activator.CreateInstance(type);
         var abilities = new Dictionary<string, Ability>();
         if (shieldLevel > 0)
-            abilities[Abilities.Shield] = new Ability(new DbAbility { KeyName = Abilities.Shield, Name = "Shields" }, shieldLevel);
+            abilities[DOL.GS.Abilities.Shield] = new Ability(new DbAbility { KeyName = DOL.GS.Abilities.Shield, Name = "Shields" }, shieldLevel);
         typeof(GameLiving).GetField("_abilitiesLock", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(bot, new Lock());
         typeof(GameLiving).GetField("m_abilities", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(bot, abilities);
         return bot;
