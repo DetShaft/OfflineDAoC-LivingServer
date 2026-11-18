@@ -3401,8 +3401,14 @@ namespace DOL.AI.Brain
 
                 if (protectionTarget != null && TryPriorityTaunt(protectionTarget))
                 {
-                    Body.StopAttack();
-                    return;
+                    // An instant taunt (a Paladin's Provoke) keeps the swing going, like any instant (issue #126).
+                    if (!BotHybridMeleePolicy.ContinueMeleeAfterInstant(!PrefersCurrentSpellRange(), true, Body.IsCasting,
+                            Body.castingComponent?.SpellHandler?.Spell, Body.castingComponent?.HasPendingSkillRequests == true,
+                            PendingSpellOrNull()))
+                    {
+                        Body.StopAttack();
+                        return;
+                    }
                 }
 
                 bool bowCycleOwnsAction = Body.attackComponent != null &&
@@ -4130,6 +4136,14 @@ namespace DOL.AI.Brain
                 .ThenByDescending(candidate => candidate.TargetObject is GameBot bot && bot.Brain is BotBrain { IsHealer: true })
                 .ThenBy(candidate => Body.GetDistanceTo(candidate))
                 .FirstOrDefault();
+        }
+
+        private Spell PendingSpellOrNull()
+        {
+            Spell pending = null;
+            if (Body.castingComponent?.HasPendingSkillRequests == true)
+                Body.castingComponent.TryPeekPendingSpell(out pending);
+            return pending;
         }
 
         private bool TryPriorityTaunt(GameLiving target)
