@@ -514,9 +514,13 @@ namespace DOL.GS;
         eInventorySlot requested = (eInventorySlot)item.Item_Type;
         if (BotWeaponStats.IsMeleeWeapon((eObjectType)item.Object_Type))
         {
-            if (bot.CharacterClass?.ID == (int)eCharacterClass.Savage &&
-                bot.BotSpec?.WeaponOneType != eObjectType.HandToHand &&
-                requested == eInventorySlot.LeftHandWeapon)
+            // A one-hander whose template allows either hand is a main-hand weapon for a class
+            // that cannot wield one in its left hand. It must never replace that class's shield
+            // (#143: Minstrels dual wielding, #144: a Cleric with two one-handers).
+            if (requested == eInventorySlot.LeftHandWeapon &&
+                (!BotWeaponStats.CanWieldOffhandWeapon(bot) ||
+                 bot.CharacterClass?.ID == (int)eCharacterClass.Savage &&
+                 bot.BotSpec?.WeaponOneType != eObjectType.HandToHand))
                 requested = eInventorySlot.RightHandWeapon;
             // A left-axe build may use ordinary one-handed axes in its offhand.
             // Don't buy/equip one as an upgrade to a trained sword/hammer mainhand.
