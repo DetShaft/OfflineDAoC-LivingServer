@@ -44,6 +44,21 @@ namespace DOL.GS
             return Math.Max(100, copper);
         }
 
+        /// <summary>The engine a spoken or clicked keyword names ("siege ram", "ram", "ballista" ...), any case.</summary>
+        public static bool TryKeyword(string text, out BotSiegeKind kind)
+        {
+            kind = BotSiegeKind.Ram;
+            string word = text?.Trim().ToLowerInvariant();
+            switch (word)
+            {
+                case "ram": case "siege ram": kind = BotSiegeKind.Ram; return true;
+                case "ballista": case "field ballista": kind = BotSiegeKind.Ballista; return true;
+                case "catapult": kind = BotSiegeKind.Catapult; return true;
+                case "trebuchet": kind = BotSiegeKind.Trebuchet; return true;
+                default: return false;
+            }
+        }
+
         public static string DisplayName(BotSiegeKind kind) => kind switch
         {
             BotSiegeKind.Ram => "siege ram",
@@ -98,7 +113,31 @@ namespace DOL.GS
             if (!base.Interact(player))
                 return false;
             SayTo(player, "Buy a token for the engine you want, then hand the token back to me. One of my engineers will follow " +
-                "you and set the engine up wherever you tell him to.");
+                "you and set the engine up wherever you tell him to. Carrying a token already? Just tell me which: " +
+                "[siege ram], [ballista], [catapult] or [trebuchet].");
+            return true;
+        }
+
+        /// <summary>
+        /// Saying the engine's name hands that token in from the backpack (#115: dragging the token onto the Siegemaster
+        /// failed when the player stood more than the 128-unit give distance away, or the drop missed him).
+        /// </summary>
+        public override bool WhisperReceive(GameLiving source, string text)
+        {
+            if (!base.WhisperReceive(source, text))
+                return false;
+            if (source is not GamePlayer player || !BattlegroundSiegeTokens.TryKeyword(text, out BotSiegeKind kind))
+                return true;
+            string id = BattlegroundSiegeTokens.TokenId(kind, CurrentRegionID);
+            DbInventoryItem token = player.Inventory
+                .GetItemRange(eInventorySlot.FirstBackpack, eInventorySlot.LastBackpack)
+                .FirstOrDefault(i => i != null && i.Id_nb == id);
+            if (token == null)
+            {
+                SayTo(player, $"You have no {BattlegroundSiegeTokens.DisplayName(kind)} token for this battleground. Buy one from me first.");
+                return true;
+            }
+            HandIn(player, token, kind, CurrentRegionID);
             return true;
         }
 
@@ -107,7 +146,11 @@ namespace DOL.GS
             if (source is not GamePlayer player || item == null ||
                 !BattlegroundSiegeTokens.TryParse(item.Id_nb, out BotSiegeKind kind, out ushort regionId))
                 return base.ReceiveItem(source, item);
+            return HandIn(player, item, kind, regionId);
+        }
 
+        private bool HandIn(GamePlayer player, DbInventoryItem item, BotSiegeKind kind, ushort regionId)
+        {
             if (!IsWithinRadius(player, WorldMgr.INTERACT_DISTANCE))
             {
                 player.Out.SendMessage($"You are too far away to give anything to {GetName(0, false)}.", eChatType.CT_System, eChatLoc.CL_SystemWindow);

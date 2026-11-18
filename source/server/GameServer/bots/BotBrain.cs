@@ -401,6 +401,11 @@ namespace DOL.AI.Brain
             if (!GameServer.ServerRules.IsAllowedToAttack(Body, target, true))
                 return false;
 
+            // An enemy keep door is an RvR objective, not an XP pull: its keep level (1 in a battleground) made it grey and
+            // the group never helped the player hit it (#133). Weapon users join in; spells do nothing to doors.
+            if (target is DOL.GS.Keeps.GameKeepDoor)
+                return BotKeepDoorAssist.HitsDoors(BotBody);
+
             GameLiving realTarget = target;
 
             if (realTarget is GameNPC npcTarget
