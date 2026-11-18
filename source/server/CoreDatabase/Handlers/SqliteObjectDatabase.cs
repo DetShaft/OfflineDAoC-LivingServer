@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
 using System.Linq;
+using System.Threading;
 using DOL.Database.Connection;
 using DOL.Timing;
 
@@ -572,26 +573,80 @@ namespace DOL.Database.Handlers
         // writer threads from colliding and producing SQLITE_BUSY retry storms.
         protected override IEnumerable<bool> AddObjectImpl(DataTableHandler tableHandler, IEnumerable<DataObject> dataObjects)
         {
-            lock (WriteSerializationLock)
-                return base.AddObjectImpl(tableHandler, dataObjects).ToArray();
+            return Gated("add " + tableHandler?.TableName, () => base.AddObjectImpl(tableHandler, dataObjects).ToArray());
         }
 
         protected override IEnumerable<bool> SaveObjectImpl(DataTableHandler tableHandler, IEnumerable<DataObject> dataObjects)
         {
-            lock (WriteSerializationLock)
-                return base.SaveObjectImpl(tableHandler, dataObjects).ToArray();
+            return Gated("save " + tableHandler?.TableName, () => base.SaveObjectImpl(tableHandler, dataObjects).ToArray());
         }
 
         protected override IEnumerable<int> ExecuteNonQueryImpl(string SQLCommand, IEnumerable<IEnumerable<QueryParameter>> parameters)
         {
-            lock (WriteSerializationLock)
-                return base.ExecuteNonQueryImpl(SQLCommand, parameters).ToArray();
+            return Gated(Describe(SQLCommand), () => base.ExecuteNonQueryImpl(SQLCommand, parameters).ToArray());
         }
 
         protected override bool SaveObjectsAtomicallyCore(DataObject[] rows)
         {
+            return Gated($"atomic save of {rows?.Length ?? 0} rows", () => base.SaveObjectsAtomicallyCore(rows));
+        }
+
+        /// <summary>A wait for the writer gate this long is logged with who held it (#95).</summary>
+        public const long LongGateWaitMilliseconds = 250;
+
+        // Who holds the writer gate now (outermost entry only), for the wait report.
+        private volatile string _gateHolder;
+        private int _gateDepth;
+
+        /// <summary>
+        /// Runs a write behind the writer gate. Issue #95: Jay's server logged 1-27 s writes and never said whether a
+        /// statement was slow itself or waited behind another writer. A wait over <see cref="LongGateWaitMilliseconds"/>
+        /// is now logged as SQLITE_WRITE_GATE_WAIT with the waiting write, its thread and the write that held the gate.
+        /// </summary>
+        private T Gated<T>(string what, Func<T> write)
+        {
+            long asked = MonotonicTime.NowMs;
+            string holderWhenAsked = _gateHolder;
             lock (WriteSerializationLock)
-                return base.SaveObjectsAtomicallyCore(rows);
+            {
+                long waited = MonotonicTime.NowMs - asked;
+                if (waited > LongGateWaitMilliseconds && log.IsWarnEnabled)
+                    log.WarnFormat("SQLITE_WRITE_GATE_WAIT waited={0}ms write=\"{1}\" thread=\"{2}\" behind=\"{3}\"",
+                        waited, what, ThreadLabel(), holderWhenAsked ?? "unknown");
+                bool outermost = _gateDepth++ == 0;
+                if (outermost)
+                    _gateHolder = $"{what} on {ThreadLabel()}";
+                try
+                {
+                    return write();
+                }
+                finally
+                {
+                    if (--_gateDepth == 0)
+                        _gateHolder = null;
+                }
+            }
+        }
+
+        private static string ThreadLabel()
+        {
+            Thread thread = Thread.CurrentThread;
+            return string.IsNullOrEmpty(thread.Name) ? $"thread {thread.ManagedThreadId}" : thread.Name;
+        }
+
+        /// <summary>The first words of a statement, up to its table ("DELETE FROM `Inventory`").</summary>
+        public static string Describe(string sql)
+        {
+            if (string.IsNullOrWhiteSpace(sql))
+                return "statement";
+            string text = sql.Trim().Replace('\n', ' ').Replace('\r', ' ');
+            int cut = text.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
+            int paren = text.IndexOf('(');
+            if (paren > 0 && (cut < 0 || paren < cut))
+                cut = paren;
+            if (cut > 0)
+                text = text.Substring(0, cut);
+            return text.Length > 80 ? text.Substring(0, 80) : text.TrimEnd();
         }
 
         /// <summary>
@@ -746,6 +801,7 @@ namespace DOL.Database.Handlers
             if (walConnectionString != null && string.Equals(connection.ConnectionString, walConnectionString, StringComparison.Ordinal))
             {
                 connection.Open();
+                ApplyWalConnectionSettings(connection);
                 return;
             }
 
@@ -753,7 +809,46 @@ namespace DOL.Database.Handlers
             {
                 connection.Open();
                 if (_walConnectionString == null && IsPooled(ConnectionString) && IsWalJournal(connection))
+                {
                     _walConnectionString = WithoutJournalMode(ConnectionString);
+                    StartCheckpointer(connection);
+                }
+            }
+        }
+
+        private SqliteWalCheckpointer _checkpointer;
+
+        /// <summary>
+        /// Issue #95: with SQLite's own auto-checkpoint, the write that pushes the WAL past 1,000 pages copies the WAL
+        /// into the 120 MB database file itself, on whatever thread wrote it (mostly the game loop: bot re-gears, loot,
+        /// Realm Exchange listings), and on a busy disk that took seconds. Once WAL is confirmed, a background
+        /// checkpointer does that copy every few seconds instead, and pooled connections stop auto-checkpointing.
+        /// </summary>
+        private void StartCheckpointer(DbConnection connection)
+        {
+            if (_checkpointer != null || connection is not SQLiteConnection sqlite)
+                return;
+            string path = sqlite.FileName;
+            if (string.IsNullOrEmpty(path) || path == ":memory:")
+                return;
+            _checkpointer = SqliteWalCheckpointer.Start(path);
+        }
+
+        private void ApplyWalConnectionSettings(DbConnection connection)
+        {
+            if (_checkpointer == null)
+                return;
+            try
+            {
+                using var command = connection.CreateCommand();
+                // Settings of the native handle, kept while the pool holds it; repeating them costs no I/O.
+                command.CommandText = $"PRAGMA wal_autocheckpoint=0; PRAGMA cache_size=-{SqliteWalCheckpointer.CacheKibibytes}";
+                command.ExecuteNonQuery();
+            }
+            catch (Exception e)
+            {
+                if (log.IsWarnEnabled)
+                    log.Warn("SQLite connection settings were not applied; SQLite's auto-checkpoint stays on for this connection.", e);
             }
         }
 
