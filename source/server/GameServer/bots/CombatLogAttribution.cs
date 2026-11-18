@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using DOL.Database;
 using DOL.GS.PacketHandler;
+using DOL.Logging;
 
 namespace DOL.GS
 {
@@ -14,15 +16,96 @@ namespace DOL.GS
     /// OTHERS' COMBAT channel (<see cref="eChatType.CT_OthersCombat"/>), the way another player's fighting shows.
     /// By default (owner 2026-11-16: "Drop them by default") the owner sees only what live shows for another player:
     /// "Aldwin attacks the goblin with his sword!", with no damage numbers, crits, styles or spell lines. The server
-    /// setting <c>bots / bot_combat_log_details</c> brings those back, still named after the bot. Real pets are unchanged.
+    /// setting <c>bots / bot_combat_log_details</c> brings those back, still named after the bot, and each player can override
+    /// it with <c>/combatlog details on|off</c> (issue #99). Real pets are unchanged.
     /// </summary>
     public static class CombatLogAttribution
     {
         /// <summary>The channel a bot's combat lines go to on its owner's log.</summary>
         public const eChatType Channel = eChatType.CT_OthersCombat;
 
-        /// <summary>Whether owners see their bots' damage numbers, crits, styles and spell lines (off by default).</summary>
+        private static readonly Logger Log = LoggerManager.Create(typeof(CombatLogAttribution));
+
+        /// <summary>The account setting written by <c>/combatlog details on|off</c> (issue #99).</summary>
+        public const string DetailsKey = "combatlog_details";
+
+        /// <summary>Whether owners see their bots' damage numbers, crits, styles and spell lines by default (server setting, off).</summary>
         public static bool ShowDetails => ServerProperties.Properties.BOT_COMBAT_LOG_DETAILS;
+
+        /// <summary>
+        /// Whether this owner sees their bots' details: the player's own choice (<c>/combatlog details on|off</c>, or
+        /// Options &gt; CHAT in the new client, saved on the account so every character and both clients share it),
+        /// else the server setting (issue #99).
+        /// </summary>
+        public static bool ShowDetailsFor(GamePlayer owner) => ResolveDetails(ReadDetailsChoice(owner), ShowDetails);
+
+        /// <summary>The player's saved choice ("on" / "off") wins; anything else falls back to the server setting. Pure.</summary>
+        public static bool ResolveDetails(string choice, bool serverDefault) => choice switch
+        {
+            "on" => true,
+            "off" => false,
+            _ => serverDefault,
+        };
+
+        /// <summary>The player's saved choice: "on", "off", or empty when they have not chosen.</summary>
+        public static string ReadDetailsChoice(GamePlayer owner)
+        {
+            string account = owner?.AccountName;
+
+            if (string.IsNullOrEmpty(account))
+                return string.Empty;
+
+            string cached = owner.TempProperties.GetProperty<string>(DetailsKey);
+
+            if (cached != null)
+                return cached;
+
+            string value = string.Empty;
+
+            try
+            {
+                DbAccountXCustomParam record = DOLDB<DbAccountXCustomParam>.SelectObject(
+                    DB.Column("Name").IsEqualTo(account).And(DB.Column("KeyName").IsEqualTo(DetailsKey)));
+                value = record?.Value ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"CombatLogAttribution: could not read {DetailsKey} for account {account}", ex);
+            }
+
+            owner.TempProperties.SetProperty(DetailsKey, value);
+            return value;
+        }
+
+        /// <summary>Saves the player's choice on their account ("on", "off", or empty to follow the server setting again).</summary>
+        public static void SaveDetailsChoice(GamePlayer owner, string choice)
+        {
+            string account = owner?.AccountName;
+
+            if (string.IsNullOrEmpty(account))
+                return;
+
+            choice ??= string.Empty;
+            owner.TempProperties.SetProperty(DetailsKey, choice);
+
+            try
+            {
+                DbAccountXCustomParam record = DOLDB<DbAccountXCustomParam>.SelectObject(
+                    DB.Column("Name").IsEqualTo(account).And(DB.Column("KeyName").IsEqualTo(DetailsKey)));
+
+                if (record == null)
+                    GameServer.Database.AddObject(new DbAccountXCustomParam(account, DetailsKey, choice));
+                else
+                {
+                    record.Value = choice;
+                    GameServer.Database.SaveObject(record);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"CombatLogAttribution: could not save {DetailsKey} for account {account}", ex);
+            }
+        }
 
         /// <summary>Whether <paramref name="living"/> is a bot playing a character, not a pet.</summary>
         public static bool IsCharacterBot(GameLiving living) => living is GameBot;
@@ -168,7 +251,7 @@ namespace DOL.GS
 
             foreach (string line in AttackerLines(bot.Name, ad.Target?.GetName(0, false), ad.AttackResult, ad.AttackType,
                 ad.Damage, ad.Modifier, ad.CriticalDamage, ad.CriticalChance, ad.Style?.Name, ad.StyleDamage, ad.Style?.GrowthRate ?? 0,
-                ad.BroadcastMessage, ad.MissChance, ShowDetails))
+                ad.BroadcastMessage, ad.MissChance, ShowDetailsFor(owner)))
                 SendToOwner(owner, line);
         }
 
@@ -181,7 +264,7 @@ namespace DOL.GS
                 return;
 
             foreach (string line in TargetLines(ad.Attacker?.GetName(0, true), bot.Name, ad.AttackResult, ad.AttackType,
-                ad.Damage, ad.Modifier, ad.CriticalDamage, ad.BroadcastMessage, ShowDetails))
+                ad.Damage, ad.Modifier, ad.CriticalDamage, ad.BroadcastMessage, ShowDetailsFor(owner)))
                 SendToOwner(owner, line);
         }
 

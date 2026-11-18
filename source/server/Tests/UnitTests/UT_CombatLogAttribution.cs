@@ -92,6 +92,27 @@ namespace DOL.UnitTests
         public void DetailsAreOffByDefault() =>
             Assert.That(DOL.GS.ServerProperties.Properties.BOT_COMBAT_LOG_DETAILS, Is.False);
 
+        [TestCase("on", false, true)]
+        [TestCase("off", true, false)]
+        [TestCase("", true, true)]
+        [TestCase("", false, false)]
+        [TestCase(null, false, false)]
+        [TestCase("junk", true, true)]
+        public void PlayerChoiceOverridesTheServerSetting(string choice, bool serverDefault, bool expected) =>
+            Assert.That(CombatLogAttribution.ResolveDetails(choice, serverDefault), Is.EqualTo(expected));
+
+        [Test]
+        public void CombatLogCommandSaysWhichSettingApplies()
+        {
+            Assert.That(DOL.GS.Commands.CombatLogCommandHandler.StatusMessage("on", false), Does.StartWith("Your helpers' damage numbers"));
+            Assert.That(DOL.GS.Commands.CombatLogCommandHandler.StatusMessage("off", true), Does.Contain("without damage numbers"));
+            Assert.That(DOL.GS.Commands.CombatLogCommandHandler.StatusMessage("", false), Does.EndWith("(server setting)"));
+        }
+
+        [Test]
+        public void ShowDetailsForNoOwnerFollowsTheServerSetting() =>
+            Assert.That(CombatLogAttribution.ShowDetailsFor(null), Is.EqualTo(CombatLogAttribution.ShowDetails));
+
         [Test]
         public void ChannelIsOthersCombat() =>
             Assert.That(CombatLogAttribution.Channel, Is.EqualTo(DOL.GS.PacketHandler.eChatType.CT_OthersCombat));

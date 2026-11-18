@@ -75,6 +75,16 @@ func build() -> void:
 ## buses exist once the world's audio is set up.
 func apply_saved() -> void:
 	_apply_volumes()
+	_send_damage_numbers_choice(true)
+
+
+## OTHERS' DAMAGE NUMBERS (issue #99): the server keeps the choice on the account (/combatlog details on|off); the
+## toggle sends it, and entering the world re-sends a saved choice quietly. Never chosen: the server setting applies.
+func _send_damage_numbers_choice(quiet: bool) -> void:
+	if not Server.active or not settings.has_section_key("chat", "helper_damage_numbers"):
+		return
+	var on := bool(settings.get_value("chat", "helper_damage_numbers", false))
+	Server.command("/combatlog details %s%s" % ["on" if on else "off", " quiet" if quiet else ""])
 
 
 func _current_mode() -> String:
@@ -534,6 +544,11 @@ func _chat() -> void:
 					lst.erase(kind)
 				cw.set_types(lst)))
 		_list.add_child(row)
+	_heading("HELPERS")
+	_row("HELPER DAMAGE NUMBERS", _toggle(bool(settings.get_value("chat", "helper_damage_numbers", false)), func(on: bool):
+		_save("chat", "helper_damage_numbers", on)
+		_send_damage_numbers_choice(false)))
+	_hint("ON: YOUR /SPAWN HELPERS' DAMAGE NUMBERS, CRITS, STYLES AND SPELL LINES SHOW IN OTHERS' COMBAT, NAMED AFTER THE HELPER. OFF: THEIR FIGHTING SHOWS LIKE ANOTHER PLAYER'S ON LIVE, WITHOUT NUMBERS. SAVED FOR ALL YOUR CHARACTERS (ALSO /COMBATLOG DETAILS ON / OFF).")
 
 
 ## WINDOWS (owner 2026-10-09): one button per window that puts it back where it was before it was closed; RESET
