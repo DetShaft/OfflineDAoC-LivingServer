@@ -14,7 +14,7 @@ namespace DOL.UnitTests
         [Test]
         public void AGoodSpot_IsKept_TheHealerDoesNotMove()
         {
-            Vector2 self = new(0, -700);
+            Vector2 self = new(0, -500);
             Vector2[] members = [new(0, 0), new(80, 40)];
             Vector2[] enemies = [new(0, 150)];
             Assert.That(HealerPost.Pick(self, members, enemies, tight: false), Is.EqualTo(self));
@@ -61,15 +61,29 @@ namespace DOL.UnitTests
         [Test]
         public void AHeldPost_SurvivesSmallDrift_ButNotAnEnemyOnIt()
         {
-            Vector2 post = new(0, -600);
+            Vector2 post = new(0, -500);
             Vector2[] members = [new(0, 0)];
             Assert.That(HealerPost.Keep(post, members, [new Vector2(0, -250)], false), Is.True,
-                "an enemy at 350, a little inside the standoff, does not move the healer yet");
-            Assert.That(HealerPost.Keep(post, members, [new Vector2(0, -450)], false), Is.False,
-                "an enemy at 150 does");
-            Assert.That(HealerPost.Keep(post, [new Vector2(0, 750)], NoEnemies, false), Is.True,
-                "a member at 1350, a little past reach, does not either");
-            Assert.That(HealerPost.Keep(post, [new Vector2(0, 1000)], NoEnemies, false), Is.False);
+                "an enemy at 250, a little inside the standoff, does not move the healer yet");
+            Assert.That(HealerPost.Keep(post, members, [new Vector2(0, -400)], false), Is.False,
+                "an enemy at 100 does");
+            Assert.That(HealerPost.Keep(post, [new Vector2(0, 300)], NoEnemies, false), Is.True,
+                "a member at 800, a little past reach, does not either");
+            Assert.That(HealerPost.Keep(post, [new Vector2(0, 400)], NoEnemies, false), Is.False);
+        }
+
+        [Test]
+        public void ThePost_StaysNearTheGroup_NotFarOffToTheSide()
+        {
+            // #56 (Jay, v1.1.20): healers should be closer in. A healer caught in melee steps out to just past the
+            // standoff, not to the far edge of its reach.
+            Vector2 self = new(0, 120);
+            Vector2[] members = [new(0, 0), new(60, 40), new(-60, 40)];
+            Vector2[] enemies = [new(0, 160)];
+            Vector2? post = HealerPost.Pick(self, members, enemies, tight: false);
+            Assert.That(post, Is.Not.Null);
+            Assert.That(Vector2.Distance(post.Value, HealerPost.Centroid(members)), Is.LessThan(HealerPost.OpenReach * 0.75f));
+            Assert.That(Vector2.Distance(post.Value, enemies[0]), Is.GreaterThanOrEqualTo(HealerPost.OpenStandoff));
         }
 
         [Test]
