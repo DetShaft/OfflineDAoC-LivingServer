@@ -420,6 +420,15 @@ func _ready_rest(loading: LoadingScreen) -> void:
 			if Server.game_hour() >= 0.0:
 				sky.day_increment = Server.day_increment
 				sky.set_hour(Server.game_hour())
+			# issue #154: the server sends the NPCs around you only once you are in its world (ClientService
+			# UpdateWorld after GameOpen), so the prebuild above had none and they popped in after the loading screen.
+			# Wait behind it until they stop arriving, then build their views and draw a few frames.
+			if npcs:
+				await _await_server_npcs()
+				npcs.prebuild()
+				SpellFx.preload_effects(SpellFx.zone_effects(npcs.states))
+				for i in 3:
+					await get_tree().process_frame
 		loading.finish()
 		await loading.tree_exited                        # the loading screen has faded: you are in the world
 		if not Server.active:
@@ -440,6 +449,35 @@ func _ready_rest(loading: LoadingScreen) -> void:
 		if companions:
 			companions.zone_ready()
 		await _smoke_in_world()
+
+
+const NPC_WAIT_MAX_MS := 5000                 # the loading screen waits at most this long for the server's NPCs ...
+const NPC_QUIET_MS := 600                     # ... and stops once none have arrived for this long
+const NPC_EMPTY_MS := 2500                    # (a place with no NPCs at all: give up on them after this)
+
+
+## Behind the loading screen (server game): wait until the server's NPC creates stop coming (issue #154).
+func _await_server_npcs() -> void:
+	var start := Time.get_ticks_msec()
+	var count := npcs.states.size()
+	var changed := start
+	while true:
+		await get_tree().process_frame
+		var now := Time.get_ticks_msec()
+		if npcs.states.size() != count:
+			count = npcs.states.size()
+			changed = now
+		if npc_wait_done(now - start, now - changed, count):
+			return
+
+
+## Pure: has the loading screen waited long enough for the server's NPCs? (waited / quiet ms, NPCs so far)
+static func npc_wait_done(waited_ms: int, quiet_ms: int, count: int) -> bool:
+	if waited_ms >= NPC_WAIT_MAX_MS:
+		return true
+	if count == 0:
+		return waited_ms >= NPC_EMPTY_MS
+	return quiet_ms >= NPC_QUIET_MS
 
 
 ## Headless world-entry smoke (tools/smoke). Printed only with --smoke, then Godot quits.

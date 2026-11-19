@@ -283,12 +283,40 @@ func _report_bug(text: String) -> void:
 	var cls := String(ClassDb.cls(PlayerData._class_id()).get("name", ""))
 	var url := bug_report_url(text, {"version": GameUI.LIVING_SERVER_CLIENT_PATCH, "name": PlayerData.display_name(),
 			"class": cls, "level": PlayerData.level, "realm": String(PlayerData.character.get("realm", "")), "where": where})
-	var err := OS.shell_open(url)
+	var err := open_in_user_browser(url)
 	if err == OK:
 		PlayerData.message.emit("A GitHub issue form opened in your browser. Check it, add a screenshot if you like, and submit it there.", "system")
 	else:
 		DisplayServer.clipboard_set(url)
 		PlayerData.message.emit("Could not open your browser. The issue link is on your clipboard: paste it into a browser.", "system")
+
+
+## Opens a web link in the player's own browser, as a new tab in the window they already have open (issue #76).
+## The launcher starts this client with APPDATA set to new-client\save (its settings and logs live there), and a
+## browser started from here inherits it: Opera GX, Firefox and others keep their profile under APPDATA, so they came
+## up as a separate, empty window - no profile, cookies or GitHub sign-in. The user's own APPDATA goes back in place
+## just for the call (the launcher passes it as OFFLINEDAOC_USER_APPDATA; older launchers: USERPROFILE\AppData\Roaming).
+static func open_in_user_browser(url: String) -> Error:
+	var ours := OS.get_environment("APPDATA")
+	var theirs := user_appdata(OS.get_name(), OS.get_environment("OFFLINEDAOC_USER_APPDATA"), OS.get_environment("USERPROFILE"))
+	var swap := theirs != "" and theirs != ours and DirAccess.dir_exists_absolute(theirs)
+	if swap:
+		OS.set_environment("APPDATA", theirs)
+	var err := OS.shell_open(url)
+	if swap:
+		OS.set_environment("APPDATA", ours)                # the client's own user:// folder stays where it was
+	return err
+
+
+## The user's real APPDATA folder ("" when unknown or not Windows). Pure.
+static func user_appdata(os_name: String, from_launcher: String, user_profile: String) -> String:
+	if os_name != "Windows":
+		return ""
+	if from_launcher != "":
+		return from_launcher
+	if user_profile != "":
+		return user_profile.path_join("AppData").path_join("Roaming")
+	return ""
 
 
 ## The new-issue link for a /bug report. Pure (context: version, name, class, level, realm, where).

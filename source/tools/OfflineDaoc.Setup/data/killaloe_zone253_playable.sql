@@ -27,12 +27,10 @@ UPDATE Mob SET ClassType='DOL.GS.Keeps.GuardCaster'
    AND Name IN ('Master Wizard','Master of Runes','Master Eldritch');
 UPDATE Mob SET ClassType='DOL.GS.Keeps.GuardLord'
  WHERE PackageID='offline-killaloe-keep-253' AND Region=253 AND Name='Jarl Killaloe';
-UPDATE Mob SET ClassType='DOL.GS.Keeps.GateKeeperIn'
- WHERE PackageID='offline-killaloe-keep-253' AND Region=253
-   AND Name LIKE '%Enter PosternKeeper%';
-UPDATE Mob SET ClassType='DOL.GS.Keeps.GateKeeperOut'
- WHERE PackageID='offline-killaloe-keep-253' AND Region=253
-   AND Name LIKE '%Exit PosternKeeper%';
+-- Issue #153 (owner, 2026-11-19: "we need to get rid of the postern keepers"): the captured Enter and Exit
+-- PosternKeepers stood in the keep rooms (one beside Jarl Killaloe) and are dropped, as the Gatekeepers below are.
+DELETE FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Region=253
+  AND (Name LIKE '%Enter PosternKeeper%' OR Name LIKE '%Exit PosternKeeper%');
 
 -- The keep doors are the way in and out for the owning realm. Drop the Enter and Exit Gatekeepers (owner,
 -- 2026-11-15: the Exit Gatekeeper stood in the gate passage). Do not invent a Hibernia keep gate. Do not move

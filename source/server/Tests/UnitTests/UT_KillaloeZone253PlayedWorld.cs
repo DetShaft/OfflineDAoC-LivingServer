@@ -159,7 +159,8 @@ namespace DOL.UnitTests
                         AND ClassType IN ('DOL.GS.AlbionTeleporter','DOL.GS.MidgardTeleporter','DOL.GS.HiberniaTeleporter')
                         AND Guild IN ('Channeler','Stor Gothi')),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253' AND (X>73728 OR Y>73728 OR X<8192 OR Y<8192)),
-                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253' AND Name LIKE '%Gatekeeper%'),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
+                        AND (Name LIKE '%Gatekeeper%' OR Name LIKE '%PosternKeeper%')),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253-extra' AND Region=253),
                     (SELECT MIN(RoamingRange) FROM Mob WHERE PackageID IN ('offline-killaloe-zone253','offline-killaloe-zone253-extra'))
                 """;
@@ -202,7 +203,7 @@ namespace DOL.UnitTests
             Assert.That(reader.GetInt32(33), Is.EqualTo(3), "Each portal keep hastener is that realm's bard, with a bard's model.");
             Assert.That(reader.GetInt32(34), Is.GreaterThan(0), "Captured channelers load as realm teleporters. Hibernia uses Channeler, not Grove Tender.");
             Assert.That(reader.GetInt32(35), Is.EqualTo(0), "The field pack sits inside zone 253 (8192..73728).");
-            Assert.That(reader.GetInt32(36), Is.EqualTo(0), "Enter and Exit Gatekeepers are gone; the keep doors are the way in and out.");
+            Assert.That(reader.GetInt32(36), Is.EqualTo(0), "Enter and Exit Gatekeepers and PosternKeepers (issue #153) are gone; the keep doors are the way in and out.");
             Assert.That(reader.GetInt32(37), Is.EqualTo(KillaloeZone253Seeds.ExpectedExtraFieldSpawnCount), "One extra of each field mob.");
             Assert.That(reader.GetInt32(38), Is.GreaterThanOrEqualTo(300), "Field mobs roam.");
         }
