@@ -25,10 +25,12 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
 - **Sources.** The main gaps are:
   - The Phoenix site domain is now for sale, so Phoenix notes come from search-index snippets of its old pages (Unsure
     unless several agree).
-  - Eden's class-change wiki page (`eden-daoc.net/wiki?content=changes`) needs a Discord login, so most per-class Eden
-    cells say "no source found". Jay has a PDF export of it (see #108), and reading it is the next step.
+  - Eden's class-change wiki page (`eden-daoc.net/wiki?content=changes`) needs a Discord login. Jay supplied it as a
+    PDF (key EDN-W), and Table 1's Eden column is filled from it. **No Eden spell changes for now:** these notes are
+    reference only.
   - Camelot Herald fandom pages refuse automated fetch. Jay supplied nine as PDFs on 2026-11-19 (keys `CH-*` in the
-    source list), and the claims they back are now Confirmed. The PDFs are not in the repo.
+    source list), and the claims they back are now Confirmed. A second set followed: patch notes 1.50-1.64B and
+    1.66-1.70, plus Eden's "Class Changes from 1.90" wiki page. The PDFs are not in the repo.
 
 ## Answers to the 24 questions
 
@@ -57,9 +59,26 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
   - Ranger bow damage −9%, Scout bow damage −4.5%, crit shot multiplier from 2× to 1.75×, Scout "Stop" duration −30%
     (Nov 2020).
   - Casted resist debuffs were reset to 15/30% plus realm-specific red debuffs (Feb 2021).
-- **Eden:** the per-class page is login-gated. The #108 Bonedancer notes (from Jay's PDF) and a few forum posts are all
-  that was read: Bard was dominant as a group healer, Minstrel pet release breaks mez, and some post-1.90 assassin and
-  archer picks.
+- **Eden (Confirmed for what Eden runs: EDN-W, Jay's PDF of "Class Changes from 1.90"):**
+  - Per-class notes are in Table 1. Many are tagged with the live patch they come from (1.101-1.128). The untagged ones
+    are Eden's own changes.
+  - **General rules that matter for bot design:**
+    - Guard's bonus block per level goes from 5% to 10%.
+    - Intercept is checked after block, evade and miss, and an intercepted style always fails.
+    - Protect's range goes from 1,000 to 2,500, and it is 50% stronger against pets. Taunts are also 50% stronger
+      against pets.
+    - Pets cast support spells only when idle.
+    - Bleeds don't break mez or root.
+    - GTAE damage spells don't interrupt.
+    - Confusion and single-target buffs are normalized to 3.0 s casts at 1,500 range.
+    - A player can have up to 9 active pulses.
+    - Speed of Sound leaves a short True Speed immunity when it ends.
+    - Rapid weapon swapping raises the chance to fumble.
+    - Stoicism has 3 levels, and Determination costs less.
+    - Every class gets its improved RR5, and the 1.108 realm-ability system is used.
+  - **No Eden spell changes for now:** this is reference for #108 only.
+- **Earlier forum reads (Consensus):** Bard was dominant as a group healer, and Minstrel pet release breaks mez. Eden
+  later changed that last one: its pulse charm no longer breaks mez or root when it ends (EDN-W).
 
 **3. Over/underpowered by era (Consensus unless noted):**
 - **Classic to 1.65:**
@@ -84,6 +103,12 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
 - **Realm loyalty:** 0-100, gained from frontier RP and relic captures, lost by fighting for another realm.
 - **Classes and zones by stage:** Catacombs classes were added in a later season's beta, and Catacombs PvE zones were
   not added at all.
+- **Live-patch picks:** many lines in Eden's class page carry the live patch they come from (1.101, 1.102, 1.104,
+  1.107-1.111, 1.114, 1.116, 1.121, 1.125, 1.128). Each tagged line is a natural era-gate candidate: off in
+  Classic/SI, on at its patch (EDN-W).
+- The supplied Eden PDF covers only the class page. Its menu also lists "Realm Skill Point Cap", "Realm Loyalty",
+  "Realm Timer", "Renegade" and "Battlegrounds - Siege Monsters" pages, which weren't supplied. So those details
+  still rest on forum posts.
 - Each of these maps cleanly onto the "every era is a switch" rule in PROGRESSION-DIRECTION.md. None is proposed for
   now.
 
@@ -136,6 +161,11 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
   - Snare divers with snare styles.
   - Save the 9 s Slam stun for a real threat to the backline.
   - Kill pets that are interrupting their casters.
+- **Classic Guard and Intercept history (Confirmed):**
+  - *(1.50)* Warriors got Intercept at level 12 (CH-1.50).
+  - *(1.55)* A successful Guard or Intercept no longer interrupts the guarded caster (CH-1.55).
+  - *(1.57)* Savages were correctly granted Protect I (CH-1.57).
+  - *(1.69)* The UI shows when you are guarded, protected or intercepted (CH-1.69).
 - **What they don't do:**
   - Chase enemy casters deep into the enemy backline.
   - Top the damage meter.
@@ -217,6 +247,14 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
 **14. AE mez frequency and the Minstrel.**
 - **Immunity (Confirmed):**
   - Mez, root and nearsight leave a 60 s immunity when they end or break.
+  - **Where it came from:**
+    - The one-minute mez immunity was already in the game by 1.51, which fixed a bug in it ("after a mez spell wears
+      off, another cannot be cast for one minute"). It predates the supplied notes (1.50 onward).
+    - *(1.52)* Mezzes cast by monsters started triggering the immunity too.
+    - *(1.60)* Dispel-mez spells stopped clearing the immunity.
+    - *(1.62)* All nearsight spells got a one-minute immunity: that is the origin of nearsight immunity.
+    - No supplied patch (1.50-1.70) mentions root/snare immunity, so its origin is still unsourced.
+    - Sources: CH-1.51, CH-1.52, CH-1.60, CH-1.62.
   - In this server: `AbstractCCSpellHandler` returns 60,000 ms, and immunity is 0 only for "Pet Stun".
   - Community source: MMOBread "State of the Game".
 - **Style stuns** leave immunity equal to five times the stun *(1.72; before that it was a flat one minute)*. So do
@@ -245,6 +283,20 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
   - For a cast-time CC spell it stops moving to cast. The server then rejects immune targets only when the cast lands,
     so the bot can stand through a 5 s cast every few seconds. **This matches #152.**
 
+- **Classic Minstrel AE mez history (Confirmed):**
+  - *(1.51)* The Minstrel got its area mez, the "Lullaby" line, at levels 10, 15, 21, 28, 36 and 45. It is a
+    **half-duration** mez.
+    - The reason: Cleric's point-blank AE mez had been put on a **5-minute reuse**, so Albion's secondary crowd
+      controller got some extra versatility.
+    - So the Minstrel AE mez was designed as a weaker backup mez, not a main tool.
+  - *(1.52, RvR only)* AE mez duration falls from 100% at the center to 50% at the edge of the area.
+  - *(1.52)* Each realm's primary mezzer (Sorcerer, Healer, Bard) got a baseline "cure mez". Secondary mezzers, the
+    Minstrel among them, have to spec for it.
+  - *(1.52)* Spiritmaster got a ranged AE mez.
+  - *(1.60)* Sorcerer's Mind AE mez went to 1,875 range.
+  - The Lullaby cast time and whether it is point-blank are not in the notes. The "5 s cast" from FreddysHouse stays
+    Unsure.
+  - Sources: CH-1.51, CH-1.52, CH-1.60.
 - **Minstrel mez history in the supplied patches (Confirmed, post-classic):**
   - *(1.65)* Minstrels got new shouts at levels 43 and 50 (Discordant Howl, Cacophony). Nothing in 1.65 changes their
     mezzes.
@@ -274,6 +326,12 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
   - The server's interrupt window is `spell_interrupt_duration` = 3,000 ms (Confirmed: `ServerProperties.cs`).
   - **Amnesia** doesn't count as an interrupt, but it makes the caster forget the spell, so it stops the cast anyway
     (Confirmed: CH-QC).
+  - *(1.51)* Instant debuffs no longer interrupt player casters or archers. *(1.62)* Resist debuffs interrupt again,
+    after briefly being shouts (Confirmed: CH-1.51, CH-1.62).
+  - *(1.68)* A spell hit now causes an interrupt chance for **2 seconds** after it lands. That fixed casters being
+    interrupted for the wrong length of time (Confirmed: CH-1.68). This server's default `spell_interrupt_duration` is
+    3,000 ms, so it may be worth checking against classic. Not changed here.
+  - *(1.55)* A successful Guard or Intercept no longer interrupts the guarded caster (Confirmed: CH-1.55).
   - *(1.72)* All concentration buffs became uninterruptible. Greater Heal (for healers specced in their healing line)
     and the group heals got shorter cast times (Confirmed: CH-1.72).
   - *(1.72, 1.111)* Several instant debuffs were fixed so they **no longer interrupt** enemy players:
@@ -291,7 +349,10 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
     - The Necromancer's version (Facilitate Painworking) gives its pet 6 s of uninterrupted casting.
     - (Confirmed: CH-QC.) *(1.65)* Quickcast greys out on its recast timer like other abilities (Confirmed: CH-1.65).
   - **Mastery of Concentration (realm ability):**
-    - 30 s of uninterrupted casting, lengthened by duration bonuses.
+    - *(1.50C)* Its duration went from 60 s to 15 s, with a bigger chance to avoid interruption that depends on the
+      attacker's level (Confirmed: CH-1.50C). The classic-era value is 15 s.
+    - *(1.70)* Necromancer's Facilitate Painworking now works the same as other casters' Quickcast (CH-1.70).
+    - The current wiki page says 30 s of uninterrupted casting, lengthened by duration bonuses (a later value).
     - Higher-level monsters and keep/tower lords and guards can still interrupt it.
     - Each rank *raises* the effectiveness of cast-time spells (25/35/50/60/75%); instant spells keep full value
       (Confirmed: CH-MoC). This corrects the earlier "less effect per rank".
@@ -380,7 +441,14 @@ intercept them. That comes from repo code, not an outside source.
     mezzed Minstrel, which breaks its mez.
   - **Spiritmaster, Animist and Hunter** pets follow the same "interrupt first" logic (no class guide read for them).
   - Consensus (Blackthorn Theurgist, Bonedancer, Necromancer and Minstrel guides; Eden forum t=1841).
-- **Eden:** taunts and protect are 50% stronger against pets (from #108).
+- **Eden:** taunts and protect are 50% stronger against pets, and pets cast support spells only when idle (EDN-W).
+- **Classic pet rules (Confirmed):**
+  - *(1.50)* Pets in defensive mode no longer attack mezzed enemies. Aggressive pets still do (CH-1.50).
+  - *(1.59)* Theurgist elementals can't be rooted or mezzed (CH-1.59).
+  - *(1.62)* A pet-only mez-reduction buff was added (CH-1.62).
+  - *(1.69)* Pet cure-mez spells were added for Necromancer, Bonedancer and Animist (CH-1.69).
+  - Bots: `BotPvpCrowdControl.Protected` also covers bot pets, so they already leave mezzed enemies alone while another
+    enemy is free. That matches the defensive-pet rule.
 - **How much damage comes from the pet:** no source found. Here commanders get the full to-hit bonus and minions half
   (PR #109).
 
@@ -402,55 +470,55 @@ Source keys are in the source list at the end. "Nsf" means no source found.
 
 | Class | Realm | Group role | Strengths | Weaknesses | Phoenix notes | Eden notes | Confidence | Source |
 |---|---|---|---|---|---|---|---|---|
-| Armsman | Alb | Peel tank | Guard and Intercept, snare styles (Crippling Blow), Slam | Not a killer; must stay with the backline | Nsf | Nsf | Consensus | BT-arms |
-| Paladin | Alb | Tank / chant support | Chants, durable | Damage factor 19 on the live table (CH-DT) | Damage table 21; instant group heal and group damage add, 60 s cooldown (S1) | Nsf | Unsure | PX-S1, PX-dmg |
-| Mercenary | Alb | Melee damage (assist train) | Dual-wield burst, evade | Medium armor; needs peel | Nsf | Nsf | Unsure | PX-8 |
-| Reaver | Alb (SI) | Melee hybrid | Instant lifedrain interrupts | The instant used to cancel the bot's own swing (#126) | Nsf | Nsf | Unsure | REPO #126 |
-| Cleric | Alb | Healer (often 2) | Spec buffs (Dex/Qui, Str/Con, Acuity, spirit/body/energy resists), 9 s casted stun | Albion's only pure healer, so its death drops the group's buffs | Nsf | Nsf | Consensus | BT-cleric |
-| Friar | Alb | Second support, melee | Heals plus staff melee | Live factor 18 crush / 20 staff (CH-DT); weak at the top end (era unknown) | Damage table 21 | Nsf | Unsure | FH, PX-dmg, CH-DT |
-| Sorcerer | Alb | CC lead | 1,875-range AE mez, roots, demezz | Squishy; key target | Nsf | Nsf | Consensus | BT-sorc |
-| Theurgist | Alb | Pet interrupter | Earth, ice and air pets on supports | Low personal damage by design | Nsf | Nsf | Consensus | BT-theurg |
-| Cabalist | Alb | Nuker / debuffer | Damage-over-time, debuffs, pet | Squishy | Nsf | Nsf | Unsure | PX-8 |
-| Wizard | Alb | Nuker | Burst direct damage | Squishy | Nsf | Nsf | Unsure | R-8v8 |
-| Necromancer | Alb (SI) | Pet class: the pet is the body | AF debuff turns the tank train lethal; quickcast | Owner can't kite; acts only through the pet | Nsf | Nsf | Consensus | BT-necro |
-| Minstrel | Alb | CC / interrupt / speed | Flute mez while moving, instant stun, 2 instant damage spells, charmed pet, Speed of Sound | Hard to play; low damage | Charm pulse and pet-release changes discussed | Pet release breaks the Minstrel's own mez (forum) | Consensus | BT-minst, EDN-1841 |
-| Infiltrator | Alb | Stealth | Perforate Artery opener, poisons | Weak once seen | Nsf | Keeps post-1.90 assassin RR5s; *(1.108)* Remedy moved from RR5 to a level-50 grant; *(1.104)* poison rework (Confirmed: CH-1.104, CH-1.108) | Consensus (classic overpowered talk) | FH, EDN-1219 |
-| Scout | Alb | Stealth archer | Bow crit shot, shield | Low melee | Bow damage −4.5%, crit 1.75×, Stop −30% (2020) | Shield Trip's 300 damage and 60% speed came in *(1.108)* (Confirmed: CH-1.108) | Unsure | PX-arch, EDN-1219 |
+| Armsman | Alb | Peel tank | Guard and Intercept, snare styles (Crippling Blow), Slam | Not a killer; must stay with the backline | Nsf | Memories of War halved; Stoicism II; Taunting Shout hits pets; Tactics at 40 Shield | Consensus | BT-arms, EDN-W |
+| Paladin | Alb | Tank / chant support | Chants, durable | Damage factor 19 on the live table (CH-DT) | Damage table 21; instant group heal and group damage add, 60 s cooldown (S1) | Spec points 2.0 to 2.3; tri-resist chants plus an all-magic resist chant replace the old resist chants; Stoicism I | Unsure | PX-S1, PX-dmg, EDN-W |
+| Mercenary | Alb | Melee damage (assist train) | Dual-wield burst, evade | Medium armor; needs peel | Nsf | Stoicism III; Slam 9 to 5 s; Dirty Tricks/Dissolute Swings timers changed *(1.128)* | Unsure | PX-8, EDN-W |
+| Reaver | Alb (SI) | Melee hybrid | Instant lifedrain interrupts | The instant used to cancel the bot's own swing (#126) | Nsf | One instant lifedrain, 1,500 range, 20 s reuse *(1.114)*; new instant snare *(1.114)*; Charge *(1.111)*; instant DoT ticks no longer break mez/root | Unsure | REPO #126, EDN-W |
+| Cleric | Alb | Healer (often 2) | Spec buffs (Dex/Qui, Str/Con, Acuity, spirit/body/energy resists), 9 s casted stun | Albion's only pure healer, so its death drops the group's buffs | Nsf | Cure Nearsight 25/40 *(1.114)*; Smite scales like list casters (custom) | Consensus | BT-cleric, EDN-W |
+| Friar | Alb | Second support, melee | Heals plus staff melee | Live factor 18 crush / 20 staff (CH-DT); weak at the top end (era unknown) | Damage table 21 | Cure Nearsight, group cure disease, 70% Focus Shield | Unsure | FH, PX-dmg, CH-DT, EDN-W |
+| Sorcerer | Alb | CC lead | 1,875-range AE mez, roots, demezz | Squishy; key target | Nsf | Resist debuffs become 8 s spec debuffs; damage-plus-snare 2.6 s; stat debuffs 60 s with 10 s recast | Consensus | BT-sorc, EDN-W |
+| Theurgist | Alb | Pet interrupter | Earth, ice and air pets on supports | Low personal damage by design | Nsf | Pet health −25%; air pet stun range 1,250 to 750; pets cast under Mastery of Concentration get less health | Consensus | BT-theurg, EDN-W |
+| Cabalist | Alb | Nuker / debuffer | Damage-over-time, debuffs, pet | Squishy | Nsf | Resist debuffs become 8 s spec debuffs; stat debuffs 60 s with 10 s recast | Unsure | PX-8, EDN-W |
+| Wizard | Alb | Nuker | Burst direct damage | Squishy | Nsf | Thornweed Field; damage-plus-snare 50% snare, 2.6 s | Unsure | R-8v8, EDN-W |
+| Necromancer | Alb (SI) | Pet class: the pet is the body | AF debuff turns the tank train lethal; quickcast | Owner can't kite; acts only through the pet | Nsf | No Necromancer section; Eden has the Occultist (pet level 88%) instead | Consensus | BT-necro, EDN-W |
+| Minstrel | Alb | CC / interrupt / speed | Flute mez while moving, instant stun, 2 instant damage spells, charmed pet, Speed of Sound | Hard to play; low damage | Charm pulse and pet-release changes discussed | Pulse charm no longer breaks mez/root when it ends; charm +50% duration *(1.121)*; Determination; Speed of Sound only in a group | Consensus | BT-minst, EDN-1841, EDN-W |
+| Infiltrator | Alb | Stealth | Perforate Artery opener, poisons | Weak once seen | Nsf | DoT poisons raised *(1.104)*; Pincer 4 s stun *(1.121)*; poisons usable in combat. Keeps post-1.90 assassin RR5s; *(1.108)* Remedy moved from RR5 to a level-50 grant; *(1.104)* poison rework (Confirmed: CH-1.104, CH-1.108) | Consensus (classic overpowered talk) | FH, EDN-1219, EDN-W |
+| Scout | Alb | Stealth archer | Bow crit shot, shield | Low melee | Bow damage −4.5%, crit 1.75×, Stop −30% (2020) | Tracker's Alacrity; Power Shot 3.5 s with 20 s reuse *(1.121)*. Shield Trip's 300 damage and 60% speed came in *(1.108)* (Confirmed: CH-1.108) | Unsure | PX-arch, EDN-1219, EDN-W |
 
 ### Midgard
 
 | Class | Realm | Group role | Strengths | Weaknesses | Phoenix notes | Eden notes | Confidence | Source |
 |---|---|---|---|---|---|---|---|---|
-| Warrior | Mid | Peel tank | Slam (9 s), snare styles, Guard/Intercept, top damage table (factor 23, CH-DT) | Must not waste Slam | Nsf | Nsf | Consensus | BT-war |
-| Thane | Mid | Tank / hybrid caster | Instant/casted lightning, hammer | Medium damage | Faster and cheaper nukes, energy-debuff proc; weapon parity disputed | Nsf | Unsure | PX-dmg |
-| Berserker | Mid | Melee damage (train) | Burst | Needs celerity and peel | Nsf | Nsf | Unsure | PX-8 |
-| Savage | Mid (SI) | Melee damage (train) | Hand-to-hand burst, self buffs | Health-cost buffs; nerfed in 1.65 | Nsf | Nsf | Confirmed (1.65 nerf) | CH-1.65 |
-| Healer | Mid | Pacification (CC) or Augmentation (heal, celerity) healer | Mez, stun, celerity | The Pacification Healer is exposed up front | Celerity range 1,500 (snippet) | Nsf | Consensus | BT-healer |
-| Shaman | Mid | Buffer / midline support | Full spec buffs, roots, cures, disease | Not a main healer | Nsf | Nsf | Consensus | BT-sham |
-| Skald | Mid | Interrupt / speed / flex melee | 2 instant damage spells, instant snare, instant mez, speed | No Determination (CC-heavy weakness) | Nsf | Nsf | Consensus | BT-skald |
-| Runemaster | Mid | Nuker | Bolts, direct damage | Squishy | Nsf | Nsf | Unsure | CoW |
-| Spiritmaster | Mid | Nuker / pet | Mez, pet | Squishy | Nsf | Nsf | Unsure | CoW |
-| Bonedancer | Mid (SI) | Pet interrupter, then "hammer" | Instant body debuff and lifetap, pets | Pets need managing | Nsf | Body debuff 10/20/30% for 8 s, stat debuff recast 10 s, snare nuke 2.6 s, healer pet heals at 80%, pets buff only when idle (Jay chose none) | Confirmed (PDF via #108) | BT-bd, EDN-108 |
-| Hunter | Mid | Stealth archer / pet | Bow, pet | Low group utility | Nsf | Entwining Snakes' 60% speed came in *(1.108)* (Confirmed: CH-1.108) | Unsure | EDN-1219 |
-| Shadowblade | Mid | Stealth | PA, then Creeping Death, then Stunning Stab | Weak once seen | Nsf | Assassin RR5s kept | Consensus | BT-sb, EDN-1219 |
+| Warrior | Mid | Peel tank | Slam (9 s), snare styles, Guard/Intercept, top damage table (factor 23, CH-DT) | Must not waste Slam | Nsf | Testudo reworked; Shield Throw; Tactics; Stoicism II | Consensus | BT-war, EDN-W |
+| Thane | Mid | Tank / hybrid caster | Instant/casted lightning, hammer | Medium damage | Faster and cheaper nukes, energy-debuff proc; weapon parity disputed | Hammer damage table raised *(1.111)*; Chain Lightning 2 s uninterruptible *(1.125)*; Stoicism I | Unsure | PX-dmg, EDN-W |
+| Berserker | Mid | Melee damage (train) | Burst | Needs celerity and peel | Nsf | Stoicism III; Berserk 5 min; acuity-debuff proc | Unsure | PX-8, EDN-W |
+| Savage | Mid (SI) | Melee damage (train) | Hand-to-hand burst, self buffs | Health-cost buffs; nerfed in 1.65 | Nsf | Charge *(1.107)*; Stoicism II; taunt becomes a 3 s cast at 1,350 range | Confirmed (1.65 nerf) | CH-1.65, EDN-W |
+| Healer | Mid | Pacification (CC) or Augmentation (heal, celerity) healer | Mez, stun, celerity | The Pacification Healer is exposed up front | Celerity range 1,500 (snippet) | Self mez-dampening buff in Augmentation *(1.114)*; Cure Nearsight | Consensus | BT-healer, EDN-W |
+| Shaman | Mid | Buffer / midline support | Full spec buffs, roots, cures, disease | Not a main healer | Nsf | Cure Nearsight, group cure disease, Focus Shield; regen buffs become HoTs; faster Cave damage spells | Consensus | BT-sham, EDN-W |
+| Skald | Mid | Interrupt / speed / flex melee | 2 instant damage spells, instant snare, instant mez, speed | No Determination (CC-heavy weakness) | Nsf | Determination *(1.121)*; speed pulse 6 to 10 s; Speed of Sound only in a group | Consensus | BT-skald, EDN-W |
+| Runemaster | Mid | Nuker | Bolts, direct damage | Squishy | Nsf | Resist debuffs become 8 s spec debuffs; Thornweed; damage-plus-snare 50%, 2.6 s | Unsure | CoW, EDN-W |
+| Spiritmaster | Mid | Nuker / pet | Mez, pet | Squishy | Nsf | Pet intercept 75% to 60%; resist debuffs become 8 s spec debuffs | Unsure | CoW, EDN-W |
+| Bonedancer | Mid (SI) | Pet interrupter, then "hammer" | Instant body debuff and lifetap, pets | Pets need managing | Nsf | Body debuff 10/20/30% for 8 s; healer minion heals at 80%; damage-plus-snare 2.6 s; stat debuffs 60 s with 10 s recast | Confirmed (PDF via #108) | BT-bd, EDN-108, EDN-W |
+| Hunter | Mid | Stealth archer / pet | Bow, pet | Low group utility | Nsf | Tracker's Alacrity (custom); Power Shot 3.5 s *(1.121)*; pet buffs itself. Entwining Snakes' 60% speed came in *(1.108)* (Confirmed: CH-1.108) | Unsure | EDN-1219, EDN-W |
+| Shadowblade | Mid | Stealth | PA, then Creeping Death, then Stunning Stab | Weak once seen | Nsf | DoT poisons raised *(1.104)*; Pincer 4 s stun *(1.121)* | Consensus | BT-sb, EDN-1219, EDN-W |
 
 ### Hibernia
 
 | Class | Realm | Group role | Strengths | Weaknesses | Phoenix notes | Eden notes | Confidence | Source |
 |---|---|---|---|---|---|---|---|---|
-| Hero | Hib | Peel tank / babysitter | Guard on casters, Slam, Numb | Low burst until it switches to offense | Nsf | Nsf | Consensus | BT-hero |
-| Champion | Hib | Tank / debuffer | Debuffs, snares | Nsf | Nsf | Nsf | Unsure | PX-8 |
-| Blademaster | Hib | Melee damage | Dual-wield burst | Needs peel | Nsf | Nsf | Unsure | R-8v8 |
-| Valewalker | Hib (SI) | Melee hybrid | Scythe, instants | Instants used to cancel the bot's own swing (#126) | Damage table 21 (reference point) | Nsf | Unsure | PX-dmg |
-| Druid | Hib | Healer (Nature roots / Nurture heals) | Instant and AE roots, pet | Nature Druid is exposed up front | Nsf | Nsf | Consensus | BT-druid |
-| Bard | Hib | Healer / CC / speed | AE mez, instant amnesia, heals, songs | Must not get caught too far forward | Amnesia range cut discussed (snippet) | Dominant group healer (forum) | Consensus | BT-bard, R-eden |
-| Warden | Hib | Support | Bladeturn, songs, heals | Nsf | Nsf | Nsf | Unsure | R-8v8 |
-| Eldritch | Hib | Nuker (assist train) | Nearsight, Dex/Qui debuff, disease, burst | Squishy | Nsf | Nsf | Consensus | BT-eld |
-| Enchanter | Hib | Main assist / nuker / pet | Burst, often the main assist | Squishy | Nsf | Nsf | Consensus | BT-eld |
-| Mentalist | Hib | Nuker "hammer" | Burst, mez | Squishy | Nearsight and resist debuffs added (S1) | Nsf | Unsure | PX-S1 |
-| Animist | Hib (SI) | Shroom (turret) caster | Ground-placed shrooms | Static | Nsf | Nsf | Unsure | REPO |
-| Nightshade | Hib | Stealth | PA, then Garrote chain | Weak once seen | Nsf | Assassin RR5s kept | Consensus | BT-ns |
-| Ranger | Hib | Stealth archer | Bow crit shot | Low melee | Bow damage −9%, crit 1.75× (2020) | Tracker's Alacrity came in *(1.111)* (Confirmed: CH-1.111) | Unsure | PX-arch, EDN-1219 |
+| Hero | Hib | Peel tank / babysitter | Guard on casters, Slam, Numb | Low burst until it switches to offense | Nsf | Combat Awareness no longer snares; Annihilation 7 s stun, rear *(1.114)*; Stoicism II | Consensus | BT-hero, EDN-W |
+| Champion | Hib | Tank / debuffer | Debuffs, snares | Nsf | Nsf | Stat debuff range 1,000 to 1,500; instant acuity debuff *(1.114)*; Annihilation 7 s stun | Unsure | PX-8, EDN-W |
+| Blademaster | Hib | Melee damage | Dual-wield burst | Needs peel | Nsf | Stoicism III; Slam 9 to 5 s; Triple Wield buffed *(1.111)* | Unsure | R-8v8, EDN-W |
+| Valewalker | Hib (SI) | Melee hybrid | Scythe, instants | Instants used to cancel the bot's own swing (#126) | Damage table 21 (reference point) | Group damage add raised *(1.114)*; Blizzard Blade proc −15% | Unsure | PX-dmg, EDN-W |
+| Druid | Hib | Healer (Nature roots / Nurture heals) | Instant and AE roots, pet | Nature Druid is exposed up front | Nsf | Cure Nearsight 3.5 s *(1.114)*; Nature DoT moved to baseline *(1.101)* | Consensus | BT-druid, EDN-W |
+| Bard | Hib | Healer / CC / speed | AE mez, instant amnesia, heals, songs | Must not get caught too far forward | Amnesia range cut discussed (snippet) | Second instant damage spell *(1.102)*; self mez-dampening buff *(1.114)*; amnesia range 2,300 to 2,000 *(1.116)*; Speed of Sound only in a group | Consensus | BT-bard, R-eden, EDN-W |
+| Warden | Hib | Support | Bladeturn, songs, heals | Nsf | Nsf | Greater heal and group heal *(1.110)*; root; Cure Nearsight; 70% Focus Shield | Unsure | R-8v8, EDN-W |
+| Eldritch | Hib | Nuker (assist train) | Nearsight, Dex/Qui debuff, disease, burst | Squishy | Nsf | Resist debuffs become 8 s spec debuffs; Ichor *(1.121)*; damage-plus-snare 50%, 2.6 s | Consensus | BT-eld, EDN-W |
+| Enchanter | Hib | Main assist / nuker / pet | Burst, often the main assist | Squishy | Nsf | Root *(1.110)*; energy damage spell *(1.114)*; Underhill Ally heals at 80% | Consensus | BT-eld, EDN-W |
+| Mentalist | Hib | Nuker "hammer" | Burst, mez | Squishy | Nearsight and resist debuffs added (S1) | Str/Dex debuffs *(1.110)*; spec DD loses its heal *(1.114)*; charm uninterruptible, doesn't break mez on expiry | Unsure | PX-S1, EDN-W |
+| Animist | Hib (SI) | Shroom (turret) caster | Ground-placed shrooms | Static | Nsf | 8 pets *(1.114)*; shroom health bonus 50% to 25%; Ichor *(1.114)* | Unsure | REPO, EDN-W |
+| Nightshade | Hib | Stealth | PA, then Garrote chain | Weak once seen | Nsf | DoT poisons raised *(1.104)*; Pincer 4 s stun *(1.121)* | Consensus | BT-ns, EDN-W |
+| Ranger | Hib | Stealth archer | Bow crit shot | Low melee | Bow damage −9%, crit 1.75× (2020) | Tracker's Alacrity *(1.111)*; Power Shot 3.5 s *(1.121)*. Tracker's Alacrity came in *(1.111)* (Confirmed: CH-1.111) | Unsure | PX-arch, EDN-1219, EDN-W |
 | Sluaghbinder | Hib (custom) | Nsf (custom class) | Nsf | Nsf | Nsf | Nsf | Nsf | REPO |
 
 ## Table 2: positioning and movement
@@ -501,6 +569,7 @@ The same rule is applied to each realm's classes by role.
 Immunity rules for every row (Confirmed, see question 14):
 - Mez, root and nearsight leave 60 s of immunity.
 - Style stuns and pet stuns leave 5× the stun duration *(1.72+)*.
+- RvR AE mez lasts 50-100% depending on distance from the center *(1.52+)*.
 - Purge leaves immunity timers in place.
 - Casted stuns leave 60 s in this server's code.
 
@@ -509,7 +578,7 @@ Immunity rules for every row (Confirmed, see question 14):
 | Class | CC / key abilities | Typical use | Recast / immunity rules | Bot risk (loops, spam) | Confidence | Source |
 |---|---|---|---|---|---|---|
 | Sorcerer | AE mez (1,875), single mez, root | Opener on the enemy group; re-mez the loose ones | Never on mezzed or immune targets | AE mez chosen every 2 s (largest radius first) | Consensus / Confirmed (code) | BT-sorc, REPO |
-| Minstrel | Flute mez (song), AE mez (5 s cast), instant stun, instant damage spells, pet | Flute mez on one high-priority target; instants to interrupt | AE mez rarely used in RvR | **#152: AE mez retried every 2 s, no immunity or enemy-count check** | Unsure (AE use) / Confirmed (code) | BT-minst, FH, REPO |
+| Minstrel | Flute mez (song), AE mez (half-duration Lullaby line, 1.51), instant stun, instant damage spells, pet | Flute mez on one high-priority target; instants to interrupt | AE mez rarely used in RvR | **#152: AE mez retried every 2 s, no immunity or enemy-count check** | Unsure (AE use) / Confirmed (code) | BT-minst, FH, REPO |
 | Cleric | Casted stun (9 s) | On an enemy support during downtime | 60 s immunity | | Consensus | BT-cleric |
 | Armsman, Paladin | Slam (9 s style stun), snare styles, Guard/Intercept | Slam on a diver | 5× immunity | Bots don't use Guard/Intercept/Protect | Consensus / Confirmed (code) | BT-arms, REPO |
 | Theurgist | Air pets (stun procs), ice pets (snare) | Peel and interrupt | | | Consensus | BT-theurg |
@@ -606,8 +675,9 @@ three realms unless noted. The bot types are:
    a target that is already CC'd or immune. Today's PvP CC loop
    doesn't check immunity (#152).
 2. **AE mez is an opener, not a rotation.** Use it on a cluster of 2-3 or more free, non-immune enemies that groupmates
-   aren't hitting, then hold it about 60 s. The Minstrel's real tool is the single-target flute mez. Its AE mez (5 s
-   cast) was rarely used in RvR (Unsure), so a Minstrel bot should rank it last.
+   aren't hitting, then hold it about 60 s. The Minstrel's real tool is the single-target flute mez. Its AE mez is a
+   *half-duration* backup line added in 1.51, when Cleric's PBAE mez was put on a 5-minute reuse (Confirmed: CH-1.51),
+   so a Minstrel bot should rank it last.
 3. **CC reservations must not freeze the group.** An AE mez attempt makes nearby enemies unattackable to other bots
    until the claim expires. If CC fails or loops, the group idles. Check this first for #151.
 4. **One main assist per group.** The player's target in player-led groups, as today. An autonomous group needs a
@@ -631,8 +701,11 @@ three realms unless noted. The bot types are:
 - **Eden per-class changes:** not read (login wall). Next step: Jay's PDF export of `eden-daoc.net/wiki?content=changes`.
 - **Phoenix:** its site is offline, so Phoenix notes rest on search snippets. Several (celerity range 1,500, Bard
   amnesia range cut, Minstrel charm change) are Unsure.
-- **Minstrel AE mez:** the exact spell in our data and whether it's point-blank (#152 says so) were not checked against
-  the spell table in this pass. The 5 s cast / 30 s duration figures are from one classic-era forum post.
+- **Minstrel AE mez:** half duration is Confirmed (1.51). Its cast time, and whether it's point-blank as #152 says,
+  aren't in the patch notes. Spell data isn't in this repo, so it wasn't checked against our spell table.
+- **Root/snare immunity origin:** not in 1.50-1.70. The mez immunity origin is earlier than 1.50 (patches 1.11-1.49
+  weren't supplied).
+- **Spell interrupt length:** classic was 2 s from 1.68; this server's default is 3 s.
 - **Pet stun immunity:** this server gives none, where 1.72 gives 5×. That's a possible data/rules difference to
   look at later, not a #151/#152 cause.
 - **Instant interrupts:** the patches remove interrupts from several instant debuffs and taunts (1.72, 1.111). Which
@@ -644,16 +717,17 @@ three realms unless noted. The bot types are:
 - **No numbers for retreat thresholds, bow ranges or pet damage share.** Treat them as settings.
 - **Sluaghbinder:** custom, no outside source.
 - **Questions marked "no source found":** Q22 (how roaming groups pick fights), Q23 pet damage share, exact bow ranges
-  in Q9, numeric retreat triggers in Q18, and per-class Eden notes in Q2. The rest are answered at the labeled
+  in Q9, and numeric retreat triggers in Q18. Per-class Eden notes in Q2 are now filled from Jay's PDF. The rest are answered at the labeled
   confidence.
 
 ## Camelot Herald (fandom) pages
 
-Jay supplied these nine as PDFs on 2026-11-19 (see `CH-*` in the source list). Still wanted:
-- The early patch-notes pages from `Category:Patch_Notes`. The category page lists only titles (versions 1.11 to
-  1.113), so it can't show which early patch set the 60 s mez/root immunity or the classic Minstrel AE mez values.
-- Candidates are the Shrouded Isles-era notes 1.50-1.64B and 1.66-1.70, plus the pre-SI class passes before them.
-  Which ones matter can't be told from the titles.
+Jay supplied 1.50-1.64B, 1.65, 1.66-1.70, 1.72, 1.104, 1.108, 1.111, Quick Cast, Mastery of Concentration, Damage Table
+and the patch-notes category as PDFs on 2026-11-19. Still wanted:
+- Some page from 1.11 to 1.49 that introduced the one-minute mez immunity. The category lists them; the titles don't
+  show which one.
+- Whatever patch first set root/snare immunity, maybe the same one.
+- Eden's RvR wiki pages ("Realm Skill Point Cap", "Realm Loyalty", "Realm Timer", "Renegade"), for Q4.
 
 ## Sources (all accessed 2026-11-19)
 
@@ -681,6 +755,30 @@ Jay supplied these nine as PDFs on 2026-11-19 (see `CH-*` in the source list). S
 | FH | FreddysHouse: "Balance issues in DAoC" https://forums.freddyshouse.com/threads/balance-issues-in-daoc-long.7497/ ; "Ways of killing overpowered hibs" (Minstrel AE mez) https://forums.freddyshouse.com/threads/ways-of-killing-overpowered-hibs.116421/page-2 ; FH-sav: "1.65H Some savage nerf" https://forums.freddyshouse.com/threads/1-65h-some-savage-nerf.149886/page-4 |
 | BoC | Bards of Camelot, "Minstrel basic Twisting guide": https://www.tapatalk.com/groups/bardsofcamelot/minstrel-basic-twisting-guide-t741.html |
 | DJ | Celer's siege and keep-door guides: http://daoc.djswifty.com/quick_siege.php , http://daoc.djswifty.com/keep_door_FAQ.php |
+| CH-1.50 | Patch Notes: Version 1.50. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.50 |
+| CH-1.50B | Patch Notes: Version 1.50B. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.50B |
+| CH-1.50C | Patch Notes: Version 1.50C. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.50C |
+| CH-1.51 | Patch Notes: Version 1.51. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.51 |
+| CH-1.52 | Patch Notes: Version 1.52. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.52 |
+| CH-1.53 | Patch Notes: Version 1.53. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.53 |
+| CH-1.54 | Patch Notes: Version 1.54. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.54 |
+| CH-1.55 | Patch Notes: Version 1.55. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.55 |
+| CH-1.56 | Patch Notes: Version 1.56. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.56 |
+| CH-1.57 | Patch Notes: Version 1.57. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.57 |
+| CH-1.58 | Patch Notes: Version 1.58. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.58 |
+| CH-1.59 | Patch Notes: Version 1.59. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.59 |
+| CH-1.60 | Patch Notes: Version 1.60. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.60 |
+| CH-1.61 | Patch Notes: Version 1.61. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.61 |
+| CH-1.62 | Patch Notes: Version 1.62. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.62 |
+| CH-1.63 | Patch Notes: Version 1.63. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.63 |
+| CH-1.64 | Patch Notes: Version 1.64. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.64 |
+| CH-1.64B | Patch Notes: Version 1.64B. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.64B |
+| CH-1.66 | Patch Notes: Version 1.66. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.66 |
+| CH-1.67 | Patch Notes: Version 1.67. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.67 |
+| CH-1.68 | Patch Notes: Version 1.68. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.68 |
+| CH-1.69 | Patch Notes: Version 1.69. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.69 |
+| CH-1.70 | Patch Notes: Version 1.70. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.70 |
+| EDN-W | Eden wiki, "Class Changes from 1.90". PDF supplied by Jay, 2026-11-19. https://eden-daoc.net/wiki?content=changes |
 | CH-1.65 | Patch Notes: Version 1.65. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.65 |
 | CH-1.72 | Patch Notes: Version 1.72. PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.72 |
 | CH-1.104 | Patch Notes: Version 1.104 (test notes, June 2010; assassin poison rework). PDF supplied by Jay, 2026-11-19. https://camelotherald.fandom.com/wiki/Patch_Notes:_Version_1.104 |
