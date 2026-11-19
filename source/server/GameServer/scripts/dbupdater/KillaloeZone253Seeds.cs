@@ -19,7 +19,7 @@ namespace DOL.GS.DatabaseUpdate
     {
         public const int ExpectedFieldSpawnCount = 74;
         public const int ExpectedKeepNpcCount = 105;
-        public const int ExpectedPlayableKeepNpcCount = 93;
+        public const int ExpectedPlayableKeepNpcCount = 84;   // 93 before issue #153 dropped the nine PosternKeepers
         public const int ExpectedExtraFieldSpawnCount = 73;
         public const string ExtraFieldPackageId = "offline-killaloe-zone253-extra";
         public const int ExpectedKeepDoorCount = 17;
@@ -217,10 +217,11 @@ namespace DOL.GS.DatabaseUpdate
 
             int enterGatekeepers = ScalarInt(connection, """
                 SELECT COUNT(*) FROM Mob
-                WHERE PackageID='offline-killaloe-keep-253' AND (Name LIKE '%Enter Gatekeeper%' OR Name LIKE '%Exit Gatekeeper%')
+                WHERE PackageID='offline-killaloe-keep-253' AND (Name LIKE '%Enter Gatekeeper%' OR Name LIKE '%Exit Gatekeeper%'
+                  OR Name LIKE '%PosternKeeper%')
                 """);
             if (enterGatekeepers != 0)
-                throw new InvalidOperationException("Killaloe Enter and Exit Gatekeepers must be gone; the keep doors are the way in and out.");
+                throw new InvalidOperationException("Killaloe Enter and Exit Gatekeepers and PosternKeepers must be gone; the keep doors are the way in and out.");
 
             int extras = ScalarInt(connection, $"SELECT COUNT(*) FROM Mob WHERE PackageID='{ExtraFieldPackageId}' AND Region=253");
             if (extras != ExpectedExtraFieldSpawnCount)
@@ -231,7 +232,7 @@ namespace DOL.GS.DatabaseUpdate
                 throw new InvalidOperationException($"{parked:N0} Killaloe field mob(s) roam less than 300 units.");
 
             RecordMigration(connection, PlayableMigrationId,
-                "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, Enter and Exit Gatekeepers removed so the doors are the way in and out, bards use bard models, one extra of each field mob, field mobs roam 300-450 units, keep X/Y and the field pack include region 253's 8192 zone offset, Abermenai's buried spawns removed.",
+                "Killaloe playable: Midgard owns Dun Killaloe, combat staff are realm-class keep guards, merchants trade, hasteners are realm bards, captured channelers teleport, no realm-enhancement clerics, Enter and Exit Gatekeepers and PosternKeepers removed so the doors are the way in and out, bards use bard models, one extra of each field mob, field mobs roam 300-450 units, keep X/Y and the field pack include region 253's 8192 zone offset, Abermenai's buried spawns removed.",
                 guards);
         }
 

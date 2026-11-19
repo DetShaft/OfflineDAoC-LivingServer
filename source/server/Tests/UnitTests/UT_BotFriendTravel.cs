@@ -49,6 +49,21 @@ public class UT_BotFriendTravel
     }
 
     [Test]
+    public void AGuildmateCountsAsAFriend()
+    {
+        // Issue #150 (Jay, 2026-11-19): a gamebot in the player's guild comes when invited without also being on the
+        // friends list. IsFriendOrGuildmate feeds the friend flag of Travels and the regroup rule.
+        Assert.That(BotFriendTravel.SameGuild("guild-1", "guild-1"), Is.True);
+        Assert.That(BotFriendTravel.SameGuild("guild-1", "guild-2"), Is.False);
+        // No guild on either side is never "the same guild".
+        Assert.That(BotFriendTravel.SameGuild(null, null), Is.False);
+        Assert.That(BotFriendTravel.SameGuild("", ""), Is.False);
+        Assert.That(BotFriendTravel.SameGuild("guild-1", null), Is.False);
+        Assert.That(BotFriendTravel.SameGuild(null, "guild-1"), Is.False);
+        Assert.That(BotFriendTravel.IsFriendOrGuildmate(null, null), Is.False);
+    }
+
+    [Test]
     public void TheJourneyIsThirtySecondsAndThirtyMorePerZoneAway()
     {
         // Jay, 2026-11-11: "30 seconds if they are in my region, and then 30 seconds extra per zone they are away from me".

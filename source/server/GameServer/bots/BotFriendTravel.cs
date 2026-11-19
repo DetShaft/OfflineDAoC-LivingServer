@@ -11,7 +11,7 @@ namespace DOL.GS;
 /// A friend comes to you (Beta 1.1.14, the owner's request: "inviting friends that aren't in the same area as you will have them
 /// move to your location to join your group after a delay"). Issue #55: a bot the find-group window is offering does this too.
 /// The window's invite is the same /invite, so the trip starts from the bot's LFG state, not from a separate button.
-/// - An autonomous gamebot does this when it is on the player's friends list (/friend), or when it is looking for a group
+/// - An autonomous gamebot does this when it is on the player's friends list (/friend) or in the player's guild (issue #150), or when it is looking for a group
 ///   in the player's realm and is not already in a group of its own. Looking for a group means a fresh LFG ad
 ///   (<see cref="BotLfgAds"/>) or a solo waiting on matchmaking, which is the other row the find-group window lists
 ///   (<see cref="LfgBrowser.ShouldListBot"/>). Anyone else invited from too far away still answers "meet up first"
@@ -164,7 +164,7 @@ public static class BotFriendTravel
     /// </summary>
     public static bool PassesRegroup(GamePlayer player, GameBot bot)
     {
-        if (player == null || bot == null || !bot.IsAutonomousWorldBot || !IsFriend(player, bot))
+        if (player == null || bot == null || !bot.IsAutonomousWorldBot || !IsFriendOrGuildmate(player, bot))
             return true;
         long now = GameLoop.GameLoopTime;
         var key = (bot.DatabaseID, player.Name);
@@ -288,12 +288,28 @@ public static class BotFriendTravel
     }
 
     /// <summary>
+    /// Issue #150 (Jay, 2026-11-19): a gamebot in the player's guild comes when invited, as a friend does, without also being
+    /// on the friends list. It takes the friend's trip and the friend's regroup rule.
+    /// </summary>
+    public static bool IsFriendOrGuildmate(GamePlayer player, GameBot bot) =>
+        IsFriend(player, bot) || IsGuildmate(player, bot);
+
+    /// <summary>Whether the bot is an autonomous gamebot in the player's guild (the bot-run guild it belongs to, as shown).</summary>
+    public static bool IsGuildmate(GamePlayer player, GameBot bot) =>
+        player != null && bot != null && bot.IsAutonomousWorldBot &&
+        SameGuild(player.Guild?.GuildID, AutonomousBotGuilds.ShownGuild(bot)?.GuildID);
+
+    /// <summary>Both in a guild, and the same one. Pure.</summary>
+    public static bool SameGuild(string playerGuildId, string botGuildId) =>
+        !string.IsNullOrEmpty(playerGuildId) && string.Equals(playerGuildId, botGuildId, StringComparison.Ordinal);
+
+    /// <summary>
     /// Whether this invite from too far away sends the bot to the player (a friend, or a same-realm bot the find-group
     /// window is offering), rather than "meet up first".
     /// </summary>
     public static bool Travels(GamePlayer player, GameBot bot) =>
         player != null && bot != null &&
-        Travels(bot.IsAutonomousWorldBot, bot.IsTemporaryGroupHelper, IsFriend(player, bot),
+        Travels(bot.IsAutonomousWorldBot, bot.IsTemporaryGroupHelper, IsFriendOrGuildmate(player, bot),
             BotGroupInvite.CloseEnoughToInviteByName(player, bot), LookingForGroup(bot), player.Realm == bot.Realm, InOwnGroup(player, bot));
 
     /// <summary>
