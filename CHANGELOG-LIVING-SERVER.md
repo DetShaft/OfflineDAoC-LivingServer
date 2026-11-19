@@ -8,6 +8,21 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.23 — 2026-11-19
+
+All tests only: not yet seen in game.
+- **Keep lords (#157):** a keep lord stayed shielded from bots while any wall or tower door stood, so group bots stood around
+  Jarl Killaloe and only pets swung. Only the gate and keep door now count.
+- **Crowd control (#151, #152):** bots no longer cast area mezzes on enemies that are immune or already under attack, hold
+  area mez for 60 s after a try, and a mez claim that cannot land no longer stops groupmates from attacking.
+- **Siege engineer (#148):** the engineer you buy from a Siegemaster follows at realm speed and walks to the door before
+  building a ram.
+- **New client (#149, #154, #76):** no moving while stunned, mezzed or rooted; the loading screen waits for the server's NPCs;
+  /bug opens in your own browser instead of an empty profile.
+- **Guildmate bots (#150):** gamebots in your guild answer a far group invite without being on your friends list.
+- **Killaloe (#153):** the nine captured PosternKeepers are removed.
+- **Docs:** PvP behavior research for the bot AI (`docs/PVP-BEHAVIOR-RESEARCH.md`). Group-bot death lines now say what the bot was doing.
+
 ## Beta 1.1.22 — 2026-11-18
 
 All tests only: not yet seen in game.
