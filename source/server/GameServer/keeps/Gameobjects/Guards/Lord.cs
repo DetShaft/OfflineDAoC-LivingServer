@@ -22,9 +22,31 @@ namespace DOL.GS.Keeps
         /// While the gate or the keep door (posterns aside) is closed, the lord takes no damage from a bot or a bot's pet.
         /// Players are unaffected.
         /// </summary>
-        public bool ShieldedFromBots =>
-            Component?.Keep is { } keep && keep.Doors.Values.Any(d => d.IsAlive && d.IsAttackableDoor &&
-                d.State == eDoorState.Closed && !AutonomousWorldBotController.PosternLike(keep, d));
+        /// <remarks>
+        /// #157 (2026-11-19, Dun Killaloe): only doors at ground level count, the gate and the keep door. Two doors up on
+        /// the gatehouse (Z 9200, 430 above the gate) stood after Ferac's group had opened the gate and broken the keep
+        /// door, so the lord stayed shielded: his bots would not take the lord as a target and their pets did no damage,
+        /// and the group stood around him while he killed them one by one.
+        /// </remarks>
+        public bool ShieldedFromBots
+        {
+            get
+            {
+                if (Component?.Keep is not { } keep)
+                    return false;
+                var doors = keep.Doors.Values.Where(d => d.IsAttackableDoor && !AutonomousWorldBotController.PosternLike(keep, d)).ToArray();
+                if (doors.Length == 0)
+                    return false;
+                int groundZ = doors.Min(d => d.Z);
+                return doors.Any(d => d.IsAlive && d.State == eDoorState.Closed && BlocksTheWayIn(d.Z, groundZ));
+            }
+        }
+
+        /// <summary>Doors more than this far above the keep's lowest door are on walls or towers, not on the way in.</summary>
+        public const int GroundDoorHeight = 250;
+
+        /// <summary>A door on the way in to the lord: at the height of the keep's lowest door (the gate), give or take.</summary>
+        public static bool BlocksTheWayIn(int doorZ, int lowestDoorZ) => doorZ - lowestDoorZ <= GroundDoorHeight;
 
         public static bool IsBotSource(GameObject source)
         {
