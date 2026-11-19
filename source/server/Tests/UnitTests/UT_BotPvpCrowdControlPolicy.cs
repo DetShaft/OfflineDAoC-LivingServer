@@ -12,6 +12,14 @@ namespace DOL.UnitTests
     [TestFixture, NonParallelizable]
     public class UT_BotPvpCrowdControlPolicy
     {
+        // Same test-double server and bot fake as UT_AutonomousSiegeEquipment.
+        private static readonly IObjectDatabase Empty = DispatchProxy.Create<IObjectDatabase, UT_UnobservedConcentration.EmptyReads>();
+        private sealed class Server : GameServer { protected override IObjectDatabase DataBaseImpl => Empty; }
+        private GameServer _previous;
+        [SetUp] public void Setup()
+        { _previous = GameServer.Instance; GameServer.LoadTestDouble((Server)RuntimeHelpers.GetUninitializedObject(typeof(Server))); }
+        [TearDown] public void Cleanup() => GameServer.LoadTestDouble(_previous);
+
         private static Spell S(string type, int radius = 0, double castSeconds = 0, double value = 0, int level = 1) =>
             new(new DbSpell { Type = type, Target = "Enemy", Radius = radius, CastTime = castSeconds, Value = value, Duration = 20 }, level);
 
@@ -81,6 +89,7 @@ namespace DOL.UnitTests
         {
             private Bot() : base((OfflineWorldBotRecord)null) { }
             public override bool IsAlive => true;
+            public override eRealm Realm { get; set; }
         }
 
         private static void SetLoopTime(long value) =>
