@@ -41,8 +41,8 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
 
 | Role | Albion | Midgard | Hibernia |
 |---|---|---|---|
-| Healer | Cleric, Friar | Healer, Shaman | Druid, Bard |
-| Crowd control | Sorcerer, Minstrel, Cleric (stun) | Healer, Skald, Shaman (root) | Bard, Druid (root), Enchanter |
+| Healer | Cleric, Friar | Healer, Shaman | Druid, Bard, Warden |
+| Crowd control | Sorcerer, Minstrel, Cleric (stun) | Healer, Skald, Spiritmaster, Shaman (root) | Bard, Druid (root), Enchanter |
 | Nuker | Wizard, Cabalist, Theurgist | Runemaster, Spiritmaster, Bonedancer | Eldritch, Mentalist, Enchanter |
 | Melee damage | Mercenary, Reaver, Paladin | Berserker, Savage, Thane | Blademaster, Champion, Valewalker |
 | Tank/peeler | Armsman, Paladin | Warrior, Thane | Hero, Champion |
@@ -201,7 +201,7 @@ posts below):**
     class lines):**
     - Direct damage, DoTs, debuffs, roots/snares, single and most area mezzes and stuns: **1,500** (240 of 281
       single-target nukes).
-    - Bolts: **1,875** (all 75). The Sorcerer's Domination AE mez is also 1,875 (matches CH-1.60).
+    - Bolts: **1,875** (all 75). The Sorcerer's Mind-line AE mez is also 1,875 (matches CH-1.60).
     - Heals, group heals, heal-over-time and pet heals: **2,000**.
     - Nearsight and amnesia: **2,300**.
     - Shouts and point-blank spells: 700, or 0 (centered on the caster).
@@ -356,7 +356,7 @@ posts below):**
 
   - **It is not point-blank.** It is cast on an enemy up to 1,500 away and hits everyone within 250 of that target. It
     needs no instrument. Compare the Bard's Captivate line (1,500 range, 350 radius, 3 s cast) and the Sorcerer's
-    Senility line (1,875 range, 350-400 radius, 3 s cast).
+    Mind-line AE mez (the Senility spells, 1,875 range, 350-400 radius, 3 s cast).
   - The Minstrel's single-target flute mez ("Cadence" line) is a pulsing song: 1,500 range, 3 s cast, needs a flute,
     12-29 s per pulse.
   - The Minstrel's only point-blank CC is its instant stun shout ("Stunning Yell" line, 700 range, no radius).
@@ -622,7 +622,8 @@ Source keys are in the source list at the end. "Nsf" means no source found.
 
 ## Table 2: positioning and movement
 
-The same rule is applied to each realm's classes by role.
+The same rule is applied to each realm's classes by role. A row that names several classes is one rule that each of
+those classes follows. "Nsf" means no source found.
 
 ### Albion
 
@@ -648,20 +649,20 @@ The same rule is applied to each realm's classes by role.
 | Shaman | Midline, flexible | Its role changes | Holds/floats | Rebuffs after deaths | Consensus | BT-sham |
 | Skald | Front/midline | Splitting off or committing | Interrupts | Splits when casters are free | Consensus | BT-skald |
 | Runemaster, Spiritmaster, Bonedancer | ~1,500 behind the tanks | Enemy melee in reach | Kites; Bonedancer interrupts while moving | Bonedancer finishes kills | Consensus | BT-bd |
-| Shadowblade, Hunter | Stealth; Hunter at bow range | Opening | Hit and reset | | Consensus | BT-sb |
+| Shadowblade, Hunter | Stealth; Hunter at bow range | Opening | Hit and reset | Nsf | Consensus | BT-sb |
 
 ### Hibernia
 
 | Class | Preferred range | Moves when | Kites / peels / holds | Notes | Confidence | Source |
 |---|---|---|---|---|---|---|
 | Hero, Champion | On the casters (guard) | A diver reaches the casters | Peels | Babysits Enchanter/Eldritch | Consensus | BT-hero |
-| Blademaster, Valewalker | Melee on the assist target | The main assist calls a target | Holds | | Unsure | R-8v8 |
+| Blademaster, Valewalker | Melee on the assist target | The main assist calls a target | Holds | Nsf | Unsure | R-8v8 |
 | Druid (Nature) | Front, root range | Root angles | Roots, then the group kites back | Creates separation | Consensus | BT-druid |
-| Druid (Nurture), Warden | Backline / midline | Enemy closes | Holds | | Consensus | BT-druid |
+| Druid (Nurture), Warden | Backline / midline | Enemy closes | Holds | Nsf | Consensus | BT-druid |
 | Bard | Front/midline | Amnesia/interrupt windows | Interrupts; must keep up with a group that kites back | Watches both backlines | Consensus | BT-bard |
 | Eldritch, Enchanter, Mentalist | ~1,500, kiting backwards as a group | Melee train incoming | Kites (disease/snare) | Assist train | Consensus | BT-eld |
 | Animist | ~1,000 (shrooms) | Rarely | Holds | Bot code uses a 1,000 shroom standoff | Unsure | REPO |
-| Nightshade, Ranger | Stealth; Ranger at bow range | Opening | Hit and reset | | Consensus | BT-ns, PX-arch |
+| Nightshade, Ranger | Stealth; Ranger at bow range | Opening | Hit and reset | Nsf | Consensus | BT-ns, PX-arch |
 
 ## Table 3: crowd control and abilities
 
@@ -672,17 +673,21 @@ Immunity rules for every row (Confirmed, see question 14):
 - Purge leaves immunity timers in place.
 - Casted stuns leave 60 s in this server's code.
 
+A row that names several classes is one rule that each of those classes follows. Classes with no crowd control of
+their own are listed in each realm's last row.
+
 ### Albion
 
 | Class | CC / key abilities | Typical use | Recast / immunity rules | Bot risk (loops, spam) | Confidence | Source |
 |---|---|---|---|---|---|---|
 | Sorcerer | AE mez (1,875), single mez, root | Opener on the enemy group; re-mez the loose ones | Never on mezzed or immune targets | AE mez chosen every 2 s (largest radius first) | Consensus / Confirmed (code) | BT-sorc, REPO |
 | Minstrel | Flute mez (song), AE mez (Lullaby line, 1.51; targeted, 1,500 range, 250 radius, 5 s cast), instant stun, instant damage spells, pet | Flute mez on one high-priority target; instants to interrupt | AE mez rarely used in RvR | **#152: AE mez retried every 2 s, no immunity or enemy-count check** | Unsure (AE use) / Confirmed (spell data, code) | BT-minst, FH, OD-DB, ZAM, REPO |
-| Cleric | Casted stun (9 s) | On an enemy support during downtime | 60 s immunity | | Consensus | BT-cleric |
+| Cleric | Casted stun (9 s) | On an enemy support during downtime | 60 s immunity | Nsf | Consensus | BT-cleric |
 | Armsman, Paladin | Slam (9 s style stun), snare styles, Guard/Intercept | Slam on a diver | 5× immunity | Bots don't use Guard/Intercept/Protect | Consensus / Confirmed (code) | BT-arms, REPO |
-| Theurgist | Air pets (stun procs), ice pets (snare) | Peel and interrupt | | | Consensus | BT-theurg |
-| Necromancer | AF debuff, quickcast | Debuff on the kill target | Keep it rolling | | Consensus | BT-necro |
+| Theurgist | Air pets (stun procs), ice pets (snare) | Peel and interrupt | Nsf | Nsf | Consensus | BT-theurg |
+| Necromancer | AF debuff, quickcast | Debuff on the kill target | Keep it rolling | Nsf | Consensus | BT-necro |
 | Infiltrator, Scout | PA opener; Scout's Stop (shield stun) | Opener | 5× immunity | Stealth openers never used (filtered) | Consensus / Confirmed | REPO |
+| Mercenary, Reaver, Friar, Wizard, Cabalist | No CC of their own (melee snare styles or damage-plus-snare only) | Nsf | Nsf | Nsf | Nsf | Nsf |
 
 ### Midgard
 
@@ -690,27 +695,30 @@ Immunity rules for every row (Confirmed, see question 14):
 |---|---|---|---|---|---|---|
 | Healer | AE mez, single mez, casted stun | Pacification Healer opens; stuns a support for a kill window | "Better not to spam mez" | Same 2 s AE-first loop as the Minstrel | Consensus / Confirmed | CoW, BT-healer, REPO |
 | Shaman | Roots, disease | Root casters, then pull back | 60 s immunity | Shaman PvE root path is separate (`ShamanPveRoot`) | Consensus | BT-sham |
-| Skald | Instant mez, instant snare, 2 instant damage spells | Interrupt chain | | Instants used to cancel the bot's swing (fixed in #135) | Consensus | BT-skald |
+| Skald | Instant mez, instant snare, 2 instant damage spells | Interrupt chain | Nsf | Instants used to cancel the bot's swing (fixed in #135) | Consensus | BT-skald |
 | Warrior, Thane | Slam, snare styles | Peel | 5× immunity | No Guard/Intercept | Consensus | BT-war |
 | Spiritmaster | Mez | Opener support | 60 s immunity | Same AE-first loop | Unsure | CoW |
-| Bonedancer | Instant body debuff (interrupts before 1.111 only, CH-1.111), lifetap | Interrupt, then burst | Eden: 8 s debuff, 10 s recast | | Confirmed (Eden PDF data) | EDN-108 |
+| Bonedancer | Instant body debuff (interrupts before 1.111 only, CH-1.111), lifetap | Interrupt, then burst | Eden: 8 s debuff, 10 s recast | Nsf | Confirmed (Eden PDF data) | EDN-108 |
 | Shadowblade | PA, then Creeping Death, then Stunning Stab | Opener | 5× immunity | Not used by bots | Consensus | BT-sb |
+| Berserker, Savage, Runemaster, Hunter | No CC of their own (melee snare styles or damage-plus-snare only) | Nsf | Nsf | Nsf | Nsf | Nsf |
 
 ### Hibernia
 
 | Class | CC / key abilities | Typical use | Recast / immunity rules | Bot risk (loops, spam) | Confidence | Source |
 |---|---|---|---|---|---|---|
 | Bard | AE mez, single mez, instant amnesia | Wins the "mezz war" opener | Never recast on mezzed or immune targets | Same AE-first loop; PvE mez kept out of the attack rotation (`BardBotCrowdControlPolicy`) | Consensus / Confirmed | BT-bard, REPO |
-| Druid | Instant root, AE root, casted root | Root enemy supports, then kite away | 60 s immunity | | Consensus | BT-druid |
-| Eldritch | Nearsight, Dex/Qui debuff, disease, snare | Nearsight on supports before the assist call | 60 s nearsight immunity | | Consensus | BT-eld |
+| Druid | Instant root, AE root, casted root | Root enemy supports, then kite away | 60 s immunity | Nsf | Consensus | BT-druid |
+| Eldritch | Nearsight, Dex/Qui debuff, disease, snare | Nearsight on supports before the assist call | 60 s nearsight immunity | Nsf | Consensus | BT-eld |
 | Enchanter, Mentalist | Mez, pets | Support CC | 60 s immunity | Same AE-first loop | Unsure | R-8v8 |
 | Hero, Champion | Slam, Numb, snares, Guard | Peel | 5× immunity | No Guard/Intercept | Consensus | BT-hero |
-| Warden | Bladeturn, songs | Support | | Chant anchor only (#32) | Confirmed (code) | REPO #32 |
-| Nightshade, Ranger | PA, then Garrote; bow crit | Opener | | Not used by bots | Consensus | BT-ns |
+| Warden | Bladeturn, songs | Support | Nsf | Chant anchor only (#32) | Confirmed (code) | REPO #32 |
+| Nightshade, Ranger | PA, then Garrote; bow crit | Opener | Nsf | Not used by bots | Consensus | BT-ns |
+| Blademaster, Valewalker, Animist, Sluaghbinder | No CC of their own (Sluaghbinder is custom: Nsf) | Nsf | Nsf | Nsf | Nsf | Nsf |
 
 ## Table 4: target priority by role
 
-The same rule applies in every realm; only the class names change.
+The same rule applies in every realm; only the class names change. A row that names several classes is one rule that
+each of those classes follows.
 
 ### Albion
 
@@ -730,7 +738,7 @@ The same rule applies in every realm; only the class names change.
 | CC (Pacification Healer, Skald) | Enemy supports and the Sorcerer → free-casting casters | Skald joins the train only when a target is low | Pacification Healer pulls back after CC | BT-healer, BT-skald |
 | Nuker (Runemaster, Spiritmaster, Bonedancer) | Main assist's target; interrupt healers until a window opens | Strict assist | Melee in reach | BT-bd |
 | Melee (Berserker, Savage, Thane) | Main assist's target | Strict assist | Train gets peeled | BT-war |
-| Peel (Warrior) | "Who dies if I do nothing?" | Not on the train | | BT-war |
+| Peel (Warrior) | "Who dies if I do nothing?" | Not on the train | Nsf | BT-war |
 
 ### Hibernia
 
@@ -739,13 +747,15 @@ The same rule applies in every realm; only the class names change.
 | Healer (Nurture Druid, Warden, Bard) | Self → focused teammate → cures | Not on the train | Group kiting back (keep up) | BT-druid, BT-bard |
 | CC (Bard, Nature Druid) | Opener AE mez → amnesia on whoever is casting → roots on chasers | Never hit mezzed enemies | Opener lost | BT-bard, BT-druid |
 | Nuker (Eldritch, Enchanter, Mentalist) | Main assist's target (Enchanter is often the MA); nearsight supports first | Strict assist | Melee train incoming (kite back) | BT-eld |
-| Melee (Blademaster, Champion, Valewalker) | Main assist's target | Strict assist | | R-8v8 |
-| Peel (Hero) | Whoever dives the casters | Guards a caster | | BT-hero |
+| Melee (Blademaster, Champion, Valewalker) | Main assist's target | Strict assist | Nsf | R-8v8 |
+| Peel (Hero) | Whoever dives the casters | Guards a caster | Nsf | BT-hero |
 
 ## Table 5: bot vs player gap
 
 This was read only, from `main` on 2026-11-19. Bot code applies each rule by class role, so every gap applies to all
-three realms unless noted. The bot types are:
+three realms unless noted.
+The "AE mez use" and "CC reservation" rows describe the code before the #152/#151 fix that followed this doc
+(immunity and cluster checks, a 60 s area mez hold, and claims that end when the cast does; tests only). The bot types are:
 - **All:** every bot.
 - **Player-led:** companions, and gamebots in a player's group.
 - **Autonomous:** gamebots that no player leads.
@@ -802,8 +812,8 @@ three realms unless noted. The bot types are:
 - **Phoenix:** Season 1 patch notes recovered via Wayback; celerity range, Bard amnesia range and Minstrel charm are
   Confirmed for Phoenix. The damage-table-21 and Thane-nuke claims are still snippets (Unsure).
 - **Minstrel AE mez:** now Confirmed from spell data: targeted, 1,500 range, 250 radius, 5 s cast, up to 30 s. #152's
-  "point-blank" wording doesn't match the data. This repo doesn't ship spell data, so the check used OpenDAoC's public
-  DB; if the shipped DB differs, re-check.
+  "point-blank" wording doesn't match the data. The installed game's own database (`runtime/data/opendaoc.sqlite3.db`,
+  read 2026-11-19) has the same values (levels 10/15/21/29/36/46), so the shipped data matches OpenDAoC's public DB.
 - **Root/snare immunity:** mez/stun/root immunity comes from 1.42. When snares joined the root timer wasn't found
   (later patches treat them as one).
 - **Spell interrupt length:** classic was 2 s from 1.68; this server's default is 3 s.
