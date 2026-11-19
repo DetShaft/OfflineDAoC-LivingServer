@@ -493,9 +493,14 @@ namespace DOL.GS
             if (_owner.TargetObject != door)
                 return;                                    // the "keep it targeted" line above covers it; the ram spell needs the target
             if (Deploy())
+            {
                 Finish(refund: false);
-            else
-                _stagingUntil = Math.Min(_stagingUntil, GameLoop.GameLoopTime + 10_000);   // the spell said why; don't retry for long
+                return;
+            }
+            // One try only: the spell already told the player why (too close, too many rams...). Retrying every check
+            // repeated that message twice a second (review on #158).
+            SayTo(_owner, "It won't go up here. I'm back with you; tell me to [deploy] again when you're ready.");
+            StopRam();
         }
 
         private void StopRam()
