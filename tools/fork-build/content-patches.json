@@ -452,8 +452,8 @@
   {
     "Path": "new-client/godot/game/zone_viewer.gd",
     "Released": "39e4c91d75a99240a5de057b6c289477a66a446d6a3e146fdee3e135a664a068",
-    "Fixed": "b6ff0817053f214bb0c98a162cbb5cdd686471b610fb9c0d8b49df6c7def0082",
-    "Size": 90683,
+    "Fixed": "fbf916aede0dfacf5fc1d3778c932c9288ddcf8c0733e4598b56f1989c1c34cb",
+    "Size": 92267,
     "File": "content/godot/game/zone_viewer.gd",
     "ReplaceAny": true
   },
@@ -468,8 +468,8 @@
   {
     "Path": "new-client/godot/game/ui/chat_window.gd",
     "Released": "43f3740344e2427b2745567a65168e6816bf2eb4ea0e6aa6f372ea4ed44173b8",
-    "Fixed": "df694e99b89a2f4fd89b690dbb18e61528d135a84841aa0e01e28802fcadeebd",
-    "Size": 19354,
+    "Fixed": "101fcbc15791c2be0bbed6e3e3f1e5e62cb13afea27f0fbd3fb6ae0467e7290d",
+    "Size": 20852,
     "File": "content/godot/game/ui/chat_window.gd",
     "ReplaceAny": true
   },
@@ -484,8 +484,8 @@
   {
     "Path": "new-client/godot/game/net/server_world.gd",
     "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
-    "Fixed": "a06f05ae58f38a12b5dcdb209b4ca30c9c24447d60e5c2f4469f4ed9f9afe523",
-    "Size": 89099,
+    "Fixed": "9527463bf0144b48d5b9a1111b3bced840d911747c639a81282d4c601dbcd4d4",
+    "Size": 89420,
     "File": "content/godot/game/net/server_world.gd",
     "ReplaceAny": true
   },
@@ -711,6 +711,14 @@
     "Fixed": "209fce8a62ada047091fdac18092609aecba28e9d28571f160722ffd89704d04",
     "Size": 13924,
     "File": "content/godot/game/weapon_models.gd",
+    "ReplaceAny": true
+  },
+  {
+    "Path": "new-client/godot/game/player.gd",
+    "Released": "5d18a2742eab740a4f5813234fc597acfb64913cfaecaf67b52b0f29780df453",
+    "Fixed": "503c9b4a153a6cd64041c88c0243980adf68afd36c03d48eb038374e63dd6e60",
+    "Size": 53864,
+    "File": "content/godot/game/player.gd",
     "ReplaceAny": true
   }
 ]

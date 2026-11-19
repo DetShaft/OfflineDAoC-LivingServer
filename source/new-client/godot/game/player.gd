@@ -80,6 +80,8 @@ var dead := false
 var sitting := false                   # /sit (Combat.sit): sit_down once, then sit_idle until standing up
 var speed_mult := 1.0                  # sprint (x1.3, Abilities)
 var cc := ""                           # "stun" / "mez" / "root" from monster spells (Casting): no moving
+var server_hold := false               # the server's game: its MaxSpeed is 0 (stunned, mezzed, rooted, too heavy) - no
+                                       # moving, or the server snaps you back to where you were held (issue #149)
 var snare_mult := 1.0                  # snares: the run speed's share left
 var shade := false                       # a Necromancer with a servant up (Pets)
 var riding := false                     # on a stable horse (HorseRoutes moves you; jump gets you off)
@@ -761,6 +763,12 @@ func hold() -> void:
 	velocity = Vector3.ZERO
 
 
+## Crowd controlled: no moving, climbing or jumping. Casting's own stun / mez / root (`cc`), or in the server's game its
+## MaxSpeed of 0 (`server_hold`, issue #149: the client used to keep moving and the server rubber-banded it back).
+func held() -> bool:
+	return cc != "" or server_hold
+
+
 func _physics_process(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_physics_step(delta)
@@ -853,13 +861,13 @@ func _physics_step(delta: float) -> void:
 		speed = WALK_SPEED
 	var wish := local.rotated(Vector3.UP, char_yaw) * speed * speed_mult * buff_speed * snare_mult * encumbrance * stealth_mult \
 			* _wounded_mult()
-	if cc != "":
+	if held():
 		wish = Vector3.ZERO                             # stunned / mesmerized / rooted: no moving
 
-	if not climbing and not swimming and ahead > 0.0 and cc == "" and _climb_ahead():
+	if not climbing and not swimming and ahead > 0.0 and not held() and _climb_ahead():
 		climbing = true
 		PlayerData.message.emit("You start climbing.", "system")
-	if climbing and (_act("jump") or swimming or cc != "" or dead):
+	if climbing and (_act("jump") or swimming or held() or dead):
 		_stop_climbing()
 	if climbing:
 		# up while pressing forward (into the ladder: the climb wall holds you), down with back, still otherwise
@@ -886,7 +894,7 @@ func _physics_step(delta: float) -> void:
 	elif grounded:
 		velocity.x = wish.x
 		velocity.z = wish.z
-		velocity.y = JUMP_VELOCITY if _act("jump") else 0.0
+		velocity.y = JUMP_VELOCITY if _act("jump") and not held() else 0.0
 	else:
 		# airborne: keep the take-off momentum, a little steering
 		velocity.x = lerpf(velocity.x, wish.x, AIR_CONTROL * delta * 10.0)

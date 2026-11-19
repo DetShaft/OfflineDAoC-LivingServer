@@ -53,6 +53,8 @@ SHIPPED = [
     "game/zone_audio.gd",
     "game/zone_door.gd",
     "game/sound_loader.gd",
+    "game/player.gd",
+    "game/zone_viewer.gd",
 ]
 CREATE_ONLY = [
     "game/ui/friends_window.gd",
@@ -76,6 +78,8 @@ RELEASED_PATHS = [
     "game/character_sounds.gd",
     "game/zone_audio.gd",
     "game/zone_door.gd",
+    "game/player.gd",
+    "game/zone_viewer.gd",
 ]
 NEW_CLASSES = ("FriendsWindow", "LfgWindow", "CommanderPanel")
 GODOT_VERSION = "4.7.2"
@@ -234,6 +238,18 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write("".join(line + "\n" for line in probe_out.splitlines() if "[loot_roll_probe]" in line))
         if probe.returncode != 0 or "[loot_roll_probe] FAIL" in probe_out or "[loot_roll_probe] ok" not in probe_out:
             print(f"loot_roll_probe failed (exit {probe.returncode})", file=sys.stderr)
+            return 1
+        # The 2026-11-19 client fixes' pure checks (#76 browser APPDATA, #154 loading-screen NPC wait).
+        shutil.copy2(GODOT_PROJECT / "tests/client_fixes_probe.gd", work / "tests/client_fixes_probe.gd")
+        probe = subprocess.run(
+            [str(godot), "--headless", "--path", str(work), "-s", "res://tests/client_fixes_probe.gd"],
+            text=True, capture_output=True, timeout=180,   # a script error before quit() leaves Godot running
+        )
+        probe_out = (probe.stdout or "") + (probe.stderr or "")
+        sys.stdout.write("".join(line + "\n" for line in probe_out.splitlines()
+                                 if "[client_fixes_probe]" in line or "SCRIPT ERROR" in line))
+        if probe.returncode != 0 or "[client_fixes_probe] FAIL" in probe_out or "[client_fixes_probe] ok" not in probe_out:
+            print(f"client_fixes_probe failed (exit {probe.returncode})", file=sys.stderr)
             return 1
         print(
             "New-client script check OK "

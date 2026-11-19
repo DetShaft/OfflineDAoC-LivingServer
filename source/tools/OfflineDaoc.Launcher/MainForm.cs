@@ -3227,6 +3227,9 @@ internal sealed partial class MainForm : Form
         if (!InstalledEditionHasCustomClass(_database))
             start.ArgumentList.Add("--custom-class=off");
         // The new client's settings, keybinds, quickbars and logs stay in new-client\save.
+        // The player's own APPDATA, so a web link the client opens (/bug, issue #76) goes to their running browser
+        // with their profile, not a separate empty browser window that inherited the APPDATA above.
+        start.Environment["OFFLINEDAOC_USER_APPDATA"] = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         start.Environment["APPDATA"] = Path.Combine(top, "save");
         // The .NET it runs on: the game's bundled runtime (tools\dotnet beside new-client), else new-client\tools\dotnet.
         foreach (string candidate in new[] { Path.Combine(top, "..", "tools", "dotnet"), Path.Combine(top, "tools", "dotnet") })

@@ -1698,11 +1698,15 @@ var pet_oid := 0
 var max_speed_pct := 100
 
 
-## Your speed (the server's MaxSpeed percent) on your figure.
+## Your speed (the server's MaxSpeed percent) on your figure. 0 means you can't move at all: the server sends it while
+## you are stunned, mesmerized, rooted or too heavy to move (MaxSpeedCalculator), and a new MaxSpeed when that ends.
+## Issue #149: 0 used to count as full speed, so a stunned player kept walking and the server snapped them back.
 func _apply_max_speed(pct: int) -> void:
 	max_speed_pct = pct
 	if viewer and viewer.player:
-		viewer.player.encumbrance = clampf(float(pct) / 100.0, 0.0, 3.0) if pct > 0 else 1.0
+		viewer.player.server_hold = pct <= 0
+		if pct > 0:
+			viewer.player.encumbrance = clampf(float(pct) / 100.0, 0.0, 3.0)
 
 
 func _pet_window(d: Dictionary) -> void:
