@@ -8,7 +8,14 @@ namespace DOL.GS
     /// <summary>Short-lived reservations scoped to player-versus-player targets only.</summary>
     public static class BotPvpCrowdControl
     {
-        private sealed class Claim { public long Until; public eRealm Realm; public WeakReference<GameBot> Caster; }
+        private sealed class Claim
+        {
+            public long Until; public long Start; public int SpellId; public eRealm Realm; public WeakReference<GameBot> Caster;
+            public BotCasterSurvival.ControlKind Kind;
+        }
+
+        /// <summary>A claim holds without a running cast only this long (the time to start the cast).</summary>
+        public const int ClaimStartGraceMilliseconds = 1_000;
         private static readonly ConditionalWeakTable<GameLiving, Claim> Claims = new();
         private sealed class FreeEnemyScan { public long Until; public bool Found; }
         private static readonly ConditionalWeakTable<GameBot, FreeEnemyScan> FreeEnemyScans = new();
@@ -26,9 +33,37 @@ namespace DOL.GS
             if (bot.Owner is GamePlayer player && player.IsAttacking && player.TargetObject == target) return false;
             if (target.IsMezzed) return OtherEnemyFree(bot);
             if (!Claims.TryGetValue(target, out Claim claim)) return false;
-            lock (claim) return claim.Realm == bot.Realm && claim.Until > GameLoop.GameLoopTime &&
-                claim.Caster != null && claim.Caster.TryGetTarget(out GameBot caster) && caster.IsAlive && caster != bot;
+            lock (claim)
+            {
+                if (claim.Realm != bot.Realm || claim.Until <= GameLoop.GameLoopTime || claim.Caster == null ||
+                    !claim.Caster.TryGetTarget(out GameBot caster) || !caster.IsAlive || caster == bot) return false;
+                // #151: a claim that cannot land no longer freezes the group. It ends when the target is
+                // immune to that control, or when the claiming cast is no longer running.
+                if (claim.Kind != BotCasterSurvival.ControlKind.None && BotCasterSurvival.Immune(target, claim.Kind) ||
+                    !ClaimCastAlive(claim, caster))
+                {
+                    claim.Until = 0;
+                    return false;
+                }
+                return true;
+            }
         }
+
+        /// <summary>
+        /// A claim stays alive during the short start grace, then only while its caster is casting the claimed spell.
+        /// <paramref name="castingSpellId"/> is null when the caster is not casting.
+        /// </summary>
+        public static bool ClaimCastAlive(long start, int spellId, long now, int? castingSpellId) =>
+            now - start < ClaimStartGraceMilliseconds || spellId != 0 && castingSpellId == spellId;
+
+        private static bool ClaimCastAlive(Claim claim, GameBot caster)
+        {
+            long now = GameLoop.GameLoopTime;
+            if (now - claim.Start < ClaimStartGraceMilliseconds) return true;
+            int? casting = caster.castingComponent is { IsCasting: true } component ? component.SpellHandler?.Spell?.ID : null;
+            return ClaimCastAlive(claim.Start, claim.SpellId, now, casting);
+        }
+
         // Owner 2026-10-27: a mesmerized enemy is left alone only while another enemy is still free to fight nearby.
         // Once the mez is all that is left, the bots finish it instead of walking away from it.
         // Plain realm checks, not LegalEnemy: that asks the server rules, which ask this class again.
@@ -48,14 +83,21 @@ namespace DOL.GS
             }
         }
 
-        public static bool Reserve(GameBot caster, GameLiving target, int duration)
+        public static bool Reserve(GameBot caster, GameLiving target, int duration) =>
+            Reserve(caster, target, duration, 0, BotCasterSurvival.ControlKind.None);
+
+        public static bool Reserve(GameBot caster, GameLiving target, int duration, int spellId, BotCasterSurvival.ControlKind kind)
         {
             Claim claim = Claims.GetOrCreateValue(target);
             lock (claim)
             {
-                if (claim.Until > GameLoop.GameLoopTime && claim.Caster != null && claim.Caster.TryGetTarget(out GameBot old) && old != caster && old.IsAlive) return false;
+                if (claim.Until > GameLoop.GameLoopTime && claim.Caster != null && claim.Caster.TryGetTarget(out GameBot old) && old != caster && old.IsAlive &&
+                    ClaimCastAlive(claim, old)) return false;
                 claim.Realm = caster.Realm;
                 claim.Caster = new(caster);
+                claim.Start = GameLoop.GameLoopTime;
+                claim.SpellId = spellId;
+                claim.Kind = kind;
                 claim.Until = GameLoop.GameLoopTime + Math.Clamp(duration, 1000, 10_000);
                 return true;
             }
