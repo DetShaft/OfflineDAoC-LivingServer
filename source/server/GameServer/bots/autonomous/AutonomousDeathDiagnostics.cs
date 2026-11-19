@@ -64,6 +64,45 @@ namespace DOL.GS
             }
         }
 
+        /// <summary>
+        /// What a bot in a real player's group is doing, for its death line and dashboards. Such a bot runs none of its
+        /// own goals (the autonomous controller skips it), so its stored activity is whatever it last did alone. The
+        /// Jarl Killaloe deaths of 2026-11-19 read "Leaving the battleground" and "Teleporting to Caer Ulfwych" while the
+        /// bots were in Ferac's group fighting the lord.
+        /// </summary>
+        public static string PlayerGroupActivity(string leaderName, string targetName) =>
+            string.IsNullOrEmpty(targetName) ? $"In {leaderName}'s group" : $"Fighting {targetName} in {leaderName}'s group";
+
+        /// <summary>
+        /// One line per death of a bot in a real player's group (PLAYER_GROUP_BOT_DEATH): where every group member was
+        /// and what it was doing. The 2026-11-19 lord fight lost three bots one at a time while the group's cleric stood
+        /// 734 units away, out of combat, and nothing in the log said where the rest of the group was.
+        /// </summary>
+        public static void RecordPlayerGroup(GameBot bot, GameObject killer)
+        {
+            if (bot?.IsPlayerLedGroup != true || bot.Group == null || !Log.IsInfoEnabled)
+                return;
+            try
+            {
+                string members = string.Join(";", bot.Group.GetMembersInTheGroup().Where(m => m != null && m != bot).Select(m =>
+                {
+                    bool here = m.CurrentRegion == bot.CurrentRegion;
+                    string state = m is GameNPC { Brain: var brain } ? brain?.FSM?.GetCurrentState()?.StateType.ToString() ?? "-" : "player";
+                    return $"{m.Name}:alive={m.IsAlive}:dist={(here ? m.GetDistanceTo(bot).ToString() : "other-region")}:" +
+                           $"dz={(here ? (m.Z - bot.Z).ToString() : "-")}:combat={m.InCombat}:casting={m.IsCasting}:" +
+                           $"target={(m.TargetObject as GameLiving)?.Name ?? "-"}:state={state}";
+                }));
+                Log.Info($"PLAYER_GROUP_BOT_DEATH bot=\"{bot.Name}\" id={bot.DatabaseID} class=\"{bot.ClassName}\" level={bot.Level} " +
+                         $"leader=\"{bot.PlayerGroupLeader?.Name}\" killer=\"{killer?.Name}\" killerLevel={(killer as GameLiving)?.Level ?? 0} " +
+                         $"target=\"{(bot.TargetObject as GameLiving)?.Name}\" region={bot.CurrentRegionID} at={bot.X},{bot.Y},{bot.Z} " +
+                         $"members=\"{members}\"");
+            }
+            catch (Exception exception)
+            {
+                Log.Warn("PLAYER_GROUP_BOT_DEATH could not be written", exception);
+            }
+        }
+
         public static void Record(GameBot bot, GameObject killer, string activityBefore)
         {
             if (bot?.IsAutonomousWorldBot != true)

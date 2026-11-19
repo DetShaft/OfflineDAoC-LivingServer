@@ -3,6 +3,7 @@ using System.Collections;
 using System.Linq;
 using DOL.Database;
 using DOL.GS.PacketHandler;
+using DOL.GS.PropertyCalc;
 using DOL.GS.Spells;
 
 namespace DOL.GS
@@ -218,13 +219,68 @@ namespace DOL.GS
     }
 
     /// <summary>
+    /// Where and how fast a siege engineer moves (#148). Plain numbers, so the rules can be tested without a world.
+    /// </summary>
+    public static class SiegeEngineerPlan
+    {
+        /// <summary>A player's base run speed (<see cref="GamePlayer.PLAYER_BASE_SPEED"/>) at the top speed buff rate.</summary>
+        public static readonly short RealmSpeed = (short)Math.Round(GamePlayer.PLAYER_BASE_SPEED * MaxSpeedCalculator.SPEED5);
+
+        /// <summary>The ram spell's band: the player must stand 200 to 500 units from the door (SummonSiegeRam).</summary>
+        public const int RamMinRange = 200;
+        public const int RamMaxRange = 500;
+
+        /// <summary>Where the engineer waits to build a ram: inside the band with a margin on both sides.</summary>
+        public const int RamStagingRange = 320;
+
+        /// <summary>The player counts as beside the engineer within this distance.</summary>
+        public const int BesideRange = 150;
+
+        /// <summary>How long the engineer waits at the door for the player before he goes back to following.</summary>
+        public const int StagingTimeoutMs = 90_000;
+
+        /// <summary>
+        /// The engineer's permanent speed: realm speed, or a third faster than the player if the player is faster still
+        /// (mounted, sprinting under a speed buff), so he never falls behind.
+        /// </summary>
+        public static short Speed(int ownerSpeed) =>
+            (short)Math.Max(RealmSpeed, Math.Min(short.MaxValue, Math.Ceiling(Math.Max(0, ownerSpeed) * 1.3)));
+
+        public static bool InRamBand(double distanceToDoor) => distanceToDoor >= RamMinRange && distanceToDoor <= RamMaxRange;
+
+        /// <summary>
+        /// The ram staging point: <see cref="RamStagingRange"/> out from the door, on the side the player stands (the
+        /// outside of the keep). With the player on top of the door, the side the engineer comes from is used instead.
+        /// </summary>
+        public static (int X, int Y) RamStagingPoint(int doorX, int doorY, int ownerX, int ownerY, int engineerX, int engineerY)
+        {
+            double dx = ownerX - doorX, dy = ownerY - doorY;
+            if (dx * dx + dy * dy < 40 * 40)
+            {
+                dx = engineerX - doorX;
+                dy = engineerY - doorY;
+            }
+            double length = Math.Sqrt(dx * dx + dy * dy);
+            if (length < 1)
+                return (doorX + RamStagingRange, doorY);
+            return ((int)Math.Round(doorX + dx / length * RamStagingRange), (int)Math.Round(doorY + dy / length * RamStagingRange));
+        }
+    }
+
+    /// <summary>
     /// Follows the player who handed in a siege token and deploys that engine on request. The engine is set up as if
     /// the player used the siegecraft kit (same spell, so the same rules: a ram needs a targeted door in range). He goes
     /// home after 20 minutes, or when the player leaves the region, and the unused token goes back to the player.
+    /// #148: he has no monster brain (the standard one walked him back to the Siegemaster, where he was "spawned",
+    /// between follow checks, so he wandered and hung back), he keeps realm speed or better, and for a ram he walks to
+    /// the targeted door himself and builds it once the player joins him there.
     /// </summary>
     public class GameSiegeEngineer : GameNPC
     {
         public const int IdleMinutes = 20;
+        public const int FollowDistance = 120;
+        private const int FollowMax = 30_000;                // squared in the follow check, so it must stay well inside int
+        private const int WatchMs = 500;
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<GamePlayer, GameSiegeEngineer> Active = new();
 
         private readonly GamePlayer _owner;
@@ -234,10 +290,17 @@ namespace DOL.GS
         private ECSGameTimer _watch;
         private bool _done;
 
+        // A ram on its way to a door: the door, where he waits, and when he stops waiting.
+        private GameLiving _door;
+        private Point3D _staging;
+        private long _stagingUntil;
+        private long _stagingStarted;
+        private bool _toldArrived;
+
         public static bool HasEngineer(GamePlayer player) =>
             player != null && Active.TryGetValue(player, out GameSiegeEngineer engineer) && engineer.ObjectState == eObjectState.Active;
 
-        public GameSiegeEngineer(GamePlayer owner, BotSiegeKind kind, DbItemTemplate token, GameNPC merchant)
+        public GameSiegeEngineer(GamePlayer owner, BotSiegeKind kind, DbItemTemplate token, GameNPC merchant) : base(new DOL.AI.Brain.BlankBrain())
         {
             _owner = owner;
             _kind = kind;
@@ -250,7 +313,8 @@ namespace DOL.GS
             Level = merchant.Level;
             Realm = merchant.Realm;
             Flags |= eFlags.PEACE;
-            MaxSpeedBase = 250;
+            MaxSpeedBase = SiegeEngineerPlan.RealmSpeed;
+            movementComponent.FixedSpeed = true;          // MaxSpeedBase as set, not lowered by health or anything else
             CurrentRegion = merchant.CurrentRegion;
             X = merchant.X;
             Y = merchant.Y;
@@ -258,13 +322,16 @@ namespace DOL.GS
             Heading = merchant.Heading;
         }
 
+        public bool IsGoingToDoor => _door != null;
+
         public override bool AddToWorld()
         {
             if (!base.AddToWorld())
                 return false;
             Active[_owner] = this;
-            Follow(_owner, 120, 30_000);
-            _watch = new ECSGameTimer(this, Watch, 2000);
+            KeepPace();
+            Follow(_owner, FollowDistance, FollowMax);
+            _watch = new ECSGameTimer(this, Watch, WatchMs);
             return true;
         }
 
@@ -278,8 +345,10 @@ namespace DOL.GS
                 SayTo(player, $"I'm working for {_owner.Name}.");
                 return true;
             }
-            string ramNote = _kind == BotSiegeKind.Ram ? " Target the door you want rammed first." : "";
-            SayTo(player, $"I've got the parts for a {BattlegroundSiegeTokens.DisplayName(_kind)}. Tell me to [deploy] it here.{ramNote} " +
+            string ramNote = _kind == BotSiegeKind.Ram
+                ? " For the ram, target the door you want rammed first: I'll walk up to it and build it when you're beside me."
+                : "";
+            SayTo(player, $"I've got the parts for a {BattlegroundSiegeTokens.DisplayName(_kind)}. Tell me to [deploy] it.{ramNote} " +
                 "If you've changed your mind, I can [return] your token.");
             return true;
         }
@@ -290,7 +359,9 @@ namespace DOL.GS
                 return false;
             if (text.Equals("deploy", StringComparison.OrdinalIgnoreCase))
             {
-                if (Deploy())
+                if (_kind == BotSiegeKind.Ram)
+                    StartRam();
+                else if (Deploy())
                     Finish(refund: false);
                 return true;
             }
@@ -300,6 +371,38 @@ namespace DOL.GS
                 return true;
             }
             return true;
+        }
+
+        /// <summary>A ram: build it here if the player already stands in range of the targeted door, else walk to the door.</summary>
+        private void StartRam()
+        {
+            if (_owner.TargetObject is not (Keeps.GameKeepDoor or Keeps.GameRelicDoor) || _owner.TargetObject is not GameLiving door)
+            {
+                SayTo(_owner, "Target the door you want rammed, then tell me to [deploy].");
+                return;
+            }
+            if (!door.IsAlive)
+            {
+                SayTo(_owner, "That door is already down.");
+                return;
+            }
+            if (SiegeEngineerPlan.InRamBand(_owner.GetDistanceTo(door)) && IsWithinRadius(_owner, 400))
+            {
+                if (Deploy())
+                    Finish(refund: false);
+                return;
+            }
+
+            (int x, int y) = SiegeEngineerPlan.RamStagingPoint(door.X, door.Y, _owner.X, _owner.Y, X, Y);
+            _door = door;
+            _staging = new Point3D(x, y, _owner.GetDistanceTo(door) < SiegeEngineerPlan.RamMaxRange * 2 ? _owner.Z : door.Z);
+            _stagingUntil = GameLoop.GameLoopTime + SiegeEngineerPlan.StagingTimeoutMs;
+            _toldArrived = false;
+            _stagingStarted = GameLoop.GameLoopTime;
+            StopFollowing();
+            KeepPace();
+            PathTo(_staging, MaxSpeedBase);
+            SayTo(_owner, $"Right, I'll set it up at the {door.Name}. Meet me there and keep the door targeted.");
         }
 
         /// <summary>Casts the realm's siegecraft kit spell as the owner, so the engine follows the kit's placement rules.</summary>
@@ -324,6 +427,14 @@ namespace DOL.GS
             return true;
         }
 
+        /// <summary>Realm speed, or faster than the player when the player is faster (#148).</summary>
+        private void KeepPace()
+        {
+            short speed = SiegeEngineerPlan.Speed(_owner.movementComponent?.MaxSpeed ?? GamePlayer.PLAYER_BASE_SPEED);
+            if (MaxSpeedBase != speed)
+                MaxSpeedBase = speed;
+        }
+
         private int Watch(ECSGameTimer timer)
         {
             if (_done)
@@ -335,11 +446,68 @@ namespace DOL.GS
                 Finish(refund: true);
                 return 0;
             }
+            KeepPace();
+            // Nothing should ever send him "home", but if anything does, home is where he stands.
+            SpawnPoint = new Point3D(X, Y, Z);
+
+            if (_door != null)
+            {
+                WatchRam();
+                return timer.Interval;
+            }
+
             if (!IsWithinRadius(_owner, 3000))
                 MoveTo(_owner.CurrentRegionID, _owner.X, _owner.Y, _owner.Z, Heading);   // left behind (a port, a jump): catch up
-            if (!IsMoving)
-                Follow(_owner, 120, 30_000);
+            if (FollowTarget != _owner)
+                Follow(_owner, FollowDistance, FollowMax);
             return timer.Interval;
+        }
+
+        private void WatchRam()
+        {
+            GameLiving door = _door;
+            if (!door.IsAlive || door.ObjectState != eObjectState.Active || GameLoop.GameLoopTime > _stagingUntil)
+            {
+                SayTo(_owner, door.IsAlive ? "You didn't come, so I'm back with you. Tell me to [deploy] again at the door." :
+                    "The door's down already. I'm with you again.");
+                StopRam();
+                return;
+            }
+            // Arrived, or stopped as close as the mesh lets him (after a moment, so a path being planned is not taken as a stop).
+            bool arrived = IsWithinRadius(_staging, 60) ||
+                !IsMoving && GameLoop.GameLoopTime - _stagingStarted > 3_000 && IsWithinRadius(_staging, 250);
+            if (!arrived)
+            {
+                if (!IsMoving)
+                    PathTo(_staging, MaxSpeedBase);
+                return;
+            }
+            TurnTo(door);
+            if (!_toldArrived)
+            {
+                _toldArrived = true;
+                SayTo(_owner, "I'm at the door. Come stand beside me with the door targeted.");
+            }
+            if (!IsWithinRadius(_owner, SiegeEngineerPlan.BesideRange) || !SiegeEngineerPlan.InRamBand(_owner.GetDistanceTo(door)))
+                return;
+            if (_owner.TargetObject != door)
+                return;                                    // the "keep it targeted" line above covers it; the ram spell needs the target
+            if (Deploy())
+            {
+                Finish(refund: false);
+                return;
+            }
+            // One try only: the spell already told the player why (too close, too many rams...). Retrying every check
+            // repeated that message twice a second (review on #158).
+            SayTo(_owner, "It won't go up here. I'm back with you; tell me to [deploy] again when you're ready.");
+            StopRam();
+        }
+
+        private void StopRam()
+        {
+            _door = null;
+            _toldArrived = false;
+            Follow(_owner, FollowDistance, FollowMax);
         }
 
         private void Finish(bool refund)

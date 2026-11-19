@@ -987,10 +987,15 @@ namespace DOL.GS
             CompleteStableMasterRoute();
             // 1.1.3, after RC6: how many were on it, read before the death clears the tracker, for how the death is told.
             int attackers = IsAutonomousWorldBot ? AutonomousDeathDiagnostics.Attackers(this) : 0;
+            AutonomousDeathDiagnostics.RecordPlayerGroup(this, killer);
 
             if (IsAutonomousWorldBot && PersistentRecord != null)
             {
-                AutonomousDeathDiagnostics.Record(this, killer, PersistentRecord.Activity);
+                // A bot in a player's group runs none of its own goals, so its stored activity is stale: say what it was doing.
+                string activityBefore = IsPlayerLedGroup
+                    ? AutonomousDeathDiagnostics.PlayerGroupActivity(PlayerGroupLeader.Name, (TargetObject as GameLiving)?.Name)
+                    : PersistentRecord.Activity;
+                AutonomousDeathDiagnostics.Record(this, killer, activityBefore);
                 PersistentRecord.DeathCount++;
                 GoalDiagnosticAttempt?.Died();
                 PersistentRecord.TargetName = (TargetObject as GameLiving)?.Name ?? killer?.Name ?? string.Empty;
@@ -2723,6 +2728,12 @@ namespace DOL.GS
                 return false;
 
             PlayerGroupLeader = leader;
+            // Its own goals stop while it is in the player's group; don't leave the last one showing as what it does.
+            if (IsAutonomousWorldBot && PersistentRecord != null)
+            {
+                PersistentRecord.Activity = AutonomousDeathDiagnostics.PlayerGroupActivity(leader.Name, null);
+                MarkAutonomousStateDirty();
+            }
             if (Brain is BotBrain brain)
             {
                 brain.RebindAssistedPlayer();
