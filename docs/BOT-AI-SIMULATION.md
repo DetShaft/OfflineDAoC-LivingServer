@@ -26,7 +26,7 @@ in one of the owner's PC logs. Use the harness to find decision problems early a
 
 ## What a report shows
 
-Each scenario runs every variant in all six realm pairings (Alb vs Mid, Mid vs Alb, and so on) with three seeds.
+Each scenario runs every variant in all six realm pairings (Alb vs Mid, Mid vs Alb, and so on) with three seeds (the bot-sim workflow's `seeds` input, or `BOT_SIM_SEEDS`, raises that to up to 30). The realms are mirror images, so win counts move in steps of 6 of 18: one seed. Use more seeds before reading a win-count change as real.
 Side 0 is the player's group: a scripted player (the leader) plus seven bots, the AI under test. Side 1, where there
 is one, is a matched autonomous gamebot group that attacks enemies within 1,500 units on sight. The report has:
 

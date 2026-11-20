@@ -88,7 +88,13 @@ namespace DOL.UnitTests.BotSim
         public string Why;
         public string Issues = "";
         public int Seconds = 120;
-        public int[] Seeds = { 1, 2, 3 };
+        /// <summary>Seeds 1..3, or 1..BOT_SIM_SEEDS (at most 30) to tell a real change from seed noise.</summary>
+        public int[] Seeds = DefaultSeeds();
+
+        private static int[] DefaultSeeds() =>
+            int.TryParse(Environment.GetEnvironmentVariable("BOT_SIM_SEEDS"), out int n) && n > 0
+                ? Enumerable.Range(1, Math.Min(n, 30)).ToArray()
+                : new[] { 1, 2, 3 };
         public Func<SimSetup, SimWorld> Build;
         public List<SimVariant> Variants = new() { SimVariant.Current(), SimVariant.FightModeBefore170(), SimVariant.FightMode170(), SimVariant.FightMode() };
         public List<SimExpectation> Expectations = new();
