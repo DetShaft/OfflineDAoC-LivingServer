@@ -537,6 +537,8 @@ namespace DOL.AI.Brain
             // Record the encounter synchronously so even a very short roadside
             // fight pauses autonomous travel for whole-party recovery afterward.
             AutonomousBotGroupCoordinator.MarkCombatObserved(group);
+            // Issue #165: a groupmate under attack puts the player's group into fight mode.
+            PlayerGroupFightMode.OnMemberAttacked(groupMember, ad);
 
             foreach (GameLiving member in group.GetMembersInTheGroup())
             {
@@ -1588,6 +1590,9 @@ namespace DOL.AI.Brain
             if (leaderTarget != null && PlayerLedPullCoordinator.Available(BotBody, AssistedPlayer) &&
                 Body.IsWithinRadius(leaderTarget, GROUP_DEFENSE_ASSIST_RADIUS))
                 AssistPlayerAttack(leaderTarget);
+
+            // Issue #165: in a battleground fight the player's group picks its own targets and keeps a chase leash.
+            ThinkGroupFightMode();
 
             if (BotBody?.TryMatchOwnerLevel() == true)
                 return;

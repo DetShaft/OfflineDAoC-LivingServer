@@ -8,6 +8,17 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Unreleased
+
+All tests only: not yet seen in game.
+- **Group fight mode (#165, #151, #126):** in the frontier and battlegrounds, the bots in your group no longer wait for you to
+  swing. They enter a fight mode when anyone in the group is attacked or an enemy player, bot or pet comes near you. Your target
+  comes first, even while you are mezzed. Otherwise tanks peel enemies hitting your healers and casters, damage dealers focus one
+  target (enemy healers, then casters, then the lowest health) and healers keep healing. A chase leash (setting
+  `bots / group_fight_chase_distance`, default 1500) makes bots drop enemies that run off and come back. The mode ends 6 s after
+  the last hostile. The server log records `GROUP_FIGHT_MODE`, `GROUP_FIGHT_FOCUS`, `GROUP_FIGHT_TARGET` and `GROUP_FIGHT_LEASH`.
+  Switch it off with `bots / group_fight_mode`.
+
 ## Beta 1.1.23 — 2026-11-19
 
 All tests only: not yet seen in game.

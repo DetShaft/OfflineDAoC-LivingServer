@@ -24,7 +24,8 @@ namespace DOL.AI.Brain
             GameLiving[] enemies = Body.GetNPCsInRadius(1800).Where(BotPvpCrowdControl.PlayerLike).Cast<GameLiving>()
                 .Concat(Body.GetPlayersInRadius(1800)).Where(t => BotSiegeRuntime.LegalEnemy(Body,t) && !t.IsMezzed &&
                     !t.IsStealthed && !BotPvpCrowdControl.Protected(Body,t) && CompanionEngagementMode.Allows(Body,t) &&
-                    !CompanionPvpEngagement.Focused(Body,t) && !CompanionPvpEngagement.Defending(Body,t))
+                    !CompanionPvpEngagement.Focused(Body,t) && !CompanionPvpEngagement.Defending(Body,t) &&
+                    !PlayerGroupFightMode.IsFocus(Body,t))
                 .OrderBy(Body.GetDistanceTo).Take(24).ToArray();
             if (enemies.Length == 0) return false;
             long now = GameLoop.GameLoopTime;

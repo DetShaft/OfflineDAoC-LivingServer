@@ -1,0 +1,108 @@
+using DOL.GS;
+using NUnit.Framework;
+using static DOL.GS.GroupFightPolicy;
+
+namespace DOL.UnitTests
+{
+    /// <summary>
+    /// #165: the player group's fight mode. Target priority follows docs/PVP-BEHAVIOR-RESEARCH.md section E and
+    /// Table 4, the same in every realm.
+    /// </summary>
+    [TestFixture]
+    public class UT_GroupFightPolicy
+    {
+        private static Candidate C(TargetRole role, int hp = 100, int distance = 500, bool mezzed = false, bool backLine = false) =>
+            new(role, hp, distance, mezzed, backLine);
+
+        [Test]
+        public void HealersThenCastersThenFightersThenPets()
+        {
+            Candidate[] list = { C(TargetRole.Pet), C(TargetRole.Fighter), C(TargetRole.Caster), C(TargetRole.Healer) };
+            Assert.That(PickFocus(list), Is.EqualTo(3));
+            list[3] = C(TargetRole.Fighter, hp: 5);
+            Assert.That(PickFocus(list), Is.EqualTo(2), "A caster outranks a fighter at 5% health.");
+        }
+
+        [Test]
+        public void LowestHealthThenClosestWithinARole()
+        {
+            Candidate[] list = { C(TargetRole.Caster, hp: 80, distance: 200), C(TargetRole.Caster, hp: 40, distance: 1400) };
+            Assert.That(PickFocus(list), Is.EqualTo(1));
+            list[1] = C(TargetRole.Caster, hp: 80, distance: 100);
+            Assert.That(PickFocus(list), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void NeverFocusesAMezzedEnemy()
+        {
+            Candidate[] list = { C(TargetRole.Healer, mezzed: true), C(TargetRole.Fighter) };
+            Assert.That(PickFocus(list), Is.EqualTo(1));
+            Assert.That(PickFocus(new[] { C(TargetRole.Healer, mezzed: true) }), Is.EqualTo(-1));
+            Assert.That(PickFocus(new Candidate[0]), Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void TankPeelsTheEnemyOnTheBackLine()
+        {
+            Candidate[] list =
+            {
+                C(TargetRole.Healer),
+                C(TargetRole.Fighter, distance: 900, backLine: true),
+                C(TargetRole.Fighter, distance: 300, backLine: true),
+                C(TargetRole.Fighter, distance: 100, backLine: true, mezzed: true)
+            };
+            Assert.That(PickPeel(list), Is.EqualTo(2));
+            Assert.That(PickPeel(new[] { C(TargetRole.Healer) }), Is.EqualTo(-1), "Nobody on the back line: no peel.");
+        }
+
+        [Test]
+        public void RolesComeFromClassData()
+        {
+            Assert.That(RoleOf(eCharacterClass.Cleric, false), Is.EqualTo(TargetRole.Healer));
+            Assert.That(RoleOf(eCharacterClass.Healer, false), Is.EqualTo(TargetRole.Healer));
+            Assert.That(RoleOf(eCharacterClass.Druid, false), Is.EqualTo(TargetRole.Healer));
+            Assert.That(RoleOf(eCharacterClass.Shaman, false), Is.EqualTo(TargetRole.Healer));
+            Assert.That(RoleOf(eCharacterClass.Paladin, false), Is.EqualTo(TargetRole.Fighter), "A Paladin is a tank first.");
+            Assert.That(RoleOf(eCharacterClass.Wizard, true), Is.EqualTo(TargetRole.Caster));
+            Assert.That(RoleOf(eCharacterClass.Runemaster, true), Is.EqualTo(TargetRole.Caster));
+            Assert.That(RoleOf(eCharacterClass.Eldritch, true), Is.EqualTo(TargetRole.Caster));
+            Assert.That(RoleOf(eCharacterClass.Berserker, false), Is.EqualTo(TargetRole.Fighter));
+            Assert.That(RoleOf(null, false), Is.EqualTo(TargetRole.Pet));
+        }
+
+        [Test]
+        public void ExitsAfterSixQuietSeconds()
+        {
+            Assert.That(ShouldExit(10_000, 10_000 - ExitDelayMilliseconds + 1), Is.False);
+            Assert.That(ShouldExit(10_000, 10_000 - ExitDelayMilliseconds), Is.True);
+        }
+
+        [Test]
+        public void LeashDropsFarTargetsUnlessTheFightCameToTheGroup()
+        {
+            Assert.That(BeyondLeash(1600, 1500, leaderTarget: false, attackingGroupNearLeader: false), Is.True);
+            Assert.That(BeyondLeash(1500, 1500, false, false), Is.False);
+            Assert.That(BeyondLeash(2500, 1500, leaderTarget: true, attackingGroupNearLeader: false), Is.False,
+                "The player's own target is never dropped.");
+            Assert.That(BeyondLeash(2500, 1500, false, attackingGroupNearLeader: true), Is.False,
+                "An enemy hitting the bot or a groupmate near the player is fought.");
+        }
+
+        [Test]
+        public void ChaseDistanceSettingIsClamped()
+        {
+            Assert.That(ChaseDistance(1500), Is.EqualTo(1500));
+            Assert.That(ChaseDistance(0), Is.EqualTo(DefaultChaseDistance));
+            Assert.That(ChaseDistance(100), Is.EqualTo(MinChaseDistance));
+            Assert.That(ChaseDistance(99_999), Is.EqualTo(MaxChaseDistance));
+        }
+
+        [Test]
+        public void LeaderTargetFirstUnlessMezzed()
+        {
+            Assert.That(FollowsLeaderTarget(true, false), Is.True);
+            Assert.That(FollowsLeaderTarget(true, true), Is.False, "A groupmate's mez must hold.");
+            Assert.That(FollowsLeaderTarget(false, false), Is.False);
+        }
+    }
+}

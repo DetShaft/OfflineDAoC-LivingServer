@@ -2473,6 +2473,18 @@ namespace DOL.GS.ServerProperties
 		public static bool BOT_GROUP_ORDERS;
 
 		/// <summary>
+		/// Issue #165: bots in the player's group pick their own targets in a battleground fight.
+		/// </summary>
+		[ServerProperty("bots", "group_fight_mode", "Issue #165: in the frontier and battlegrounds, bots in your group enter a fight mode when anyone in the group is attacked or an enemy player, bot or pet comes near you. Your target still comes first, even while you are mezzed. Otherwise tanks peel enemies hitting your healers and casters, damage dealers focus one target (enemy healers, then casters, then the lowest health) and healers keep healing. They leave the mode 6 s after the last hostile is gone. PvE pulls stay yours. False keeps the old assist-only behavior.", true)]
+		public static bool GROUP_FIGHT_MODE = true;
+
+		/// <summary>
+		/// Issue #165: how far from the player a group bot may chase in fight mode.
+		/// </summary>
+		[ServerProperty("bots", "group_fight_chase_distance", "Issue #165: in fight mode, bots in your group pick and chase only enemies within this many units of you (default 1500). A bot whose target moves farther away drops it and comes back, unless that enemy is hitting the bot itself or a groupmate near you. Your own target is never dropped.", 1500)]
+		public static int GROUP_FIGHT_CHASE_DISTANCE = 1500;
+
+		/// <summary>
 		/// Autonomous gamebots speak lines from the bot-voices corpus in their own writing style.
 		/// </summary>
 		[ServerProperty("bots", "bot_voices_enabled", "Autonomous gamebots say pre-written, period lines (docs/bot-voices/DESIGN.md) chosen by personality, level, realm, class and situation, each in its own writing style, without repeating a line in a realm within 6 hours. On by default since Beta 1.1 (the talking update). False keeps the old lines.", true)]
