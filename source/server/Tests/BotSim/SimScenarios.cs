@@ -41,7 +41,11 @@ namespace DOL.UnitTests.BotSim
         public static SimVariant FightMode() => new()
         {
             Name = "fight mode (#170)", Live = true,
+<<<<<<< HEAD
             Description = "Fight mode with the #170 fixes: it keeps running when the player dies (group anchor), a better-role enemy replaces the focus, busy bots switch to it, no cast-time CC while a hit could land before the cast ends, a mezzed attacker is left alone, a leash that holds after fight mode ends and on its own picks, and no companion focus while fight mode is on. Picks the player's target (even while mezzed), a tank peel, or the shared focus (healers, then casters, then lowest health), keeps a 1,500-unit chase leash, and keeps CC off the focus.",
+=======
+            Description = "Fight mode with the #170 fixes: it keeps running when the player dies (group anchor), a better-role enemy replaces the focus, busy bots switch to it, no cast-time CC under fire, and a mezzed attacker is left alone. Picks the player's target (even while mezzed), a tank peel, or the shared focus (healers, then casters, then lowest health), keeps a 1,500-unit chase leash, and keeps CC off the focus.",
+>>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
             Side0Bots = () => new FightModeTactics(),
         };
 

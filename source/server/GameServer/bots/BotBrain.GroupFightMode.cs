@@ -39,6 +39,11 @@ namespace DOL.AI.Brain
             EnforceGroupFightLeash(bot, leader, anchor, leader.IsAlive ? leader.TargetObject as GameLiving : null, enemyPlayersOnly: !active);
             if (!active || !bot.IsWithinRadius(anchor, GROUP_DEFENSE_ASSIST_RADIUS)) return;
             GameLiving leaderTarget = PlayerGroupFightMode.LeaderTarget(leader);
+<<<<<<< HEAD
+=======
+            // The leash runs only in fight mode, and never on the player's selected target or an ordered pull.
+            EnforceGroupFightLeash(bot, leader, anchor, leader.IsAlive ? leader.TargetObject as GameLiving : null);
+>>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
             // Never cut a cast short (a heal, a mez) to take a new target.
             if (Body.IsCasting) return;
             // A door the player is hitting is the door crew's: a caster that cannot hurt it takes the focus instead (#133).
@@ -123,7 +128,11 @@ namespace DOL.AI.Brain
         /// (<paramref name="enemyPlayersOnly"/>) only enemy-realm players and bots are leashed.
         /// Doors and siege engines are left to the siege rules.
         /// </summary>
+<<<<<<< HEAD
         private void EnforceGroupFightLeash(GameBot bot, GamePlayer leader, GameLiving anchor, GameLiving leaderSelected, bool enemyPlayersOnly)
+=======
+        private void EnforceGroupFightLeash(GameBot bot, GamePlayer leader, GameLiving anchor, GameLiving leaderSelected)
+>>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
         {
             int chase = PlayerGroupFightMode.ChaseDistance;
             GameLiving leaderAttacking = PlayerLedPullCoordinator.FindLeaderTarget(leader);
@@ -138,13 +147,20 @@ namespace DOL.AI.Brain
             foreach (GameLiving target in watched)
             {
                 if (target == null || target is GameKeepDoor or GameSiegeWeapon || !target.IsAlive) continue;
+<<<<<<< HEAD
                 if (enemyPlayersOnly && (!BotPvpCrowdControl.PlayerLike(target) || !BotSiegeRuntime.LegalEnemy(anchor, target))) continue;
+=======
+>>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
                 bool sameRegion = target.CurrentRegionID == anchor.CurrentRegionID;
                 int distance = sameRegion ? (int)anchor.GetDistanceTo(target) : int.MaxValue;
                 if (sameRegion && distance <= chase) continue;
                 bool hittingGroup = (target.IsAttacking || target.IsCasting) && target.TargetObject is GameLiving victim &&
                     (victim == bot || victim.Group == bot.Group && bot.Group != null && anchor.IsWithinRadius(victim, chase));
+<<<<<<< HEAD
                 bool players = target == leaderSelected || target == leaderAttacking || target == playerOrdered;
+=======
+                bool players = target == leaderSelected || target == leaderAttacking || target == ordered;
+>>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
                 if (!GroupFightPolicy.BeyondLeash(distance, chase, players, hittingGroup)) continue;
 
                 // An automatic ordered pull on it ends too, or the attack turn takes it straight back.

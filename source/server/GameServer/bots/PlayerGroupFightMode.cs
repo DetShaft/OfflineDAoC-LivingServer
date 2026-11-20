@@ -50,11 +50,17 @@ namespace DOL.GS
 
         /// <summary>
         /// The real player who leads this bot's group, when the bot is with the group; otherwise null. The player may be
+<<<<<<< HEAD
         /// dead (#170): the bot then stays within the assist radius of the group's anchor instead. With
         /// <paramref name="requireNear"/> false the bot may be any distance away in the same region, so the chase leash
         /// can still call back a bot that ran past the assist radius.
         /// </summary>
         public static GamePlayer LeaderOf(GameBot bot, bool requireNear = true)
+=======
+        /// dead (#170): the bot then stays within the assist radius of the group's anchor instead.
+        /// </summary>
+        public static GamePlayer LeaderOf(GameBot bot)
+>>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
         {
             if (bot?.IsPlayerLedGroup != true || bot.PlayerGroupLeader is not { } leader || !bot.IsAlive ||
                 bot.ObjectState != GameObject.eObjectState.Active || bot.Group == null || bot.Group != leader.Group ||
@@ -62,7 +68,11 @@ namespace DOL.GS
                 bot.IsOnStableMasterRoute || bot.IsReturningAfterRelease)
                 return null;
             GameLiving anchor = Anchor(leader);
+<<<<<<< HEAD
             return anchor != null && (!requireNear || bot.IsWithinRadius(anchor, DOL.AI.Brain.BotBrain.GROUP_DEFENSE_ASSIST_RADIUS)) ? leader : null;
+=======
+            return anchor != null && bot.IsWithinRadius(anchor, DOL.AI.Brain.BotBrain.GROUP_DEFENSE_ASSIST_RADIUS) ? leader : null;
+>>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
         }
 
         /// <summary>
