@@ -133,7 +133,8 @@ public class UT_LootClassFit
         Assert.Multiple(() =>
         {
             Assert.That(missing, Is.Empty);
-            Assert.That(friar[eStat.PIE], Is.EqualTo(3));
+            Assert.That(friar[eStat.STR], Is.EqualTo(3));
+            Assert.That(friar[eStat.PIE], Is.EqualTo(2));
             Assert.That(friar.ContainsKey(eStat.INT), Is.False);
         });
     }
