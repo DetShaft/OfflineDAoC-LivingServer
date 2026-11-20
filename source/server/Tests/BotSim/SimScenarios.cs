@@ -200,6 +200,15 @@ namespace DOL.UnitTests.BotSim
             Title = "8v8 open-field group fight",
             Why = "Baseline: the player's group (a scripted player plus 7 bots) meets a matched autonomous gamebot group (tank, 2 melee, 2 casters, mezzer, 2 healers each) on open ground. The player attacks the nearest enemy.",
             Build = s => TwoGroups(s, StandardGroup, 2_400),
+            Variants =
+            {
+                new SimVariant
+                {
+                    Name = "mirror control",
+                    Description = "Harness check, not a rule set: side 0's bots use the enemy's autonomous rules, so both sides are identical. It should win about half; if it does, the other variants' results come from their rules, not from the setup.",
+                    Side0Bots = SimVariant.AutonomousEnemy,
+                },
+            },
             Expectations =
             {
                 IdleBelow(20),

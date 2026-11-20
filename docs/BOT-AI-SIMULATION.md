@@ -59,6 +59,8 @@ Variants (side 0's rules):
 - **fight mode (#165)**: the shipped default since PR #168. This is the *live* variant: CI warns about its findings and
   strict mode fails on them.
 - `keep-lord-after-doors` also runs **rule before #160** (the old door rule) to show what #160 changed.
+- `open-field-8v8` also runs **mirror control**: side 0's bots use the enemy's autonomous rules, so both sides are
+  identical. It should win about half; if it does, the other variants' win rates come from their rules, not the setup.
 
 ## What it simulates, and what it does not
 
