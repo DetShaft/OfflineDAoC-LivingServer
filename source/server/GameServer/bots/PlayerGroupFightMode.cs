@@ -155,17 +155,12 @@ namespace DOL.GS
         }
 
         /// <summary>
-        /// The player's target, first in fight mode even while the player is mezzed or not yet swinging: what they are
-        /// attacking (PlayerLedPullCoordinator.FindLeaderTarget), else the enemy they have selected within chase range.
+        /// The player's target, first in fight mode while the player is attacking it
+        /// (PlayerLedPullCoordinator.FindLeaderTarget). Owner's decision 2026-11-20 (#170): a target the player has only
+        /// selected (mezzed, or not swinging yet) no longer comes first; the bots pick by role instead. Putting it first
+        /// won 6 of 18 leader-mezzed harness fights, against 18 of 18 without.
         /// </summary>
-        public static GameLiving LeaderTarget(GamePlayer leader)
-        {
-            GameLiving attacking = PlayerLedPullCoordinator.FindLeaderTarget(leader);
-            if (attacking != null) return attacking;
-            // A selected monster is still the player's PvE pull to start: only an enemy-realm target counts unswung.
-            return leader?.IsAlive == true && leader.TargetObject is GameLiving selected && selected != leader && Hostile(leader, selected) &&
-                BotSiegeRuntime.LegalEnemy(leader, selected) && leader.IsWithinRadius(selected, ChaseDistance) ? selected : null;
-        }
+        public static GameLiving LeaderTarget(GamePlayer leader) => PlayerLedPullCoordinator.FindLeaderTarget(leader);
 
         public static GroupFightPolicy.Candidate Describe(GameLiving anchor, Group group, GameLiving target)
         {

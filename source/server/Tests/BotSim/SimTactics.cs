@@ -383,10 +383,11 @@ namespace DOL.UnitTests.BotSim
         public int ChaseDistance { get; init; } = GroupFightPolicy.ChaseDistance(0);
 
         /// <summary>
-        /// The live rule (PlayerGroupFightMode.LeaderTarget) puts the player's selected target first even while they are
-        /// mezzed or not swinging. False is a comparison only: the player's target counts while they attack it.
+        /// The rule before the owner's decision of 2026-11-20 (#170): the player's selected target came first even while
+        /// they were mezzed or not swinging. The live rule (PlayerGroupFightMode.LeaderTarget) counts it only while they
+        /// attack it. True is a comparison only.
         /// </summary>
-        public bool SelectedTargetFirst { get; init; } = true;
+        public bool SelectedTargetFirst { get; init; }
 
         private sealed class GroupState
         {
