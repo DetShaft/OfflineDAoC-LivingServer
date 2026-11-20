@@ -4388,7 +4388,8 @@ namespace DOL.AI.Brain
                     {
                         bool meleePressure = Body.IsBeingInterruptedByOther &&
                             Body.IsWithinRadius(Body.TargetObject, Body.MeleeAttackRange + 35);
-                        if (!BotCasterPriority.AllowInstant(spell, PrefersCurrentSpellRange(), meleePressure))
+                        if (!BotCasterPriority.AllowInstant(spell, PrefersCurrentSpellRange(), meleePressure) ||
+                            !ClericBotSpellPolicy.AllowsOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.Radius))
                             continue;
                         if (CheckInstantOffensiveSpells(spell))
                             return true;
@@ -4635,6 +4636,7 @@ namespace DOL.AI.Brain
                 Body.TargetObject is not GameLiving target || !target.IsAlive ||
                 !BardBotCrowdControlPolicy.AllowsOrdinaryOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.SpellType) ||
                 !ShamanBotCombatPolicy.AllowsOrdinaryOffense((eCharacterClass)BotBody.CharacterClass.ID, spell) ||
+                !ClericBotSpellPolicy.AllowsOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.Radius) ||
                 BotSpellPower.BlocksAttackerRotation(BotBody, spell) ||
                 !NeedsOffensiveSpellApplication(target, spell) ||
                 Body.GetSkillDisabledDuration(spell) > 0 || Body.Mana < BotBody.PowerCost(spell))
@@ -4671,7 +4673,8 @@ namespace DOL.AI.Brain
 
         protected virtual bool CheckOffensiveSpells(Spell spell)
         {
-            if (spell == null || Body.Mana < BotBody.PowerCost(spell))
+            if (spell == null || Body.Mana < BotBody.PowerCost(spell) ||
+                !ClericBotSpellPolicy.AllowsOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.Radius))
                 return false;
 
             if (spell.NeedInstrument && !TryEquipRealInstrument(BotBody, spell.InstrumentRequirement))
@@ -4759,6 +4762,7 @@ namespace DOL.AI.Brain
         {
             if (spell == null || IsOutclassedDamageSpell(spell) || Body.Mana < BotBody.PowerCost(spell) ||
                 !BardBotCrowdControlPolicy.AllowsOrdinaryOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.SpellType) ||
+                !ClericBotSpellPolicy.AllowsOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.Radius) ||
                 spell.HasRecastDelay && Body.GetSkillDisabledDuration(spell) > 0)
                 return false;
 
