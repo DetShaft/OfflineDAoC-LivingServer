@@ -34,7 +34,14 @@ namespace DOL.GS
         public const int CorridorWidth = 400;
         /// <summary>The leader is at most this far from the door (the door plane is endless; the door is not).</summary>
         public const int LeaderRadius = 3000;
-        public const int MaxDoorHeightDifference = 250;
+        /// <summary>
+        /// The bot, and the leader, stand on the door's floor: at most this far above or below the door. 250 let a bot on
+        /// the floor below the Killaloe lord room (Z 9107, the room's Postern Door 9347) count as at that door (#163).
+        /// A keep's inside floor is about 92 over its keep door (GameKeepDoor.TraverseDoor), well inside this.
+        /// </summary>
+        public const int MaxDoorHeightDifference = 160;
+        /// <summary>A floor's height counts this many times a flat distance when a pass must bring the bot nearer its leader.</summary>
+        public const float FloorWeight = 2f;
         /// <summary>No headway for this long near a passable door between bot and leader: the bot is passed through it.</summary>
         public const long StallMilliseconds = 3_000;
         public const int HeadwayDistance = 60;
@@ -83,6 +90,22 @@ namespace DOL.GS
             if (InFront(door, heading, bot) == InFront(door, heading, leader))
                 return false;
             return DistanceToSegment(door, bot, leader) <= CorridorWidth;
+        }
+
+        /// <summary>
+        /// Pure rule: being put at <paramref name="landing"/> brings the bot nearer its leader, with height counted
+        /// <see cref="FloorWeight"/> times (a floor apart is far apart). #163 (Killaloe, 1.1.23): bots following Jay down
+        /// the keep stairs were put through the lord room's door every few seconds, back up on the floor above him; they
+        /// walked down again and were put back up, their pets were left behind and died, and the Cabalists resummoned.
+        /// </summary>
+        public static bool BringsCloser(Vector3 bot, Vector3 landing, Vector3 leader)
+        {
+            static float Weighted(Vector3 a, Vector3 b)
+            {
+                Vector3 d = a - b;
+                return MathF.Sqrt(d.X * d.X + d.Y * d.Y + d.Z * d.Z * FloorWeight * FloorWeight);
+            }
+            return Weighted(landing, leader) < Weighted(bot, leader);
         }
 
         public enum Reason { None, ClosedOwnDoor, Stalled }
@@ -150,7 +173,7 @@ namespace DOL.GS
                 foreach (GameKeepDoor door in keep.Doors.Values)
                 {
                     if (door?.Component?.Keep == null || door.ObjectState != GameObject.eObjectState.Active ||
-                        Math.Abs(door.Z - bot.Z) > MaxDoorHeightDifference)
+                        Math.Abs(door.Z - bot.Z) > MaxDoorHeightDifference || Math.Abs(door.Z - leader.Z) > MaxDoorHeightDifference)
                         continue;
                     Vector2 door2 = new(door.X, door.Y);
                     if (!Separates(door2, door.Heading, bot2, leader2))
@@ -161,7 +184,11 @@ namespace DOL.GS
                     if (reason == Reason.None)
                         continue;
                     Vector3 from = position;
-                    if (!door.PassFollower(bot, InFront(door2, door.Heading, leader2)))
+                    bool toFront = InFront(door2, door.Heading, leader2);
+                    Point3D landing = door.FollowerLanding(toFront);
+                    if (!BringsCloser(position, new Vector3(landing.X, landing.Y, landing.Z), new Vector3(leader.X, leader.Y, leader.Z)))
+                        continue;
+                    if (!door.PassFollower(bot, toFront))
                         continue;
                     state.NextPass = now + CooldownMilliseconds;
                     state.At = new Vector3(bot.X, bot.Y, bot.Z);

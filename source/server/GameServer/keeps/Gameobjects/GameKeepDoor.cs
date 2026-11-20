@@ -324,6 +324,13 @@ namespace DOL.GS.Keeps
             if (bot == null || !bot.IsAlive || bot.IsStunned || bot.IsMezzed || Component?.Keep == null ||
                 bot.CurrentRegionID != CurrentRegionID)
                 return false;
+            Point3D landing = FollowerLanding(toFront);
+            return bot.MoveTo(CurrentRegionID, landing.X, landing.Y, landing.Z, bot.Heading);
+        }
+
+        /// <summary>Where <see cref="PassFollower"/> puts a bot: just past the door on the given side, on the floor there.</summary>
+        public Point3D FollowerLanding(bool toFront)
+        {
             int distance = DoorIndex == 1 ? 150 : 100;
             Point2D point = GetPointFromHeading(Heading, toFront ? distance : -distance);
             int z = Z;
@@ -331,7 +338,7 @@ namespace DOL.GS.Keeps
             if (zone != null && AutonomousNavigationSurface.TryFloor(PathfindingProvider.Instance, zone,
                     new System.Numerics.Vector3(point.X, point.Y, Z), out System.Numerics.Vector3 floor))
                 z = (int)Math.Round(floor.Z);
-            return bot.MoveTo(CurrentRegionID, point.X, point.Y, z, bot.Heading);
+            return new Point3D(point.X, point.Y, z);
         }
 
         public bool TryTraverse(GameBot bot)

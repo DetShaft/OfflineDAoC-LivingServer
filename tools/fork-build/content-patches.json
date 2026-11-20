@@ -484,8 +484,8 @@
   {
     "Path": "new-client/godot/game/net/server_world.gd",
     "Released": "a1789207c144f53ab222dc75f1a1206bdf430d92e17cb9b97476316b68023bd0",
-    "Fixed": "9527463bf0144b48d5b9a1111b3bced840d911747c639a81282d4c601dbcd4d4",
-    "Size": 89420,
+    "Fixed": "fa86dc8d3dbd2ff15fcd20818f69ac3b13ac06f34adee13b5c0ead396dd24712",
+    "Size": 89491,
     "File": "content/godot/game/net/server_world.gd",
     "ReplaceAny": true
   },
@@ -716,8 +716,8 @@
   {
     "Path": "new-client/godot/game/player.gd",
     "Released": "5d18a2742eab740a4f5813234fc597acfb64913cfaecaf67b52b0f29780df453",
-    "Fixed": "503c9b4a153a6cd64041c88c0243980adf68afd36c03d48eb038374e63dd6e60",
-    "Size": 53864,
+    "Fixed": "cf57f9f86591ccde8fdc747c555de2825754b24e491a6306c45025b66ca01f81",
+    "Size": 54771,
     "File": "content/godot/game/player.gd",
     "ReplaceAny": true
   }
