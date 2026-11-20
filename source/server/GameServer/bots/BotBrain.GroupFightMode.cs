@@ -11,6 +11,12 @@ namespace DOL.AI.Brain
         private GameLiving _lastLeashDrop;
 
         /// <summary>
+        /// The target of the player's last /pull (PlayerLedPullCoordinator.Begin). The leash never drops it, at any
+        /// distance or age, unlike the companion focus that /pull also sets (2,000 units, 30 s).
+        /// </summary>
+        internal GameLiving PlayerPullOrder { get; set; }
+
+        /// <summary>
         /// Issue #165: this bot's fight-mode turn in the player's group. Runs the group scan, keeps the bot within the
         /// chase distance of the player, and, while fight mode is on, gives an idle bot a target of its own:
         /// the player's target first (even while the player is mezzed), a tank's peel, then the group focus.
@@ -128,11 +134,12 @@ namespace DOL.AI.Brain
             int chase = PlayerGroupFightMode.ChaseDistance;
             GameLiving leaderAttacking = PlayerLedPullCoordinator.FindLeaderTarget(leader);
             // AssistPlayerAttack goes through OrderPull, so the ordered pull is usually automatic: fight mode's own pick or
-            // the companion group focus. Only one the player stands behind (CompanionPvpEngagement.Focused: their attack,
-            // their pet's, or their /pull order) is exempt. Exempting every ordered pull let bots chase a fleeing enemy
-            // 8,600 units in the harness (#170 follow-up).
+            // the companion group focus. Only one the player stands behind is exempt: their /pull (PlayerPullOrder, at
+            // any distance or age), or CompanionPvpEngagement.Focused (their attack or their pet's, within 2,000 units).
+            // Exempting every ordered pull let bots chase a fleeing enemy 8,600 units in the harness (#170 follow-up).
             GameLiving ordered = ActiveOrderedPullTarget;
-            GameLiving playerOrdered = ordered != null && CompanionPvpEngagement.Focused(bot, ordered) ? ordered : null;
+            GameLiving playerOrdered = ordered != null && (ordered == PlayerPullOrder || CompanionPvpEngagement.Focused(bot, ordered))
+                ? ordered : null;
             GameLiving[] watched = AggroList.Keys.ToArray();
             if (Body.TargetObject is GameLiving current && !watched.Contains(current)) watched = watched.Append(current).ToArray();
             foreach (GameLiving target in watched)
