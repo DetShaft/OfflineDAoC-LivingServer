@@ -8,7 +8,7 @@ zip's SHA-256 is filled in when publishing.
 
 ### Better group fights, and bots that Need only what suits them
 
-1.1.25 is a **DetShaft fork prerelease**. Same Offline DAoC **0.37 / 0.37b / 0.37c** base as 1.1.25. The banner reads
+1.1.25 is a **DetShaft fork prerelease**. Same Offline DAoC **0.37 / 0.37b / 0.37c** base as 1.1.24. The banner reads
 `LivingServer client patch 1.1.25`.
 
 **Group fight mode.** Pets rank below all players when bots pick targets. Bots walk around a ridge or corner that blocks
