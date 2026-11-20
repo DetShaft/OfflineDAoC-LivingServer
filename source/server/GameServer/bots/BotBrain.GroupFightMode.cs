@@ -20,7 +20,8 @@ namespace DOL.AI.Brain
         private void ThinkGroupFightMode()
         {
             GameBot bot = BotBody;
-            GamePlayer leader = PlayerGroupFightMode.LeaderOf(bot);
+            // Found at any distance: the leash must still reach a bot that chased past the assist radius.
+            GamePlayer leader = PlayerGroupFightMode.LeaderOf(bot, requireNear: false);
             if (leader == null || !PlayerGroupFightMode.InScope(leader) ||
                 FSM.GetCurrentState() == FSM.GetState(eFSMStateType.PASSIVE))
                 return;
@@ -31,10 +32,13 @@ namespace DOL.AI.Brain
             // A bot with a siege job (engineer, ram crew) answers to its job, not to the chase distance.
             if (BotSiegeRuntime.Assigned(bot)) return;
 
-            if (!active) return;
+            // The leash never drops the player's selected target or their /pull order. In fight mode it covers every
+            // target; once fight mode has ended (the enemy ran out of range, so no hostile is seen near the player) it
+            // keeps holding enemy players and bots only, so a bot cannot chase a runner across the zone (the harness
+            // saw bots 8,600 units out) while PvE pulls stay untouched.
+            EnforceGroupFightLeash(bot, leader, anchor, leader.IsAlive ? leader.TargetObject as GameLiving : null, enemyPlayersOnly: !active);
+            if (!active || !bot.IsWithinRadius(anchor, GROUP_DEFENSE_ASSIST_RADIUS)) return;
             GameLiving leaderTarget = PlayerGroupFightMode.LeaderTarget(leader);
-            // The leash runs only in fight mode, and never on the player's selected target or an ordered pull.
-            EnforceGroupFightLeash(bot, leader, anchor, leader.IsAlive ? leader.TargetObject as GameLiving : null);
             // Never cut a cast short (a heal, a mez) to take a new target.
             if (Body.IsCasting) return;
             // A door the player is hitting is the door crew's: a caster that cannot hurt it takes the focus instead (#133).
@@ -114,28 +118,37 @@ namespace DOL.AI.Brain
 
         /// <summary>
         /// The chase leash: an aggro entry or target past the chase distance from the player is dropped and the bot
-        /// regroups, unless it is the player's selected or attacked target, this bot's ordered pull (/pull, /group
-        /// attack), or it is hitting this bot or a groupmate near the player. Fight mode only.
+        /// regroups, unless it is the player's selected or attacked target, an ordered pull the player stands behind
+        /// (/pull), or it is hitting this bot or a groupmate near the player. Outside fight mode
+        /// (<paramref name="enemyPlayersOnly"/>) only enemy-realm players and bots are leashed.
         /// Doors and siege engines are left to the siege rules.
         /// </summary>
-        private void EnforceGroupFightLeash(GameBot bot, GamePlayer leader, GameLiving anchor, GameLiving leaderSelected)
+        private void EnforceGroupFightLeash(GameBot bot, GamePlayer leader, GameLiving anchor, GameLiving leaderSelected, bool enemyPlayersOnly)
         {
             int chase = PlayerGroupFightMode.ChaseDistance;
             GameLiving leaderAttacking = PlayerLedPullCoordinator.FindLeaderTarget(leader);
+            // AssistPlayerAttack goes through OrderPull, so the ordered pull is usually automatic: fight mode's own pick or
+            // the companion group focus. Only one the player stands behind (CompanionPvpEngagement.Focused: their attack,
+            // their pet's, or their /pull order) is exempt. Exempting every ordered pull let bots chase a fleeing enemy
+            // 8,600 units in the harness (#170 follow-up).
             GameLiving ordered = ActiveOrderedPullTarget;
+            GameLiving playerOrdered = ordered != null && CompanionPvpEngagement.Focused(bot, ordered) ? ordered : null;
             GameLiving[] watched = AggroList.Keys.ToArray();
             if (Body.TargetObject is GameLiving current && !watched.Contains(current)) watched = watched.Append(current).ToArray();
             foreach (GameLiving target in watched)
             {
                 if (target == null || target is GameKeepDoor or GameSiegeWeapon || !target.IsAlive) continue;
+                if (enemyPlayersOnly && (!BotPvpCrowdControl.PlayerLike(target) || !BotSiegeRuntime.LegalEnemy(anchor, target))) continue;
                 bool sameRegion = target.CurrentRegionID == anchor.CurrentRegionID;
                 int distance = sameRegion ? (int)anchor.GetDistanceTo(target) : int.MaxValue;
                 if (sameRegion && distance <= chase) continue;
                 bool hittingGroup = (target.IsAttacking || target.IsCasting) && target.TargetObject is GameLiving victim &&
                     (victim == bot || victim.Group == bot.Group && bot.Group != null && anchor.IsWithinRadius(victim, chase));
-                bool players = target == leaderSelected || target == leaderAttacking || target == ordered;
+                bool players = target == leaderSelected || target == leaderAttacking || target == playerOrdered;
                 if (!GroupFightPolicy.BeyondLeash(distance, chase, players, hittingGroup)) continue;
 
+                // An automatic ordered pull on it ends too, or the attack turn takes it straight back.
+                if (target == ordered) CancelOrderedPull(target);
                 RemoveFromAggroList(target);
                 if (Body.TargetObject == target)
                 {

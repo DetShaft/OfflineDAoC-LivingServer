@@ -12,6 +12,14 @@ namespace DOL.AI.Brain
         private long? _lastPvpAreaMez;
         private bool PvpControlInFlight => Body.IsCasting && GameLoop.GameLoopTime<_pvpControlCastUntil &&
             Body.castingComponent?.SpellHandler?.Spell?.ID==_pvpControlSpellId;
+        /// <summary>A caster (list caster class) or an enemy with a bow out: it can land a hit from range mid-cast.</summary>
+        private static bool RangedAttacker(GameLiving enemy)
+        {
+            if (enemy.ActiveWeaponSlot == eActiveWeaponSlot.Distance) return true;
+            ICharacterClass cls = enemy is GamePlayer player ? player.CharacterClass : (enemy as GameBot)?.CharacterClass;
+            return cls?.ClassType == eClassType.ListCaster;
+        }
+
         private bool TryPvpCrowdControl()
         {
             if (BotBody?.CanCastCrowdControlSpells != true || Body.IsCasting || Body.IsIncapacitated ||
@@ -29,15 +37,21 @@ namespace DOL.AI.Brain
                 .OrderBy(Body.GetDistanceTo).Take(24).ToArray();
             if (enemies.Length == 0) return false;
             long now = GameLoop.GameLoopTime;
-            // #170: an enemy swinging at or casting on this bot will interrupt any cast; only instant CC goes out then.
-            bool underFire = Body.GetNPCsInRadius(1800).Where(BotPvpCrowdControl.PlayerLike).Cast<GameLiving>()
-                .Concat(Body.GetPlayersInRadius(1800)).Any(e => e.IsAlive && e.Realm != Body.Realm && e.TargetObject == Body &&
-                    !e.IsMezzed && (e.IsAttacking && e.IsWithinRadius(Body, Body.MeleeAttackRange + 150) || e.IsCasting));
+            // #170: an enemy that will hit this bot before a cast ends interrupts it; only instant CC goes out then.
+            // Judged per spell (BotPvpCrowdControlPolicy.Threatens): casting at it, a caster or archer targeting it in
+            // range, or a melee enemy close enough to reach it within the cast time.
+            var threats = Body.GetNPCsInRadius(1800).Where(BotPvpCrowdControl.PlayerLike).Cast<GameLiving>()
+                .Concat(Body.GetPlayersInRadius(1800))
+                .Where(e => e.IsAlive && e.Realm != Body.Realm && e.TargetObject == Body && !e.IsMezzed)
+                .Select(e => (casting: e.IsCasting, ranged: RangedAttacker(e), distance: (int)Body.GetDistanceTo(e)))
+                .ToArray();
+            bool UnderFire(int castTime) => threats.Any(t => BotPvpCrowdControlPolicy.Threatens(true, false, t.casting, t.ranged,
+                t.distance, Body.MeleeAttackRange + 50, castTime));
             foreach (Spell spell in BotPvpCrowdControlPolicy.Order(BotBody.CrowdControlSpells))
             {
                 if (spell.Level>Body.Level || Body.GetSkillDisabledDuration(spell)>0 || Body.Mana<BotBody.PowerCost(spell) ||
                     spell.CastTime>0 && Body.IsBeingInterrupted && !spell.Uninterruptible ||
-                    !spell.Uninterruptible && !BotPvpCrowdControlPolicy.CastSurvives(spell.CastTime, underFire)) continue;
+                    !spell.Uninterruptible && !BotPvpCrowdControlPolicy.CastSurvives(spell.CastTime, UnderFire(spell.CastTime))) continue;
                 bool area = BotPvpCrowdControlPolicy.IsAreaMez(spell);
                 // #152: an area mez is an opener. After an attempt it waits out the 60 s mez immunity it hands out.
                 if (area && !BotPvpCrowdControlPolicy.AreaMezReady(now, _lastPvpAreaMez)) continue;

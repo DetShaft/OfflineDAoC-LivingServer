@@ -141,5 +141,20 @@ namespace DOL.UnitTests
             Assert.That(BotPvpCrowdControlPolicy.CastSurvives(2_500, underFire: false), Is.True);
             Assert.That(BotPvpCrowdControlPolicy.CastSurvives(0, underFire: true), Is.True, "Instant CC always may.");
         }
+
+        [Test]
+        public void ThreatsThatLandBeforeTheCastEnds()
+        {
+            // targetsCaster, mezzed, casting, rangedAttacker, distance, meleeReach, castTime
+            Assert.That(BotPvpCrowdControlPolicy.Threatens(true, false, true, false, 1400, 250, 2_500), Is.True, "Already casting at it.");
+            Assert.That(BotPvpCrowdControlPolicy.Threatens(true, false, false, true, 1400, 250, 2_500), Is.True,
+                "A caster targeting it can start a nuke mid-cast.");
+            Assert.That(BotPvpCrowdControlPolicy.Threatens(true, false, false, true, 1700, 250, 2_500), Is.False, "Out of spell range.");
+            Assert.That(BotPvpCrowdControlPolicy.Threatens(true, false, false, false, 800, 250, 2_500), Is.True,
+                "A melee enemy 800 away closes 625 units in 2.5 s.");
+            Assert.That(BotPvpCrowdControlPolicy.Threatens(true, false, false, false, 1000, 250, 2_500), Is.False);
+            Assert.That(BotPvpCrowdControlPolicy.Threatens(false, false, true, true, 300, 250, 2_500), Is.False, "Targets someone else.");
+            Assert.That(BotPvpCrowdControlPolicy.Threatens(true, true, true, true, 300, 250, 2_500), Is.False, "Mezzed.");
+        }
     }
 }

@@ -91,7 +91,8 @@ namespace DOL.UnitTests.BotSim
                 a.Aggro[leaderTarget] = 1;
 
             a.OrderedTarget = null;
-            SimAgent focus = SharedFocus ? GroupFocus(w, a) : null;
+            // #170 follow-up: while fight mode is on it picks the targets, and the companion focus stays out.
+            SimAgent focus = SharedFocus && !FightModeOwnsTargets(a) ? GroupFocus(w, a) : null;
             // AssistPlayerAttack: support bots hold support; others take an ordered pull onto the focus.
             if (focus != null && !a.Kit.Heals && a.DistanceTo(focus) <= SimWorld.AggroRadius && CanAggro(w, a, focus))
             {
@@ -143,6 +144,9 @@ namespace DOL.UnitTests.BotSim
 
         /// <summary>Runs after the companion focus and before targeting (BotBrain.ThinkGroupFightMode's place). Off here.</summary>
         protected virtual void FightModeTurn(SimWorld w, SimAgent a) { }
+
+        /// <summary>PlayerGroupFightMode.ActiveFor: fight mode is on for this bot's group.</summary>
+        protected virtual bool FightModeOwnsTargets(SimAgent a) => false;
 
         /// <summary>Enemies the CC turn must leave alone (fight mode: the group's focus).</summary>
         protected virtual bool SkipForCrowdControl(SimWorld w, SimAgent a, SimAgent enemy) => false;
@@ -270,14 +274,17 @@ namespace DOL.UnitTests.BotSim
         {
             if (w.Now < a.InterruptedUntil)
                 return false;
-            // #170: an enemy swinging at or casting on the caster will interrupt a cast (BotBrain.TryPvpCrowdControl).
-            bool underFire = Fixes170 && w.Enemies(a).Any(e => e.Alive && !e.Mezzed(w.Now) &&
-                (e.AttackingNow && e.Target == a && e.DistanceTo(a) <= e.Kit.MeleeRange + 150 || e.Casting?.Target == a));
+            // #170: an enemy that will hit the caster before a cast ends interrupts it (BotBrain.TryPvpCrowdControl,
+            // BotPvpCrowdControlPolicy.Threatens). Sim casters and mezzers are the ranged attackers; nobody carries a bow.
+            var threats = Fixes170 ? w.Enemies(a).Where(e => e.Alive && !e.Mezzed(w.Now) && (e.Target == a || e.Casting?.Target == a)).ToList()
+                : new List<SimAgent>();
+            bool UnderFire(int castTime) => threats.Any(e => BotPvpCrowdControlPolicy.Threatens(true, false, e.Casting?.Target == a,
+                e.Kit.CastsNukes, (int)e.DistanceTo(a), e.Kit.MeleeRange + 50, castTime));
             var bySpell = a.CcSpells.ToDictionary(s => s.Spell);
             foreach (Spell ordered in BotPvpCrowdControlPolicy.Order(a.CcSpells.Select(s => s.Spell)))
             {
                 SimSpell spell = bySpell[ordered];
-                if (!BotPvpCrowdControlPolicy.CastSurvives(spell.CastMilliseconds, underFire))
+                if (!BotPvpCrowdControlPolicy.CastSurvives(spell.CastMilliseconds, UnderFire(spell.CastMilliseconds)))
                     continue;
                 var inRange = w.Enemies(a).Where(e => !e.Kit.IsNpc && a.DistanceTo(e) <= spell.Range && !e.Mezzed(w.Now) && !w.ImmuneToMez(e) &&
                                                       !SkipForCrowdControl(w, a, e) &&
@@ -471,6 +478,9 @@ namespace DOL.UnitTests.BotSim
                 st.Focus = null;
         }
 
+        protected override bool FightModeOwnsTargets(SimAgent a) =>
+            Fixes170 && a.Leader != null && _groups.TryGetValue(a.Leader, out GroupState st) && st.Active;
+
         protected override bool SkipForCrowdControl(SimWorld w, SimAgent a, SimAgent enemy) =>
             a.Leader != null && _groups.TryGetValue(a.Leader, out GroupState st) && st.Active && st.Focus == enemy;
 
@@ -483,13 +493,20 @@ namespace DOL.UnitTests.BotSim
             if (!Fixes170 && !leader.Alive)
                 return;
             SimAgent anchor = Anchor(leader);
-            if (anchor == null || a.DistanceTo(anchor) > SimWorld.AggroRadius)
+            if (anchor == null)
+                return;
+            bool near = a.DistanceTo(anchor) <= SimWorld.AggroRadius;
+            if (!Fixes170 && !near)
                 return;
             GroupState st = State(leader);
             Scan(w, leader, anchor, st);
-            if (!st.Active)
+            // #170 follow-up: the leash also runs once fight mode has ended (enemy players only) and at any distance.
+            if (Fixes170)
+                Leash(w, a, leader, anchor, enemyPlayersOnly: !st.Active);
+            if (!st.Active || !near)
                 return;
-            Leash(w, a, leader, anchor);
+            if (!Fixes170)
+                Leash(w, a, leader, anchor, enemyPlayersOnly: false);
             if (a.Casting != null || a.Kit.Heals)
                 return; // never cut a cast short; healers stay support-first (#48)
 
@@ -544,7 +561,7 @@ namespace DOL.UnitTests.BotSim
         }
 
         /// <summary>BotBrain.EnforceGroupFightLeash with the real GroupFightPolicy.BeyondLeash.</summary>
-        private void Leash(SimWorld w, SimAgent a, SimAgent leader, SimAgent anchor)
+        private void Leash(SimWorld w, SimAgent a, SimAgent leader, SimAgent anchor, bool enemyPlayersOnly)
         {
             SimAgent leaderAttacking = leader.Alive && leader.AttackingNow ? leader.Target : null;
             SimAgent leaderSelected = leader.Alive ? leader.Target : null;
@@ -553,17 +570,21 @@ namespace DOL.UnitTests.BotSim
                 watched.Add(a.Target);
             foreach (SimAgent t in watched)
             {
-                if (t == null || !t.Alive)
+                if (t == null || !t.Alive || enemyPlayersOnly && t.Kit.IsNpc)
                     continue;
                 int distance = (int)anchor.DistanceTo(t);
                 if (distance <= ChaseDistance)
                     continue;
                 SimAgent victim = t.Casting?.Target ?? (t.AttackingNow ? t.Target : null);
                 bool hittingGroup = victim != null && (victim == a || victim.Side == a.Side && anchor.DistanceTo(victim) <= ChaseDistance);
-                bool players = t == leaderSelected || t == leaderAttacking || t == a.OrderedTarget;
+                // #170 follow-up: an automatic ordered pull (fight mode's pick, the group focus) is no longer exempt;
+                // the sim has no /pull, and the player's own attack is leaderAttacking.
+                bool players = t == leaderSelected || t == leaderAttacking || !Fixes170 && t == a.OrderedTarget;
                 if (!GroupFightPolicy.BeyondLeash(distance, ChaseDistance, players, hittingGroup))
                     continue;
                 a.Aggro.Remove(t);
+                if (Fixes170 && a.OrderedTarget == t)
+                    a.OrderedTarget = null; // CancelOrderedPull
                 if (a.Target == t)
                 {
                     a.Target = null;

@@ -138,6 +138,7 @@ namespace DOL.GS
             if (focus == null) return;
             foreach (GameLiving member in leader.Group.GetMembersInTheGroup())
                 if (member is GameBot bot && Leader(bot) == leader && PlayerLedPullCoordinator.Available(bot, leader) &&
+                    !PlayerGroupFightMode.ActiveFor(bot) &&
                     bot.IsWithinRadius(focus, BotBrain.GROUP_DEFENSE_ASSIST_RADIUS) && CompanionRaidSiege.MayAssist(bot, focus) &&
                     bot.Brain is BotBrain brain)
                     brain.AssistPlayerAttack(focus);
