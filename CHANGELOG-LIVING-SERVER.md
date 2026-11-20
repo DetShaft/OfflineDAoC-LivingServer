@@ -18,6 +18,13 @@ All tests only: not yet seen in game.
   `bots / group_fight_chase_distance`, default 1500) makes bots drop enemies that run off and come back. The mode ends 6 s after
   the last hostile. The server log records `GROUP_FIGHT_MODE`, `GROUP_FIGHT_FOCUS`, `GROUP_FIGHT_TARGET` and `GROUP_FIGHT_LEASH`.
   Switch it off with `bots / group_fight_mode`.
+- **Group fight mode fixes (#170), from the bot AI simulation:**
+  - When you die, your group keeps fighting together around the groupmate nearest your body instead of going idle.
+  - The group's focus moves to enemy healers, then casters, when they come into reach, instead of staying on the first melee
+    that charged in.
+  - Bots already fighting switch to that focus when it is a better target (a healer over a caster over a melee).
+  - Mezzers no longer start a cast-time mez while an enemy is hitting them, and bots leave a mezzed enemy alone while another
+    is free, even one that hit a groupmate. Applies to every bot (companions, group bots and gamebots), the same in every realm.
 
 ## Beta 1.1.23 — 2026-11-19
 

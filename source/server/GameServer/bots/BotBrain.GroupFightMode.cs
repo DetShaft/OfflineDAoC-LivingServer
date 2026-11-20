@@ -25,13 +25,16 @@ namespace DOL.AI.Brain
                 FSM.GetCurrentState() == FSM.GetState(eFSMStateType.PASSIVE))
                 return;
             bool active = PlayerGroupFightMode.Observe(bot, leader, out GameLiving focus);
+            // The player, or once the player is dead the groupmate nearest their body (#170).
+            GameLiving anchor = PlayerGroupFightMode.Anchor(leader);
+            if (anchor == null) return;
             // A bot with a siege job (engineer, ram crew) answers to its job, not to the chase distance.
             if (BotSiegeRuntime.Assigned(bot)) return;
 
             if (!active) return;
             GameLiving leaderTarget = PlayerGroupFightMode.LeaderTarget(leader);
             // The leash runs only in fight mode, and never on the player's selected target or an ordered pull.
-            EnforceGroupFightLeash(bot, leader, leader.TargetObject as GameLiving);
+            EnforceGroupFightLeash(bot, leader, anchor, leader.IsAlive ? leader.TargetObject as GameLiving : null);
             // Never cut a cast short (a heal, a mez) to take a new target.
             if (Body.IsCasting) return;
             // A door the player is hitting is the door crew's: a caster that cannot hurt it takes the focus instead (#133).
@@ -44,18 +47,15 @@ namespace DOL.AI.Brain
                 pick = leaderTarget;
                 reason = GroupFightPolicy.PickReason.Leader;
             }
-            else if (HasLiveCombatTarget(leader))
-            {
-                // Already fighting something legal near the player: no switching back and forth.
-                return;
-            }
             else
             {
-                if (BotPartyRoles.IsTank(bot))
+                bool tank = BotPartyRoles.IsTank(bot);
+                GameLiving current = LiveCombatTarget(anchor);
+                GameLiving[] candidates = PlayerGroupFightMode.Candidates(bot);
+                if (tank && (current == null || !PlayerGroupFightMode.HittingBackLine(bot.Group, current)))
                 {
-                    GameLiving[] candidates = PlayerGroupFightMode.Candidates(bot);
                     GroupFightPolicy.Candidate[] described = candidates
-                        .Select(t => PlayerGroupFightMode.Describe(leader, bot.Group, t)).ToArray();
+                        .Select(t => PlayerGroupFightMode.Describe(anchor, bot.Group, t)).ToArray();
                     int peel = GroupFightPolicy.PickPeel(described);
                     if (peel >= 0)
                     {
@@ -63,11 +63,21 @@ namespace DOL.AI.Brain
                         reason = GroupFightPolicy.PickReason.Peel;
                     }
                 }
-                if (pick == null && focus != null)
+                if (pick == null && focus != null && focus != current)
                 {
-                    pick = focus;
-                    reason = GroupFightPolicy.PickReason.Focus;
+                    // An idle bot takes the focus. A busy one takes it only when the focus is of a better role (#170:
+                    // a bot with any live target used to keep it and never reached the healer fight mode had picked).
+                    // A tank on a peel target stays on it.
+                    bool peeling = tank && current != null && PlayerGroupFightMode.HittingBackLine(bot.Group, current);
+                    if (current == null || !peeling && GroupFightPolicy.ShouldSwitchToFocus(
+                            PlayerGroupFightMode.Describe(anchor, bot.Group, current).Role,
+                            PlayerGroupFightMode.Describe(anchor, bot.Group, focus).Role))
+                    {
+                        pick = focus;
+                        reason = GroupFightPolicy.PickReason.Focus;
+                    }
                 }
+                // Otherwise: already fighting something legal near the group, no switching back and forth.
             }
             if (pick == null || !Body.IsWithinRadius(pick, GROUP_DEFENSE_ASSIST_RADIUS)) return;
             if (Body.TargetObject == pick && HasAggro) return;
@@ -75,16 +85,20 @@ namespace DOL.AI.Brain
             // left to heal (AssistPlayerAttack would stop their casts to hold support).
             if (BotPartyRoles.IsSupport(bot) && !MaySupportIdleCombatAssist(pick)) return;
 
+            // A switch must outweigh the aggro the old target has built up, or the attack turn keeps the old one
+            // (CleanUpAggroListAndGetHighestModifiedThreat keeps the current target on a tie or better).
+            if (HasAggro && Body.TargetObject is GameLiving old && old != pick)
+                AddToAggroList(pick, AggroList.Values.Select(a => a.Base).DefaultIfEmpty(0).Max() + 500);
             AssistPlayerAttack(pick);
             if (pick != _lastFightPick || reason != _lastFightReason)
             {
                 _lastFightPick = pick;
                 _lastFightReason = reason;
-                GroupFightPolicy.Candidate c = PlayerGroupFightMode.Describe(leader, bot.Group, pick);
+                GroupFightPolicy.Candidate c = PlayerGroupFightMode.Describe(anchor, bot.Group, pick);
                 log.Info($"GROUP_FIGHT_TARGET bot=\"{bot.Name}\" class=\"{bot.ClassName}\" role={BotRoleLabel(bot)} " +
                          $"leader=\"{leader.Name}\" target=\"{pick.Name}\" why={reason.ToString().ToLowerInvariant()} " +
                          $"targetRole={GroupFightPolicy.Label(c.Role)} hp={c.HealthPercent} fromLeader={c.DistanceFromLeader} " +
-                         $"fromBot={(int)Body.GetDistanceTo(pick)} leaderAttacking={leader.IsAttacking} leaderMezzed={leader.IsMezzed} " +
+                         $"fromBot={(int)Body.GetDistanceTo(pick)} leaderAttacking={leader.IsAttacking} leaderMezzed={leader.IsMezzed} leaderAlive={leader.IsAlive} " +
                          $"engaged={Body.TargetObject == pick && HasAggro}");
             }
         }
@@ -93,9 +107,10 @@ namespace DOL.AI.Brain
             BotPartyRoles.IsSupport(bot) ? "support" : BotPartyRoles.IsTank(bot) ? "tank" :
             bot.CharacterClass?.ClassType == eClassType.ListCaster ? "caster" : "damage";
 
-        private bool HasLiveCombatTarget(GamePlayer leader) =>
-            HasAggro && Body.TargetObject is GameLiving current && PlayerGroupFightMode.Hostile(leader, current) &&
-            leader.IsWithinRadius(current, PlayerGroupFightMode.ChaseDistance);
+        /// <summary>The bot's current fight, when it is a legal target within the chase distance of the anchor.</summary>
+        private GameLiving LiveCombatTarget(GameLiving anchor) =>
+            HasAggro && Body.TargetObject is GameLiving current && PlayerGroupFightMode.Hostile(anchor, current) &&
+            anchor.IsWithinRadius(current, PlayerGroupFightMode.ChaseDistance) ? current : null;
 
         /// <summary>
         /// The chase leash: an aggro entry or target past the chase distance from the player is dropped and the bot
@@ -103,7 +118,7 @@ namespace DOL.AI.Brain
         /// attack), or it is hitting this bot or a groupmate near the player. Fight mode only.
         /// Doors and siege engines are left to the siege rules.
         /// </summary>
-        private void EnforceGroupFightLeash(GameBot bot, GamePlayer leader, GameLiving leaderSelected)
+        private void EnforceGroupFightLeash(GameBot bot, GamePlayer leader, GameLiving anchor, GameLiving leaderSelected)
         {
             int chase = PlayerGroupFightMode.ChaseDistance;
             GameLiving leaderAttacking = PlayerLedPullCoordinator.FindLeaderTarget(leader);
@@ -113,11 +128,11 @@ namespace DOL.AI.Brain
             foreach (GameLiving target in watched)
             {
                 if (target == null || target is GameKeepDoor or GameSiegeWeapon || !target.IsAlive) continue;
-                bool sameRegion = target.CurrentRegionID == leader.CurrentRegionID;
-                int distance = sameRegion ? (int)leader.GetDistanceTo(target) : int.MaxValue;
+                bool sameRegion = target.CurrentRegionID == anchor.CurrentRegionID;
+                int distance = sameRegion ? (int)anchor.GetDistanceTo(target) : int.MaxValue;
                 if (sameRegion && distance <= chase) continue;
                 bool hittingGroup = (target.IsAttacking || target.IsCasting) && target.TargetObject is GameLiving victim &&
-                    (victim == bot || victim.Group == bot.Group && bot.Group != null && leader.IsWithinRadius(victim, chase));
+                    (victim == bot || victim.Group == bot.Group && bot.Group != null && anchor.IsWithinRadius(victim, chase));
                 bool players = target == leaderSelected || target == leaderAttacking || target == ordered;
                 if (!GroupFightPolicy.BeyondLeash(distance, chase, players, hittingGroup)) continue;
 
@@ -138,7 +153,7 @@ namespace DOL.AI.Brain
                 {
                     _lastLeashDrop = target;
                     log.Info($"GROUP_FIGHT_LEASH bot=\"{bot.Name}\" leader=\"{leader.Name}\" target=\"{target.Name}\" " +
-                             $"fromLeader={(sameRegion ? distance : -1)} botFromLeader={(int)Body.GetDistanceTo(leader)} chase={chase}");
+                             $"fromLeader={(sameRegion ? distance : -1)} botFromAnchor={(int)Body.GetDistanceTo(anchor)} anchor=\"{anchor.Name}\" chase={chase}");
                 }
             }
         }

@@ -22,6 +22,9 @@ namespace DOL.UnitTests.BotSim
         public string Name;
         public string Description;
         public Func<ISimTactics> Side0Bots;
+        /// <summary>The enemy side's bots; null: <see cref="AutonomousEnemy"/>.</summary>
+        public Func<ISimTactics> Side1Bots;
+        public ISimTactics Enemy() => Side1Bots?.Invoke() ?? AutonomousEnemy();
         public HashSet<string> Tags = new();
         public bool Has(string tag) => Tags.Contains(tag);
 
@@ -37,9 +40,18 @@ namespace DOL.UnitTests.BotSim
 
         public static SimVariant FightMode() => new()
         {
-            Name = "fight mode (#165)", Live = true,
-            Description = "Shipped default since PR #168: the rules above plus fight mode, which picks the player's target (even while mezzed), a tank peel, or a shared focus (healers, then casters, then lowest health), keeps a 1,500-unit chase leash from the player, and keeps CC off the focus.",
+            Name = "fight mode (#170)", Live = true,
+            Description = "Fight mode with the #170 fixes: it keeps running when the player dies (group anchor), a better-role enemy replaces the focus, busy bots switch to it, no cast-time CC under fire, and a mezzed attacker is left alone. Picks the player's target (even while mezzed), a tank peel, or the shared focus (healers, then casters, then lowest health), keeps a 1,500-unit chase leash, and keeps CC off the focus.",
             Side0Bots = () => new FightModeTactics(),
+        };
+
+        /// <summary>The rules shipped in PR #168, on both sides (the CC fixes in #170 apply to every bot, enemies too).</summary>
+        public static SimVariant FightModeBefore170() => new()
+        {
+            Name = "fight mode (#165), before #170",
+            Description = "Comparison: fight mode as merged in PR #168, with both sides on the rules before #170 (the CC and mez-protection fixes change every bot, enemy gamebots included).",
+            Side0Bots = () => new FightModeTactics { Fixes170 = false, Label = "fight mode (#165), before #170" },
+            Side1Bots = () => new CurrentBotTactics { SharedFocus = false, CompanionRecall = false, ProximityAggroRadius = 1_500, Fixes170 = false, Label = "autonomous enemy (before #170)" },
         };
 
         /// <summary>The enemy side: an autonomous gamebot group (no companion focus or recall; attacks enemies within 1,500 on sight).</summary>
@@ -69,7 +81,7 @@ namespace DOL.UnitTests.BotSim
         public int Seconds = 120;
         public int[] Seeds = { 1, 2, 3 };
         public Func<SimSetup, SimWorld> Build;
-        public List<SimVariant> Variants = new() { SimVariant.Current(), SimVariant.FightMode() };
+        public List<SimVariant> Variants = new() { SimVariant.Current(), SimVariant.FightModeBefore170(), SimVariant.FightMode() };
         public List<SimExpectation> Expectations = new();
     }
 
@@ -167,7 +179,7 @@ namespace DOL.UnitTests.BotSim
             var w = new SimWorld(s.Seed);
             AddGroup(w, 0, s.Side0, roles, new Vec2(0, -gap / 2), s.Variant.Side0Bots(), new ScriptedLeader(), extraSlowMez);
             // The enemy leader is scripted to charge (an autonomous group heading for the fight); its bots are autonomous.
-            AddGroup(w, 1, s.Side1, roles, new Vec2(0, gap / 2), SimVariant.AutonomousEnemy(), new ScriptedLeader(), extraSlowMez);
+            AddGroup(w, 1, s.Side1, roles, new Vec2(0, gap / 2), s.Variant.Enemy(), new ScriptedLeader(), extraSlowMez);
             return w;
         }
 
