@@ -8,9 +8,19 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
-## Unreleased
+## Beta 1.1.24 — 2026-11-20
 
 All tests only: not yet seen in game.
+- **Siege fixes from the Killaloe siege (#148, #149, #162, #163):**
+  - Siege weapons and the siege engineer's ram now work in battlegrounds, not only in frontier zones: the ram spell no longer
+    answers "You cannot use siege weapons here!" at Killaloe.
+  - New client: while stunned or mezzed your figure no longer runs in place or turns with the keys and mouse (a root still
+    lets you turn).
+  - Group bots no longer loop through a keep's upper door while you stand on the floor below, which left their pets behind to
+    die. A door pass now needs the bot and you on the door's floor.
+  - Jarl Killaloe no longer aggroes bots on the floor below his room.
+- **Bot AI simulation harness (#166):** a headless scenario runner that checks bot AI before in-game tests
+  (`docs/BOT-AI-SIMULATION.md`). Developer tool only.
 - **Group fight mode (#165, #151, #126):** in the frontier, battlegrounds and Darkness Falls, the bots in your group no longer wait for you to
   swing. They enter a fight mode when anyone in the group is attacked or an enemy player, bot or pet comes near you. Your target
   comes first while you attack it. Only enemy realms count: monsters and PvE pulls stay yours. Otherwise tanks peel enemies hitting your healers and casters, damage dealers focus one
