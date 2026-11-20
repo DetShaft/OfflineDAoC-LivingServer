@@ -23,6 +23,8 @@ namespace DOL.GS
         public eLootChoice Choice { get; set; }
         /// <summary>1-100 once the roll is decided. 0 for a member who passed.</summary>
         public int Roll { get; set; }
+        /// <summary>How well the drop's bonuses suit this member's class (LootClassFit). Among Need rolls the best fit wins.</summary>
+        public double Fit { get; set; }
     }
 
     /// <summary>One piece of gear the group is rolling for. The drop lies on the ground until the roll ends.</summary>
@@ -41,9 +43,11 @@ namespace DOL.GS
 
     /// <summary>
     /// Need or greed rolls for gear that drops in a group with a player in it.
-    /// A bot answers at once: Need when the piece is an upgrade it can wear, Greed otherwise, Pass with a full bag.
+    /// A bot answers at once: Need when the piece is an upgrade it can wear and its bonuses suit the bot's class,
+    /// Greed otherwise, Pass with a full bag.
     /// A player answers with /loot need, /loot greed or /loot pass (the new client's loot window sends these).
-    /// Need beats Greed. The highest 1-100 roll in the winning choice takes the drop.
+    /// Need beats Greed. Among Need rolls the member whose class gets the most from the bonuses wins; members
+    /// whose fit is close (LootClassFit.TieShare) and Greed rolls are decided by the highest 1-100 roll.
     /// </summary>
     public static class GroupLootRolls
     {
@@ -80,10 +84,13 @@ namespace DOL.GS
 
             // Only a gamebot wears what it loots. The check is the one its own loot, merchant
             // and Realm Exchange decisions use: its class can use the piece, the weapon fits
-            // its spec, and it is better than what it wears in that slot.
+            // its spec, and it is better than what it wears in that slot. On top of that, the
+            // piece's bonuses must suit the class: a caster does not Need a staff made for a
+            // Friar (+Staff, Strength) just because it is a better staff than its own.
             try
             {
-                if (bot.IsAutonomousWorldBot && AutonomousBotEconomy.TryGetEquipmentUpgrade(bot, item, out _))
+                if (bot.IsAutonomousWorldBot && AutonomousBotEconomy.TryGetEquipmentUpgrade(bot, item, out _) &&
+                    LootClassFit.Of(bot, item).SuitsClass)
                     return eLootChoice.Need;
             }
             catch (Exception)
@@ -115,9 +122,9 @@ namespace DOL.GS
             foreach (GameLiving member in eligible)
             {
                 if (member is GamePlayer)
-                    roll.Entries.Add(new LootRollEntry { Member = member, Choice = eLootChoice.Waiting });
+                    roll.Entries.Add(new LootRollEntry { Member = member, Choice = eLootChoice.Waiting, Fit = FitOf(member, drop.Item) });
                 else if (member is GameBot bot)
-                    roll.Entries.Add(new LootRollEntry { Member = bot, Choice = BotChoice(bot, drop.Item) });
+                    roll.Entries.Add(new LootRollEntry { Member = bot, Choice = BotChoice(bot, drop.Item), Fit = FitOf(bot, drop.Item) });
             }
 
             drop.PendingRoll = roll;
@@ -136,6 +143,19 @@ namespace DOL.GS
 
             Schedule?.Invoke(roll);
             return true;
+        }
+
+        private static double FitOf(GameLiving member, DbInventoryItem item)
+        {
+            try
+            {
+                return LootClassFit.Of(member, item).Score;
+            }
+            catch (Exception)
+            {
+                // A fit that cannot be judged leaves the die to decide.
+                return 0;
+            }
         }
 
         /// <summary>
@@ -281,7 +301,10 @@ namespace DOL.GS
 
         /// <summary>
         /// Rolls for every member in the winning choice and returns them best first: everyone who chose
-        /// Need by roll, then everyone who chose Greed by roll. No two members of a choice share a roll.
+        /// Need, then everyone who chose Greed. No two members of a choice share a roll.
+        /// Greed goes by roll. Need goes by class fit first: the best fit and everyone within
+        /// LootClassFit.TieShare of it go by roll, then the next best fit, and so on. A drop without
+        /// bonuses fits everyone equally, so it goes by roll alone.
         /// </summary>
         public static List<LootRollEntry> Rank(IEnumerable<LootRollEntry> entries, Func<int> die)
         {
@@ -307,11 +330,33 @@ namespace DOL.GS
                 }
 
                 tier.Sort(static (left, right) => right.Roll.CompareTo(left.Roll));
-                ranked.AddRange(tier);
+                ranked.AddRange(choice == eLootChoice.Need ? ByFit(tier) : tier);
             }
 
             return ranked;
         }
+
+        /// <summary>Orders Need rolls (already sorted by roll) by fit bands; within a band the roll order stays.</summary>
+        private static List<LootRollEntry> ByFit(List<LootRollEntry> byRoll)
+        {
+            List<LootRollEntry> left = new(byRoll);
+            List<LootRollEntry> ordered = new(byRoll.Count);
+            while (left.Count > 0)
+            {
+                double best = left.Max(static e => e.Fit);
+                double floor = best * LootClassFit.TieShare;
+                List<LootRollEntry> band = left.Where(e => e.Fit >= floor).ToList();
+                ordered.AddRange(band);
+                left.RemoveAll(band.Contains);
+            }
+
+            return ordered;
+        }
+
+        /// <summary>True when the winner took a Need roll over a higher die because its class fits the drop better.</summary>
+        public static bool WonOnFit(LootRoll roll, LootRollEntry winner) =>
+            winner?.Choice == eLootChoice.Need &&
+            roll.Entries.Any(e => e != winner && e.Choice == eLootChoice.Need && e.Roll > winner.Roll);
 
         private static void Resolve(LootRoll roll)
         {
@@ -385,6 +430,8 @@ namespace DOL.GS
                     continue;
                 bool mine = entry == winner;
                 StringBuilder line = new($"{Prefix}{roll.Id}: {(mine ? "You win" : winner.Member.Name + " wins")} {Clean(drop.Name)} with {winner.Choice} {winner.Roll}.");
+                if (WonOnFit(roll, winner))
+                    line.Append(mine ? " Its bonuses suit your class best." : $" Its bonuses suit {winner.Member.Name}'s class best.");
                 if (mine && waitsOnGround)
                     line.Append(" Your backpack is full, so it waits on the ground for you.");
                 line.Append($" Rolls: {rolls}.");

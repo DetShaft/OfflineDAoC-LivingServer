@@ -1016,6 +1016,74 @@ namespace DOL.UnitTests
             });
         }
 
+        /// <summary>Cloth pants with two magic bonuses.</summary>
+        private static WorldInventoryItem BonusDrop(eProperty first, int firstAmount, eProperty second, int secondAmount)
+        {
+            DbItemTemplate template = Pants(10);
+            template.IsPickable = true;
+            template.Bonus1Type = (int)first;
+            template.Bonus1 = firstAmount;
+            template.Bonus2Type = (int)second;
+            template.Bonus2 = secondAmount;
+            return new WorldInventoryItem(GameInventoryItem.Create(template));
+        }
+
+        [Test]
+        public void BotsNeedOnlyOnBonusesThatSuitTheirClass()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            LootBot enchanter = Bot();
+            Group group = GroupOf(player, enchanter);
+
+            // An Enchanter's template wants Intelligence and Dexterity, not Strength and Quickness.
+            WorldInventoryItem casterPants = BonusDrop(eProperty.Intelligence, 12, eProperty.Dexterity, 6);
+            Assert.That(casterPants.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            WorldInventoryItem fighterPants = BonusDrop(eProperty.Strength, 12, eProperty.Quickness, 6);
+            Assert.That(fighterPants.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ChoiceOf(casterPants.PendingRoll, enchanter), Is.EqualTo(eLootChoice.Need));
+                Assert.That(ChoiceOf(fighterPants.PendingRoll, enchanter), Is.EqualTo(eLootChoice.Greed),
+                    "Pants made for a fighter are better than nothing, but they are not the Enchanter's to Need.");
+            });
+        }
+
+        [Test]
+        public void TheClassThatGetsMostFromTheBonusesWinsTheNeedRoll()
+        {
+            LootPlayer player = Inert<LootPlayer>();
+            player.Inventory = new BotInventory();
+            LootBot enchanter = Bot();
+            enchanter.Name = "Enchanter bot";
+            LootBot bard = Bot();
+            bard.Name = "Bard bot";
+            bard.TestClass = new ClassBard();
+            Group group = GroupOf(player, enchanter, bard);
+
+            // Both can use Dexterity; only the Enchanter uses Intelligence.
+            WorldInventoryItem drop = BonusDrop(eProperty.Intelligence, 6, eProperty.Dexterity, 12);
+            Assert.That(drop.TryAutoPickUp(group), Is.EqualTo(TryPickUpResult.Blocked));
+            LootRoll roll = drop.PendingRoll;
+            Assert.Multiple(() =>
+            {
+                Assert.That(ChoiceOf(roll, enchanter), Is.EqualTo(eLootChoice.Need));
+                Assert.That(ChoiceOf(roll, bard), Is.EqualTo(eLootChoice.Need));
+            });
+
+            // Need rolls first (Enchanter 5, Bard 95), then the player's Greed (50).
+            Queue<int> dice = new(new[] { 5, 95, 50 });
+            GroupLootRolls.Die = () => dice.Dequeue();
+            Assert.That(GroupLootRolls.Answer(player, roll.Id, eLootChoice.Greed, out string error), Is.True, error);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(roll.Winner, Is.SameAs(enchanter));
+                Assert.That(GroupLootRolls.WonOnFit(roll, roll.Entries.Single(e => e.Member == enchanter)), Is.True);
+                Assert.That(enchanter.Inventory.AllItems, Does.Contain(drop.Item));
+            });
+        }
+
         [Test]
         public void BotsRollGreedForGearTheyCannotWearAndAGroupOfBotsNeverRolls()
         {
