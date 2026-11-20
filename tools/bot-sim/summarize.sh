@@ -17,6 +17,13 @@ for md in "$dir"/*.md; do
   echo "== $(basename "$md") =="
   cat "$md"
 done
+# A compact copy of every report without its timelines, last, so the end of the log holds the comparison tables.
+echo "== compact reports (no timelines) =="
+for md in "$dir"/*.md; do
+  [ -f "$md" ] || continue
+  echo "== compact $(basename "$md") =="
+  awk '/^## Timeline/ { exit } { print }' "$md"
+done
 echo "::notice title=Bot AI simulation::$pass expectations met, $found findings (all variants). Reports: bot-sim artifact."
 while IFS=$'\t' read -r result scenario variant live expectation measured; do
   if [ "$result" = "FINDING" ] && [ "$live" = "live" ]; then

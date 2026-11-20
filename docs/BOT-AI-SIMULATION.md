@@ -8,6 +8,8 @@ in one of the owner's PC logs. Use the harness to find decision problems early a
 
 ## Running it
 
+- **Reading results without the artifact:** the log ends with a compact copy of every report (no timelines), so the
+  last few hundred lines of the bot-sim run hold all the comparison tables.
 - **On every push:** `build-and-test` runs the scenarios with the other server tests. The run page shows a summary
   table, one warning per finding, and a **bot-sim** artifact with one `.md` report (tables plus a timeline) and one
   `.json` file per scenario.
@@ -56,7 +58,11 @@ Metric definitions:
 
 Variants (side 0's rules):
 - **fight mode off**: the rules before #165 (server setting `bots / group_fight_mode` = False).
-- **fight mode (#165)**: the shipped default since PR #168. This is the *live* variant: CI warns about its findings and
+- **fight mode (#165), before #170**: fight mode as merged in PR #168, with both sides on the rules before #170 (the
+  #170 CC and mez-protection fixes change every bot, enemy gamebots included, so the enemy reverts too). Kept to show
+  what #170 changed.
+- **fight mode (#170)**: the live variant, fight mode with the #170 fixes (group anchor once the leader is dead, focus
+  upgrade, busy bots switch, no cast-time CC under fire, mezzed attackers protected). CI warns about its findings and
   strict mode fails on them.
 - `keep-lord-after-doors` also runs **rule before #160** (the old door rule) to show what #160 changed.
 - `open-field-8v8` also runs **mirror control**: side 0's bots use the enemy's autonomous rules, so both sides are

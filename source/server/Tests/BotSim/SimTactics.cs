@@ -51,6 +51,8 @@ namespace DOL.UnitTests.BotSim
         public int ProximityAggroRadius { get; init; }
         /// <summary>Temporary companions are recalled to the player past 3,000 units when no groupmate near them fights.</summary>
         public bool CompanionRecall { get; init; } = true;
+        /// <summary>The #170 fixes (on: the live rules). Off reproduces the rules merged in PR #168 for comparison.</summary>
+        public bool Fixes170 { get; init; } = true;
         public string Label { get; init; } = "fight mode off";
         public string Name => Label;
 
@@ -159,8 +161,9 @@ namespace DOL.UnitTests.BotSim
             if (LeaderIsFighting(w, leader) && leader.Target is { Alive: true } target)
                 return target.Kit.IsNpc ? null : target; // Order() takes enemy bots only; NPCs come through plain assist
             // #170: a free attacker before a mezzed one.
+            bool fixes = a.Tactics is not CurrentBotTactics { Fixes170: false };
             return w.Enemies(a).Where(e => w.IsThreat(a.Side, e) && e.DistanceTo(leader) <= SimWorld.AggroRadius)
-                .OrderBy(e => e.Mezzed(w.Now)).ThenBy(e => e.DistanceTo(leader)).FirstOrDefault();
+                .OrderBy(e => fixes && e.Mezzed(w.Now)).ThenBy(e => e.DistanceTo(leader)).FirstOrDefault();
         }
 
         public static bool LeaderIsFighting(SimWorld w, SimAgent leader) =>
@@ -183,10 +186,13 @@ namespace DOL.UnitTests.BotSim
                 return false;
             if (a.OrderedTarget == target)
                 return false; // CompanionPvpEngagement.Focused
+            bool defended = a.Tactics is CurrentBotTactics { SharedFocus: true } && w.IsThreat(a.Side, target);
+            if (defended && a.Tactics is CurrentBotTactics { Fixes170: false })
+                return false; // before #170: Defending was exempt even when mezzed
             // #170: a mezzed enemy is left alone while another is free, even one that hit a groupmate (Defending).
             if (target.Mezzed(w.Now))
                 return w.Enemies(a).Any(e => e != target && !e.Kit.IsNpc && !e.Mezzed(w.Now) && e.DistanceTo(a) <= BotPvpCrowdControl.FreeEnemyRadius);
-            if (a.Tactics is CurrentBotTactics { SharedFocus: true } && w.IsThreat(a.Side, target))
+            if (defended)
                 return false; // CompanionPvpEngagement.Defending
             if (!w.Claims.TryGetValue(target, out SimWorld.SimClaim claim) || claim.Caster == a || !claim.Caster.Alive || claim.Caster.Side != a.Side)
                 return false;
@@ -265,7 +271,7 @@ namespace DOL.UnitTests.BotSim
             if (w.Now < a.InterruptedUntil)
                 return false;
             // #170: an enemy swinging at or casting on the caster will interrupt a cast (BotBrain.TryPvpCrowdControl).
-            bool underFire = w.Enemies(a).Any(e => e.Alive && !e.Mezzed(w.Now) &&
+            bool underFire = Fixes170 && w.Enemies(a).Any(e => e.Alive && !e.Mezzed(w.Now) &&
                 (e.AttackingNow && e.Target == a && e.DistanceTo(a) <= e.Kit.MeleeRange + 150 || e.Casting?.Target == a));
             var bySpell = a.CcSpells.ToDictionary(s => s.Spell);
             foreach (Spell ordered in BotPvpCrowdControlPolicy.Order(a.CcSpells.Select(s => s.Spell)))
@@ -380,7 +386,7 @@ namespace DOL.UnitTests.BotSim
         private readonly Dictionary<SimAgent, GroupState> _groups = new();
         private readonly Dictionary<SimAgent, (SimAgent Pick, GroupFightPolicy.PickReason Reason)> _lastPick = new();
 
-        public FightModeTactics() { Label = "fight mode (#165)"; }
+        public FightModeTactics() { Label = "fight mode (#170)"; }
 
         /// <summary>
         /// PlayerGroupFightMode.Describe's role. The model maps by role, not class, so every realm is described the same
@@ -456,7 +462,7 @@ namespace DOL.UnitTests.BotSim
             int current = st.Focus == null ? -1 : candidates.IndexOf(st.Focus);
             if (current >= 0 && described[current].Mezzed)
                 current = -1;
-            if (best >= 0 && (current < 0 || GroupFightPolicy.ShouldReplaceFocus(described[current], described[best])))
+            if (best >= 0 && (current < 0 || Fixes170 && GroupFightPolicy.ShouldReplaceFocus(described[current], described[best])))
             {
                 st.Focus = candidates[best];
                 w.Log($"FIGHT FOCUS {st.Focus.Label} ({GroupFightPolicy.Label(described[best].Role)}, {described[best].HealthPercent}% HP, {candidates.Count} candidates, anchor {anchor.Name})");
@@ -474,6 +480,8 @@ namespace DOL.UnitTests.BotSim
             if (leader == null || leader == a)
                 return;
             // #170: a dead leader no longer ends fight mode; the anchor stands in.
+            if (!Fixes170 && !leader.Alive)
+                return;
             SimAgent anchor = Anchor(leader);
             if (anchor == null || a.DistanceTo(anchor) > SimWorld.AggroRadius)
                 return;
@@ -504,6 +512,8 @@ namespace DOL.UnitTests.BotSim
                 SimAgent current = a.Aggro.Count > 0 && a.Target is { } t && Hostile(w, t) && a.Aggro.ContainsKey(t) &&
                                    anchor.DistanceTo(t) <= ChaseDistance ? t : null; // BotBrain.LiveCombatTarget
                 bool peeling = tank && current != null && HittingBackLine(leader, current);
+                if (!Fixes170 && current != null)
+                    return; // before #170: HasLiveCombatTarget, no switching at all
                 if (tank && !peeling)
                 {
                     var described = st.Candidates.Select(c => Describe(w, leader, anchor, c)).ToArray();
