@@ -607,8 +607,7 @@ namespace DOL.UnitTests.BotSim
             SimAgent melee = a.Group.Where(m => m != a && m.Alive && !IsBackLine(m) && m.AttackingNow && anchor.DistanceTo(m) <= SimWorld.AggroRadius)
                 .OrderBy(m => m.DistanceTo(a)).FirstOrDefault();
             int distance = melee == null ? int.MaxValue : (int)a.DistanceTo(melee);
-            bool enemyInReach = w.Enemies(a).Any(e => !e.Mezzed(w.Now) && a.DistanceTo(e) <= SimWorld.NukeRange && w.LineOfSight(a, e));
-            if (!GroupFightPolicy.CasterClosesIn(false, w.Now - a.LastAttackedAt <= 5_000, enemyInReach, distance))
+            if (!GroupFightPolicy.CasterClosesIn(false, w.Now - a.LastAttackedAt <= 5_000, distance))
                 return false;
             a.AttackingNow = false;
             a.MoveGoal = melee.Position.Toward(a.Position, GroupFightPolicy.CasterHold);

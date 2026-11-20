@@ -191,12 +191,11 @@ namespace DOL.UnitTests
         [Test]
         public void CastersCloseUpOnTheirMelee()
         {
-            Assert.That(CasterClosesIn(casting: false, underAttack: false, enemyInReach: false, distanceToMelee: 1_800), Is.True);
-            Assert.That(CasterClosesIn(false, false, false, 1_000), Is.False);
-            Assert.That(CasterClosesIn(casting: true, underAttack: false, enemyInReach: false, distanceToMelee: 1_800), Is.False, "Never walk out of a cast.");
-            Assert.That(CasterClosesIn(false, underAttack: true, enemyInReach: false, distanceToMelee: 1_800), Is.False, "Under attack: the kite rules decide.");
-            Assert.That(CasterClosesIn(false, false, enemyInReach: true, distanceToMelee: 1_800), Is.False, "Something to cast at: keep casting.");
-            Assert.That(CasterClosesIn(false, false, false, int.MaxValue), Is.False, "Nobody fighting in melee.");
+            Assert.That(CasterClosesIn(casting: false, underAttack: false, distanceToMelee: 1_800), Is.True);
+            Assert.That(CasterClosesIn(false, false, 1_000), Is.False);
+            Assert.That(CasterClosesIn(casting: true, underAttack: false, distanceToMelee: 1_800), Is.False, "Never walk out of a cast.");
+            Assert.That(CasterClosesIn(false, underAttack: true, distanceToMelee: 1_800), Is.False, "Under attack: the kite rules decide.");
+            Assert.That(CasterClosesIn(false, false, int.MaxValue), Is.False, "Nobody fighting in melee.");
         }
 
         [Test]
