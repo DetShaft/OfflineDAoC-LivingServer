@@ -60,7 +60,7 @@ namespace DOL.GS
                 bot.IsOnStableMasterRoute || bot.IsReturningAfterRelease)
                 return null;
             GameLiving anchor = Anchor(leader);
-            return anchor != null && bot.IsWithinRadius(anchor, BotBrain.GROUP_DEFENSE_ASSIST_RADIUS) ? leader : null;
+            return anchor != null && bot.IsWithinRadius(anchor, DOL.AI.Brain.BotBrain.GROUP_DEFENSE_ASSIST_RADIUS) ? leader : null;
         }
 
         /// <summary>
