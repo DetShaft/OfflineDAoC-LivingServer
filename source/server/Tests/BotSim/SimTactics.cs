@@ -382,6 +382,12 @@ namespace DOL.UnitTests.BotSim
     {
         public int ChaseDistance { get; init; } = GroupFightPolicy.ChaseDistance(0);
 
+        /// <summary>
+        /// The live rule (PlayerGroupFightMode.LeaderTarget) puts the player's selected target first even while they are
+        /// mezzed or not swinging. False is a comparison only: the player's target counts while they attack it.
+        /// </summary>
+        public bool SelectedTargetFirst { get; init; } = true;
+
         private sealed class GroupState
         {
             public bool Active;
@@ -512,7 +518,7 @@ namespace DOL.UnitTests.BotSim
 
             SimAgent leaderTarget = !leader.Alive ? null
                 : leader.AttackingNow && leader.Target is { Alive: true } attacking ? attacking
-                : leader.Target is { Alive: true } selected && Hostile(w, selected) && leader.DistanceTo(selected) <= ChaseDistance ? selected : null;
+                : SelectedTargetFirst && leader.Target is { Alive: true } selected && Hostile(w, selected) && leader.DistanceTo(selected) <= ChaseDistance ? selected : null;
             if (leaderTarget != null && !CanAggro(w, a, leaderTarget))
                 leaderTarget = null;
 

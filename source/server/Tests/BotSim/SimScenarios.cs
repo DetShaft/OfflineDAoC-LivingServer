@@ -362,6 +362,15 @@ namespace DOL.UnitTests.BotSim
                 w.Agents.First(a => a.Side == 0 && a.IsLeader).Tactics = new MezzedLeader(leader.Tactics, 2_000, 25_000);
                 return w;
             },
+            Variants =
+            {
+                new SimVariant
+                {
+                    Name = "fight mode (#170), player target only while attacking",
+                    Description = "Comparison, not shipped: as fight mode (#170), but the player's selected target is not put first while the player is not attacking (here: mezzed). Shows what the 'player's target first, even while mezzed' rule costs in this fight.",
+                    Side0Bots = () => new FightModeTactics { SelectedTargetFirst = false, Label = "fight mode (#170), player target only while attacking" },
+                },
+            },
             Expectations =
             {
                 IdleBelow(25),

@@ -302,12 +302,7 @@ namespace DOL.UnitTests.BotSim
                 target.Casting = null;
                 target.InterruptedUntil = Now + InterruptMilliseconds;
                 target.Metrics.CastsInterrupted++;
-                if (target.Metrics.PendingCcCast)
-                {
-                    target.Metrics.WastedCc++;
-                    target.Metrics.WastedCcReasons.Add("interrupted");
-                    target.Metrics.PendingCcCast = false;
-                }
+                LoseCcCast(target, "interrupted");
             }
 
             if (!target.Alive)
@@ -315,6 +310,7 @@ namespace DOL.UnitTests.BotSim
                 target.Metrics.Deaths++;
                 source.Metrics.Kills++;
                 target.Target = null;
+                LoseCcCast(target, "caster died");
                 target.Casting = null;
                 target.AttackingNow = false;
                 Log($"{target.Label} dies to {source.Name} ({how})");
@@ -346,6 +342,7 @@ namespace DOL.UnitTests.BotSim
                 if (Random.NextDouble() < ResistChance) { resisted++; continue; }
                 e.MezzedUntil = Now + spell.DurationMilliseconds;
                 e.MezzedBy = caster;
+                LoseCcCast(e, "caster mezzed");
                 e.Casting = null;
                 e.AttackingNow = false;
                 hit.Add(e);
@@ -469,6 +466,22 @@ namespace DOL.UnitTests.BotSim
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// A CC cast in progress is lost (interrupt, the caster mezzed or killed). Counted only when the lost cast is CC:
+        /// before, a CC cast cut short by an enemy mez left the flag set and the next interrupted nuke was booked as
+        /// wasted CC "interrupted".
+        /// </summary>
+        private static void LoseCcCast(SimAgent a, string reason)
+        {
+            if (a.Casting?.Spell != null && a.Metrics.PendingCcCast)
+            {
+                a.Metrics.WastedCc++;
+                a.Metrics.WastedCcReasons.Add(reason);
+            }
+            if (a.Casting != null)
+                a.Metrics.PendingCcCast = false;
         }
 
         public bool StartCast(SimAgent a, SimSpell spell, SimAgent target, int castMilliseconds)
