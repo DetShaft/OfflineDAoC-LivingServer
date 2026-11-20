@@ -16,7 +16,9 @@ namespace DOL.GS
     /// - enter when a groupmate is attacked or an enemy-realm player, bot or pet is near the player;
     /// - keep a shared focus for the damage dealers (<see cref="GroupFightPolicy.PickFocus"/>);
     /// - leave <see cref="GroupFightPolicy.ExitDelayMilliseconds"/> after the last hostile.
-    /// Frontier and battlegrounds only: PvE pulls stay the player's. /raid 40 and /raid 80 keep their own
+    /// Frontier, battlegrounds and the neutral raid dungeons (Darkness Falls, Summoner's Hall), where realms
+    /// fight on sight (AutonomousWorldBotController.IsBattleground). Only enemy-realm targets are picked or start the
+    /// mode, so PvE pulls stay the player's. /raid 40 and /raid 80 keep their own
     /// engagement and leash rules (CompanionPvpEngagement, TemporaryCompanionRecovery), so they are left out.
     /// The keep lord's bot shield (#157, #160) is honored: a shielded lord is never a candidate, and
     /// BotBrain.AddToAggroList refuses it anyway.
@@ -59,8 +61,10 @@ namespace DOL.GS
                 !attack.CausesCombat || !attacker.IsAlive || attacker == member)
                 return;
             GamePlayer leader = LeaderOfGroup(group);
+            // Enemy realms only (players, gamebots, their pets, keep guards): a monster hitting the group is ordinary
+            // PvE defense and stays with the aggro rules, so fight mode never turns a PvE fight into free target picks.
             if (!InScope(leader) || attacker.CurrentRegionID != leader.CurrentRegionID ||
-                !GameServer.ServerRules.IsAllowedToAttack(leader, attacker, true))
+                !BotSiegeRuntime.LegalEnemy(leader, attacker))
                 return;
             GroupState state = Groups.GetOrCreateValue(group);
             long now = GameLoop.GameLoopTime;
@@ -113,8 +117,9 @@ namespace DOL.GS
         {
             GameLiving attacking = PlayerLedPullCoordinator.FindLeaderTarget(leader);
             if (attacking != null) return attacking;
+            // A selected monster is still the player's PvE pull to start: only an enemy-realm target counts unswung.
             return leader?.TargetObject is GameLiving selected && selected != leader && Hostile(leader, selected) &&
-                leader.IsWithinRadius(selected, ChaseDistance) ? selected : null;
+                BotSiegeRuntime.LegalEnemy(leader, selected) && leader.IsWithinRadius(selected, ChaseDistance) ? selected : null;
         }
 
         public static GroupFightPolicy.Candidate Describe(GamePlayer leader, Group group, GameLiving target)

@@ -28,10 +28,12 @@ namespace DOL.AI.Brain
             // A bot with a siege job (engineer, ram crew) answers to its job, not to the chase distance.
             if (BotSiegeRuntime.Assigned(bot)) return;
 
+            if (!active) return;
             GameLiving leaderTarget = PlayerGroupFightMode.LeaderTarget(leader);
-            EnforceGroupFightLeash(bot, leader, leaderTarget);
+            // The leash runs only in fight mode, and never on the player's selected target or an ordered pull.
+            EnforceGroupFightLeash(bot, leader, leader.TargetObject as GameLiving);
             // Never cut a cast short (a heal, a mez) to take a new target.
-            if (!active || Body.IsCasting) return;
+            if (Body.IsCasting) return;
             // A door the player is hitting is the door crew's: a caster that cannot hurt it takes the focus instead (#133).
             if (leaderTarget != null && !CanAggroTarget(leaderTarget)) leaderTarget = null;
 
@@ -97,12 +99,15 @@ namespace DOL.AI.Brain
 
         /// <summary>
         /// The chase leash: an aggro entry or target past the chase distance from the player is dropped and the bot
-        /// regroups, unless the player is fighting it or it is hitting this bot or a groupmate near the player.
+        /// regroups, unless it is the player's selected or attacked target, this bot's ordered pull (/pull, /group
+        /// attack), or it is hitting this bot or a groupmate near the player. Fight mode only.
         /// Doors and siege engines are left to the siege rules.
         /// </summary>
-        private void EnforceGroupFightLeash(GameBot bot, GamePlayer leader, GameLiving leaderTarget)
+        private void EnforceGroupFightLeash(GameBot bot, GamePlayer leader, GameLiving leaderSelected)
         {
             int chase = PlayerGroupFightMode.ChaseDistance;
+            GameLiving leaderAttacking = PlayerLedPullCoordinator.FindLeaderTarget(leader);
+            GameLiving ordered = ActiveOrderedPullTarget;
             GameLiving[] watched = AggroList.Keys.ToArray();
             if (Body.TargetObject is GameLiving current && !watched.Contains(current)) watched = watched.Append(current).ToArray();
             foreach (GameLiving target in watched)
@@ -113,10 +118,9 @@ namespace DOL.AI.Brain
                 if (sameRegion && distance <= chase) continue;
                 bool hittingGroup = (target.IsAttacking || target.IsCasting) && target.TargetObject is GameLiving victim &&
                     (victim == bot || victim.Group == bot.Group && bot.Group != null && leader.IsWithinRadius(victim, chase));
-                if (!GroupFightPolicy.BeyondLeash(distance, chase, target == leaderTarget, hittingGroup)) continue;
+                bool players = target == leaderSelected || target == leaderAttacking || target == ordered;
+                if (!GroupFightPolicy.BeyondLeash(distance, chase, players, hittingGroup)) continue;
 
-                if (ActiveOrderedPullTarget == target)
-                    CancelOrderedPull(target);
                 RemoveFromAggroList(target);
                 if (Body.TargetObject == target)
                 {

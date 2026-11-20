@@ -11,9 +11,9 @@ Older entries below keep the names they were written with.
 ## Unreleased
 
 All tests only: not yet seen in game.
-- **Group fight mode (#165, #151, #126):** in the frontier and battlegrounds, the bots in your group no longer wait for you to
+- **Group fight mode (#165, #151, #126):** in the frontier, battlegrounds and Darkness Falls, the bots in your group no longer wait for you to
   swing. They enter a fight mode when anyone in the group is attacked or an enemy player, bot or pet comes near you. Your target
-  comes first, even while you are mezzed. Otherwise tanks peel enemies hitting your healers and casters, damage dealers focus one
+  comes first, even while you are mezzed. Only enemy realms count: monsters and PvE pulls stay yours. Otherwise tanks peel enemies hitting your healers and casters, damage dealers focus one
   target (enemy healers, then casters, then the lowest health) and healers keep healing. A chase leash (setting
   `bots / group_fight_chase_distance`, default 1500) makes bots drop enemies that run off and come back. The mode ends 6 s after
   the last hostile. The server log records `GROUP_FIGHT_MODE`, `GROUP_FIGHT_FOCUS`, `GROUP_FIGHT_TARGET` and `GROUP_FIGHT_LEASH`.

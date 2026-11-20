@@ -2475,13 +2475,13 @@ namespace DOL.GS.ServerProperties
 		/// <summary>
 		/// Issue #165: bots in the player's group pick their own targets in a battleground fight.
 		/// </summary>
-		[ServerProperty("bots", "group_fight_mode", "Issue #165: in the frontier and battlegrounds, bots in your group enter a fight mode when anyone in the group is attacked or an enemy player, bot or pet comes near you. Your target still comes first, even while you are mezzed. Otherwise tanks peel enemies hitting your healers and casters, damage dealers focus one target (enemy healers, then casters, then the lowest health) and healers keep healing. They leave the mode 6 s after the last hostile is gone. PvE pulls stay yours. False keeps the old assist-only behavior.", true)]
+		[ServerProperty("bots", "group_fight_mode", "Issue #165: in the frontier, battlegrounds and Darkness Falls (and the other neutral raid dungeons), bots in your group enter a fight mode when anyone in the group is attacked or an enemy player, bot or pet comes near you. Your target still comes first, even while you are mezzed. Otherwise tanks peel enemies hitting your healers and casters, damage dealers focus one target (enemy healers, then casters, then the lowest health) and healers keep healing. They leave the mode 6 s after the last hostile is gone. Only enemy-realm players, bots, pets and keep guards start the mode or are picked: monsters and PvE pulls stay yours. False keeps the old assist-only behavior.", true)]
 		public static bool GROUP_FIGHT_MODE = true;
 
 		/// <summary>
 		/// Issue #165: how far from the player a group bot may chase in fight mode.
 		/// </summary>
-		[ServerProperty("bots", "group_fight_chase_distance", "Issue #165: in fight mode, bots in your group pick and chase only enemies within this many units of you (default 1500). A bot whose target moves farther away drops it and comes back, unless that enemy is hitting the bot itself or a groupmate near you. Your own target is never dropped.", 1500)]
+		[ServerProperty("bots", "group_fight_chase_distance", "Issue #165: in fight mode, bots in your group pick and chase only enemies within this many units of you (default 1500). In fight mode, a bot whose target moves farther away drops it and comes back, unless that enemy is hitting the bot itself or a groupmate near you. Your own target (selected or attacked) and a /pull or /group attack order are never dropped.", 1500)]
 		public static int GROUP_FIGHT_CHASE_DISTANCE = 1500;
 
 		/// <summary>
