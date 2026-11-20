@@ -16,6 +16,7 @@ namespace DOL.UnitTests.BotSim
         public double DamageDealt, DamageTaken, HealingDone;
         public int Kills, Deaths;
         public int CcCasts, WastedCc, EnemiesMezzed, MezzesBrokenByOwnSide, BrokeOwnSideMez, CastsInterrupted;
+        public int LeashDrops, Recalls;
         public List<string> WastedCcReasons = new();
         public List<SimTargetChoice> TargetsChosen = new();
         public Dictionary<string, double> DamageByTarget = new();

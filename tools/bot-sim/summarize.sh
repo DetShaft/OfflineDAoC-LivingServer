@@ -18,8 +18,8 @@ for md in "$dir"/*.md; do
   cat "$md"
 done
 echo "::notice title=Bot AI simulation::$pass expectations met, $found findings (all variants). Reports: bot-sim artifact."
-while IFS=$'\t' read -r result scenario variant expectation measured; do
-  if [ "$result" = "FINDING" ] && [ "$variant" = "current" ]; then
+while IFS=$'\t' read -r result scenario variant live expectation measured; do
+  if [ "$result" = "FINDING" ] && [ "$live" = "live" ]; then
     echo "::warning title=Bot sim finding ($scenario)::$expectation -> $measured"
   fi
 done < "$tsv"
@@ -29,7 +29,7 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     echo
     echo "| Result | Scenario | Variant | Expectation | Measured |"
     echo "|---|---|---|---|---|"
-    while IFS=$'\t' read -r result scenario variant expectation measured; do
+    while IFS=$'\t' read -r result scenario variant live expectation measured; do
       echo "| $result | $scenario | $variant | $expectation | $measured |"
     done < "$tsv"
     echo

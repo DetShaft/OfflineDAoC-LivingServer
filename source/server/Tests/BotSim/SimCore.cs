@@ -155,6 +155,7 @@ namespace DOL.UnitTests.BotSim
         // Aggro: enemy -> amount. Live: AddToAggroList on being hit, leader assist adds 1.
         public readonly Dictionary<SimAgent, double> Aggro = new();
         public SimAgent OrderedTarget; // the group focus this think (CompanionPvpEngagement.Observe -> OrderPull)
+        public long NextRecallCheck;
         public long LastDamageTime = -100_000;
 
         // Per-tick outcome for metrics
@@ -193,11 +194,15 @@ namespace DOL.UnitTests.BotSim
         public readonly Random Random;
         public long Now;
         public readonly Dictionary<SimAgent, SimClaim> Claims = new();
-        /// <summary>Per side: enemies that hit a member, and until when they are remembered.</summary>
-        public readonly Dictionary<int, Dictionary<SimAgent, long>> SideThreats = new();
+        /// <summary>Per side: every enemy that hit a member, and when it last did.</summary>
+        public readonly Dictionary<int, Dictionary<SimAgent, long>> LastHitOnSide = new();
 
-        public bool IsThreat(int side, SimAgent enemy) =>
-            SideThreats.TryGetValue(side, out var threats) && threats.TryGetValue(enemy, out long until) && until > Now;
+        /// <summary>True when the enemy hit a member of the side within the last <paramref name="memoryMilliseconds"/>.</summary>
+        public bool HitSideWithin(int side, SimAgent enemy, long memoryMilliseconds) =>
+            LastHitOnSide.TryGetValue(side, out var hits) && hits.TryGetValue(enemy, out long at) && Now - at < memoryMilliseconds;
+
+        /// <summary>CompanionPvpEngagement.RecordThreat: 12 s memory, enemy bots only (not keep guards or lords).</summary>
+        public bool IsThreat(int side, SimAgent enemy) => !enemy.Kit.IsNpc && HitSideWithin(side, enemy, 12_000);
         public int TimelineLimit = 400;
         private int _nextId = 1;
 
@@ -263,13 +268,11 @@ namespace DOL.UnitTests.BotSim
             source.Metrics.DamageByTarget[target.Name] = sum + amount;
             target.Aggro.TryGetValue(source, out double aggro);
             target.Aggro[source] = aggro + amount;
-            // CompanionPvpEngagement.RecordThreat: a hit on a groupmate is remembered for the group for 12 s.
-            // Live, only enemy bots count (not keep guards or lords).
-            if (!source.Kit.IsNpc && !target.Kit.IsNpc)
+            if (!target.Kit.IsNpc)
             {
-                if (!SideThreats.TryGetValue(target.Side, out var threats))
-                    SideThreats[target.Side] = threats = new Dictionary<SimAgent, long>();
-                threats[source] = Now + 12_000;
+                if (!LastHitOnSide.TryGetValue(target.Side, out var hits))
+                    LastHitOnSide[target.Side] = hits = new Dictionary<SimAgent, long>();
+                hits[source] = Now;
             }
 
             if (target.Mezzed(Now) && !target.Unbreakable)

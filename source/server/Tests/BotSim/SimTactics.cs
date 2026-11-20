@@ -47,7 +47,11 @@ namespace DOL.UnitTests.BotSim
         /// range onto it. Off approximates groups without it (autonomous gamebot groups, not modelled exactly).
         /// </summary>
         public bool SharedFocus { get; init; } = true;
-        public string Label { get; init; } = "current";
+        /// <summary>Autonomous gamebots (the enemy side): enemies this close join the aggro list on sight.</summary>
+        public int ProximityAggroRadius { get; init; }
+        /// <summary>Temporary companions are recalled to the player past 3,000 units when no groupmate near them fights.</summary>
+        public bool CompanionRecall { get; init; } = true;
+        public string Label { get; init; } = "fight mode off";
         public string Name => Label;
 
         public virtual void Think(SimWorld w, SimAgent a)
@@ -57,7 +61,28 @@ namespace DOL.UnitTests.BotSim
                 if (!enemy.Alive || a.DistanceTo(enemy) > SimWorld.MaxAggroDistance || !CanAggro(w, a, enemy))
                     a.Aggro.Remove(enemy);
 
+            if (ProximityAggroRadius > 0)
+                foreach (SimAgent enemy in w.Enemies(a).Where(e => a.DistanceTo(e) <= ProximityAggroRadius && CanAggro(w, a, e)))
+                    if (!a.Aggro.ContainsKey(enemy))
+                        a.Aggro[enemy] = 0.5;
+
             SimAgent leader = a.Leader;
+            if (CompanionRecall && a.IsBot && now >= a.NextRecallCheck)
+            {
+                a.NextRecallCheck = now + TemporaryCompanionRecovery.CheckIntervalMilliseconds;
+                if (leader != null && leader != a && leader.Alive && a.DistanceTo(leader) > TemporaryCompanionRecovery.MaximumLeaderDistance &&
+                    !HasPartyCombat(w, a))
+                {
+                    w.Log($"{a.Name} is recalled to {leader.Name} from {a.DistanceTo(leader):0} units");
+                    a.Position = leader.Position.Toward(a.Position, 150);
+                    a.Aggro.Clear();
+                    a.Target = null;
+                    a.AttackingNow = false;
+                    a.MoveGoal = null;
+                    a.Metrics.Recalls++;
+                }
+            }
+
             // BotState_Idle / BotState_Follow: assist only while the leader is attacking (or casting a harmful spell).
             if (leader != null && leader.Alive && leader.Target is { Alive: true } leaderTarget && LeaderIsFighting(w, leader) &&
                 a.DistanceTo(leaderTarget) <= SimWorld.AggroRadius && CanAggro(w, a, leaderTarget) && !a.Aggro.ContainsKey(leaderTarget))
@@ -72,6 +97,8 @@ namespace DOL.UnitTests.BotSim
                 if (!a.Aggro.ContainsKey(focus))
                     a.Aggro[focus] = 1;
             }
+
+            FightModeTurn(w, a);
 
             if (a.Kit.Heals && TryHeal(w, a))
                 return;
@@ -111,6 +138,17 @@ namespace DOL.UnitTests.BotSim
                 a.Status = "melee";
             }
         }
+
+        /// <summary>Runs after the companion focus and before targeting (BotBrain.ThinkGroupFightMode's place). Off here.</summary>
+        protected virtual void FightModeTurn(SimWorld w, SimAgent a) { }
+
+        /// <summary>Enemies the CC turn must leave alone (fight mode: the group's focus).</summary>
+        protected virtual bool SkipForCrowdControl(SimWorld w, SimAgent a, SimAgent enemy) => false;
+
+        /// <summary>TemporaryCompanionRecovery.HasPartyCombat: a groupmate within 3,000 units of the bot is fighting.</summary>
+        public static bool HasPartyCombat(SimWorld w, SimAgent a) =>
+            a.Group.Any(m => m.Alive && m.DistanceTo(a) <= TemporaryCompanionRecovery.MaximumLeaderDistance &&
+                             (m.AttackingNow || m.Aggro.Count > 0 || w.Now - m.LastDamageTime < SimWorld.InCombatWindowMilliseconds));
 
         /// <summary>CompanionPvpEngagement.Observe's focus: the leader's enemy target, else the live threat nearest the leader.</summary>
         public static SimAgent GroupFocus(SimWorld w, SimAgent a)
@@ -171,6 +209,7 @@ namespace DOL.UnitTests.BotSim
             if (free.Count == 0)
             {
                 why = candidates.Count > 0 ? "aggro list holds only mezzed/claimed enemies"
+                    : a.Leader != null && a.Leader != a && !a.Leader.Alive ? "leader is dead; not attacked itself"
                     : a.Leader != null && a.Leader.Alive && a.Leader.Mezzed(w.Now) ? "leader is mezzed; not attacked itself"
                     : a.Leader != null && a.Leader.Alive && !LeaderIsFighting(w, a.Leader) ? "leader is not attacking; not attacked itself"
                     : w.Enemies(a).Any(e => e.ShieldedFromBots != null && e.ShieldedFromBots(w.Now)) ? "only a door-shielded lord in reach"
@@ -226,6 +265,7 @@ namespace DOL.UnitTests.BotSim
             {
                 SimSpell spell = bySpell[ordered];
                 var inRange = w.Enemies(a).Where(e => !e.Kit.IsNpc && a.DistanceTo(e) <= spell.Range && !e.Mezzed(w.Now) && !w.ImmuneToMez(e) &&
+                                                      !SkipForCrowdControl(w, a, e) &&
                                                       !(w.Claims.TryGetValue(e, out var c) && c.Caster != a && c.Caster.Alive)).ToList();
                 if (inRange.Count == 0)
                     continue;
@@ -307,6 +347,194 @@ namespace DOL.UnitTests.BotSim
             {
                 a.Activity = SimActivity.Casting;
                 a.Status = "nuking " + target.Name;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fight mode (#165) on top of the older rules, as BotBrain.ThinkGroupFightMode and PlayerGroupFightMode run it. The
+    /// target picks, the leash test and the exit timer are the real GroupFightPolicy functions. Scope (frontier,
+    /// battlegrounds, not companion raids) is assumed: every scenario is an RvR fight.
+    /// </summary>
+    public sealed class FightModeTactics : CurrentBotTactics
+    {
+        public int ChaseDistance { get; init; } = GroupFightPolicy.ChaseDistance(0);
+
+        private sealed class GroupState
+        {
+            public bool Active;
+            public long LastHostile, NextScan;
+            public SimAgent Focus;
+            public List<SimAgent> Candidates = new();
+        }
+
+        private readonly Dictionary<SimAgent, GroupState> _groups = new();
+        private readonly Dictionary<SimAgent, (SimAgent Pick, GroupFightPolicy.PickReason Reason)> _lastPick = new();
+
+        public FightModeTactics() { Label = "fight mode (#165)"; }
+
+        /// <summary>
+        /// PlayerGroupFightMode.Describe's role. The model maps by role, not class, so every realm is described the same
+        /// way: healers are healers, casters and mezzers are casters, melee are fighters, keep NPCs (no class) are pets.
+        /// </summary>
+        public static GroupFightPolicy.TargetRole RoleOf(SimAgent t) =>
+            t.Kit.IsNpc ? GroupFightPolicy.TargetRole.Pet
+            : t.Kit.Heals ? GroupFightPolicy.TargetRole.Healer
+            : t.Kit.CastsNukes ? GroupFightPolicy.TargetRole.Caster
+            : GroupFightPolicy.TargetRole.Fighter;
+
+        private static bool HittingBackLine(SimAgent leader, SimAgent enemy)
+        {
+            SimAgent victim = enemy.Casting?.Target ?? (enemy.AttackingNow ? enemy.Target : null);
+            return victim != null && leader.Group.Contains(victim) && (victim.Kit.Heals || victim.Kit.CastsNukes);
+        }
+
+        private static GroupFightPolicy.Candidate Describe(SimWorld w, SimAgent leader, SimAgent t) =>
+            new(RoleOf(t), (int)t.HealthPercent, (int)leader.DistanceTo(t), t.Mezzed(w.Now), HittingBackLine(leader, t));
+
+        private static bool Hostile(SimWorld w, SimAgent t) => t.Alive && (t.ShieldedFromBots == null || !t.ShieldedFromBots(w.Now));
+
+        private GroupState State(SimAgent leader)
+        {
+            if (!_groups.TryGetValue(leader, out GroupState state))
+                _groups[leader] = state = new GroupState();
+            return state;
+        }
+
+        /// <summary>PlayerGroupFightMode.Scan: threats and enemy players/bots near the player; enter, exit, sticky focus.</summary>
+        private void Scan(SimWorld w, SimAgent leader, GroupState st)
+        {
+            if (w.Now < st.NextScan)
+                return;
+            st.NextScan = w.Now + PlayerGroupFightMode.ScanIntervalMilliseconds;
+            var candidates = w.Enemies(leader).Where(e => Hostile(w, e) && leader.DistanceTo(e) <= ChaseDistance &&
+                (w.HitSideWithin(leader.Side, e, GroupFightPolicy.ThreatMemoryMilliseconds) || !e.Kit.IsNpc)).ToList();
+            st.Candidates = candidates;
+            if (candidates.Count > 0)
+            {
+                st.LastHostile = w.Now;
+                if (!st.Active)
+                {
+                    st.Active = true;
+                    st.Focus = null;
+                    SimAgent first = candidates.OrderBy(e => leader.DistanceTo(e)).First();
+                    w.Log($"FIGHT MODE on for {leader.Name}'s group ({first.Name} at {leader.DistanceTo(first):0})");
+                }
+            }
+            else if (st.Active && GroupFightPolicy.ShouldExit(w.Now, st.LastHostile))
+            {
+                st.Active = false;
+                st.Focus = null;
+                w.Log($"FIGHT MODE off for {leader.Name}'s group");
+                return;
+            }
+            if (!st.Active)
+                return;
+            SimAgent focus = st.Focus;
+            if (focus != null && (!candidates.Contains(focus) || focus.Mezzed(w.Now)))
+                focus = null;
+            if (focus == null && candidates.Count > 0)
+            {
+                var described = candidates.Select(t => Describe(w, leader, t)).ToArray();
+                int index = GroupFightPolicy.PickFocus(described);
+                if (index >= 0)
+                {
+                    focus = candidates[index];
+                    w.Log($"FIGHT FOCUS {focus.Label} ({GroupFightPolicy.Label(described[index].Role)}, {described[index].HealthPercent}% HP, {candidates.Count} candidates)");
+                }
+            }
+            st.Focus = focus;
+        }
+
+        protected override bool SkipForCrowdControl(SimWorld w, SimAgent a, SimAgent enemy) =>
+            a.Leader != null && _groups.TryGetValue(a.Leader, out GroupState st) && st.Active && st.Focus == enemy;
+
+        protected override void FightModeTurn(SimWorld w, SimAgent a)
+        {
+            SimAgent leader = a.Leader;
+            if (leader == null || leader == a || !leader.Alive)
+                return;
+            GroupState st = State(leader);
+            Scan(w, leader, st);
+            if (!st.Active)
+                return;
+            Leash(w, a, leader);
+            if (a.Casting != null || a.Kit.Heals)
+                return; // never cut a cast short; healers stay support-first (#48)
+
+            SimAgent leaderTarget = leader.AttackingNow && leader.Target is { Alive: true } attacking ? attacking
+                : leader.Target is { Alive: true } selected && Hostile(w, selected) && leader.DistanceTo(selected) <= ChaseDistance ? selected : null;
+            if (leaderTarget != null && !CanAggro(w, a, leaderTarget))
+                leaderTarget = null;
+
+            SimAgent pick = null;
+            var reason = GroupFightPolicy.PickReason.None;
+            if (leaderTarget != null && GroupFightPolicy.FollowsLeaderTarget(true, leaderTarget.Mezzed(w.Now)))
+            {
+                pick = leaderTarget;
+                reason = GroupFightPolicy.PickReason.Leader;
+            }
+            else if (a.Aggro.Count > 0 && a.Target is { } current && Hostile(w, current) && a.Aggro.ContainsKey(current) &&
+                     leader.DistanceTo(current) <= ChaseDistance)
+                return; // HasLiveCombatTarget: no switching back and forth
+            else
+            {
+                if (a.Role == SimRole.Tank)
+                {
+                    var described = st.Candidates.Select(t => Describe(w, leader, t)).ToArray();
+                    int peel = GroupFightPolicy.PickPeel(described);
+                    if (peel >= 0)
+                    {
+                        pick = st.Candidates[peel];
+                        reason = GroupFightPolicy.PickReason.Peel;
+                    }
+                }
+                if (pick == null && st.Focus != null)
+                {
+                    pick = st.Focus;
+                    reason = GroupFightPolicy.PickReason.Focus;
+                }
+            }
+            if (pick == null || a.DistanceTo(pick) > SimWorld.AggroRadius || !CanAggro(w, a, pick))
+                return;
+            a.OrderedTarget = pick; // AssistPlayerAttack -> OrderPull
+            if (!a.Aggro.ContainsKey(pick))
+                a.Aggro[pick] = 1;
+            if (!_lastPick.TryGetValue(a, out var last) || last.Pick != pick || last.Reason != reason)
+            {
+                _lastPick[a] = (pick, reason);
+                w.Log($"{a.Name} fight-mode pick {pick.Name} (why: {reason.ToString().ToLowerInvariant()})");
+            }
+        }
+
+        /// <summary>BotBrain.EnforceGroupFightLeash with the real GroupFightPolicy.BeyondLeash.</summary>
+        private void Leash(SimWorld w, SimAgent a, SimAgent leader)
+        {
+            SimAgent leaderAttacking = leader.AttackingNow ? leader.Target : null;
+            var watched = a.Aggro.Keys.ToList();
+            if (a.Target != null && !watched.Contains(a.Target))
+                watched.Add(a.Target);
+            foreach (SimAgent t in watched)
+            {
+                if (t == null || !t.Alive)
+                    continue;
+                int distance = (int)leader.DistanceTo(t);
+                if (distance <= ChaseDistance)
+                    continue;
+                SimAgent victim = t.Casting?.Target ?? (t.AttackingNow ? t.Target : null);
+                bool hittingGroup = victim != null && (victim == a || victim.Side == a.Side && leader.DistanceTo(victim) <= ChaseDistance);
+                bool players = t == leader.Target || t == leaderAttacking || t == a.OrderedTarget;
+                if (!GroupFightPolicy.BeyondLeash(distance, ChaseDistance, players, hittingGroup))
+                    continue;
+                a.Aggro.Remove(t);
+                if (a.Target == t)
+                {
+                    a.Target = null;
+                    a.AttackingNow = false;
+                    a.MoveGoal = null;
+                }
+                a.Metrics.LeashDrops++;
+                w.Log($"{a.Name} drops {t.Name} at the leash ({distance} units from {leader.Name})");
             }
         }
     }

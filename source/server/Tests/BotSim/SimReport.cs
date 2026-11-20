@@ -11,7 +11,7 @@ namespace DOL.UnitTests.BotSim
     public sealed class SimFinding
     {
         public string Scenario, Variant, Expectation, Measured;
-        public bool Ok;
+        public bool Ok, Live;
     }
 
     /// <summary>Writes a scenario's Markdown report and JSON metrics, and evaluates its expectations.</summary>
@@ -34,7 +34,8 @@ namespace DOL.UnitTests.BotSim
                 foreach (SimExpectation e in scenario.Expectations)
                 {
                     (bool ok, string detail) = e.Check(runs);
-                    findings.Add(new SimFinding { Scenario = scenario.Name, Variant = group.Key, Expectation = e.Text, Measured = detail, Ok = ok });
+                    bool live = scenario.Variants.Any(v => v.Name == group.Key && v.Live);
+                    findings.Add(new SimFinding { Scenario = scenario.Name, Variant = group.Key, Expectation = e.Text, Measured = detail, Ok = ok, Live = live });
                 }
             }
             return findings;
@@ -93,8 +94,8 @@ namespace DOL.UnitTests.BotSim
 
             sb.AppendLine("## Side 0 bots by role (all realms)");
             sb.AppendLine();
-            sb.AppendLine("| Variant | Role | Idle in combat | Damage dealt | Damage taken | Healing | Deaths | Targets chosen | CC casts | Wasted CC | Casts interrupted | Mean / max distance from leader |");
-            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|");
+            sb.AppendLine("| Variant | Role | Idle in combat | Damage dealt | Damage taken | Healing | Deaths | Targets chosen | CC casts | Wasted CC | Casts interrupted | Leash drops | Recalls | Mean / max distance from leader |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
             foreach (string variant in variants)
                 foreach (var role in results.Where(r => r.Variant == variant).SelectMany(r => r.Bots()).GroupBy(b => b.Role).OrderBy(g => g.Key))
                 {
@@ -104,6 +105,7 @@ namespace DOL.UnitTests.BotSim
                     sb.AppendLine($"| {variant} | {role.Key} | {F1(idle)}% | {F(bots.Average(b => b.Metrics.DamageDealt))} | {F(bots.Average(b => b.Metrics.DamageTaken))} | " +
                                   $"{F(bots.Average(b => b.Metrics.HealingDone))} | {bots.Average(b => b.Metrics.Deaths):0.00} | {bots.Average(b => b.Metrics.TargetsChosen.Count):0.0} | " +
                                   $"{bots.Average(b => b.Metrics.CcCasts):0.0} | {bots.Average(b => b.Metrics.WastedCc):0.0} | {bots.Average(b => b.Metrics.CastsInterrupted):0.0} | " +
+                                  $"{bots.Average(b => b.Metrics.LeashDrops):0.0} | {bots.Average(b => b.Metrics.Recalls):0.0} | " +
                                   $"{F(bots.Average(b => b.Metrics.MeanDistanceFromLeader))} / {F(bots.Max(b => b.Metrics.MaxDistanceFromLeader))} |");
                 }
             sb.AppendLine();
@@ -198,7 +200,7 @@ namespace DOL.UnitTests.BotSim
                         ccCasts = a.Metrics.CcCasts, wastedCc = a.Metrics.WastedCc, wastedCcReasons = a.Metrics.WastedCcReasons,
                         enemiesMezzed = a.Metrics.EnemiesMezzed, brokeOwnSideMez = a.Metrics.BrokeOwnSideMez, castsInterrupted = a.Metrics.CastsInterrupted,
                         maxDistanceFromLeader = Math.Round(a.Metrics.MaxDistanceFromLeader), meanDistanceFromLeader = Math.Round(a.Metrics.MeanDistanceFromLeader),
-                        msBeyondAssistRadius = a.Metrics.MsBeyondAssistRadius,
+                        msBeyondAssistRadius = a.Metrics.MsBeyondAssistRadius, leashDrops = a.Metrics.LeashDrops, recalls = a.Metrics.Recalls,
                         targets = a.Metrics.TargetsChosen.Select(t => new { t.Time, t.Target }),
                         idleReasons = a.Metrics.IdleReasons,
                         activityMs = a.Metrics.ActivityMs.ToDictionary(p => p.Key.ToString(), p => p.Value),
@@ -215,7 +217,7 @@ namespace DOL.UnitTests.BotSim
             File.WriteAllText(Path.Combine(folder, scenario.Name + ".json"), Json(results, findings));
             // One line per expectation, read by CI for the run summary and ::warning annotations.
             File.AppendAllLines(Path.Combine(folder, "findings.tsv"),
-                findings.Select(f => string.Join('\t', f.Ok ? "pass" : "FINDING", f.Scenario, f.Variant, f.Expectation, f.Measured)));
+                findings.Select(f => string.Join('\t', f.Ok ? "pass" : "FINDING", f.Scenario, f.Variant, f.Live ? "live" : "compare", f.Expectation, f.Measured)));
             return md;
         }
     }

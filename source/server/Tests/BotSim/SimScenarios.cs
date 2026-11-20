@@ -25,10 +25,26 @@ namespace DOL.UnitTests.BotSim
         public HashSet<string> Tags = new();
         public bool Has(string tag) => Tags.Contains(tag);
 
+        /// <summary>The variant whose findings CI warns about and BOT_SIM_STRICT fails on: what ships today.</summary>
+        public bool Live;
+
         public static SimVariant Current() => new()
         {
-            Name = "current", Description = "Live rules (BotBrain as of this build).", Side0Bots = () => new CurrentBotTactics(),
+            Name = "fight mode off",
+            Description = "The rules before #165 (server setting bots / group_fight_mode = False): bots assist the player's attack, share the companion group focus (the player's target, else the enemy that last hit a groupmate) and defend themselves.",
+            Side0Bots = () => new CurrentBotTactics(),
         };
+
+        public static SimVariant FightMode() => new()
+        {
+            Name = "fight mode (#165)", Live = true,
+            Description = "Shipped default since PR #168: the rules above plus fight mode, which picks the player's target (even while mezzed), a tank peel, or a shared focus (healers, then casters, then lowest health), keeps a 1,500-unit chase leash from the player, and keeps CC off the focus.",
+            Side0Bots = () => new FightModeTactics(),
+        };
+
+        /// <summary>The enemy side: an autonomous gamebot group (no companion focus or recall; attacks enemies within 1,500 on sight).</summary>
+        public static ISimTactics AutonomousEnemy() =>
+            new CurrentBotTactics { SharedFocus = false, CompanionRecall = false, ProximityAggroRadius = 1_500, Label = "autonomous enemy" };
 
         public static SimVariant NoSharedFocus() => new()
         {
@@ -53,7 +69,7 @@ namespace DOL.UnitTests.BotSim
         public int Seconds = 120;
         public int[] Seeds = { 1, 2, 3 };
         public Func<SimSetup, SimWorld> Build;
-        public List<SimVariant> Variants = new() { SimVariant.Current() };
+        public List<SimVariant> Variants = new() { SimVariant.Current(), SimVariant.FightMode() };
         public List<SimExpectation> Expectations = new();
     }
 
@@ -150,7 +166,8 @@ namespace DOL.UnitTests.BotSim
         {
             var w = new SimWorld(s.Seed);
             AddGroup(w, 0, s.Side0, roles, new Vec2(0, -gap / 2), s.Variant.Side0Bots(), new ScriptedLeader(), extraSlowMez);
-            AddGroup(w, 1, s.Side1, roles, new Vec2(0, gap / 2), new CurrentBotTactics(), new ScriptedLeader(), extraSlowMez);
+            ISimTactics enemy = SimVariant.AutonomousEnemy();
+            AddGroup(w, 1, s.Side1, roles, new Vec2(0, gap / 2), enemy, enemy, extraSlowMez);
             return w;
         }
 
@@ -181,20 +198,18 @@ namespace DOL.UnitTests.BotSim
         {
             Name = "open-field-8v8",
             Title = "8v8 open-field group fight",
-            Why = "Baseline: two matched groups (tank, 2 melee, 2 casters, mezzer, 2 healers) meet on open ground. Both leaders are scripted players who attack the nearest enemy.",
+            Why = "Baseline: the player's group (a scripted player plus 7 bots) meets a matched autonomous gamebot group (tank, 2 melee, 2 casters, mezzer, 2 healers each) on open ground. The player attacks the nearest enemy.",
             Build = s => TwoGroups(s, StandardGroup, 2_400),
-            Variants = { SimVariant.NoSharedFocus() },
             Expectations =
             {
                 IdleBelow(20),
                 new SimExpectation
                 {
-                    Text = "Matched groups win about equally often by side (no side-order bias in the model)",
+                    Text = "The player's group wins at least half of its fights against a matched autonomous group",
                     Check = runs =>
                     {
-                        var current = runs.ToList();
-                        int side0 = current.Count(r => r.WinnerSide == 0), side1 = current.Count(r => r.WinnerSide == 1);
-                        return (Math.Abs(side0 - side1) <= Math.Max(2, current.Count / 3), $"side 0 won {side0}, side 1 won {side1} of {current.Count}");
+                        int side0 = runs.Count(r => r.WinnerSide == 0), side1 = runs.Count(r => r.WinnerSide == 1);
+                        return (side0 * 2 >= runs.Count, $"side 0 won {side0}, side 1 won {side1}, {runs.Count - side0 - side1} timed out, of {runs.Count}");
                     },
                 },
             },
@@ -240,7 +255,7 @@ namespace DOL.UnitTests.BotSim
             {
                 new SimVariant
                 {
-                    Name = "rule before #160", Description = "The old shield rule: any standing door shields the lord.",
+                    Name = "rule before #160", Description = "The old door rule (any standing door shields the lord), fight mode off.",
                     Side0Bots = () => new CurrentBotTactics(), Tags = { "before-160" },
                 },
             },
@@ -285,7 +300,6 @@ namespace DOL.UnitTests.BotSim
             Issues = "#151 #152",
             Why = "Both groups bring three mezzers (one also carries the slow backup area mez). Checks the PvP CC rules: area mez needs 2+ free enemies, a 60 s area mez hold, no mez on enemies groupmates hit, and claims that end when the cast stops.",
             Build = s => TwoGroups(s, CrowdControlGroup, 2_400, extraSlowMez: true),
-            Variants = { SimVariant.NoSharedFocus() },
             Expectations =
             {
                 new SimExpectation
@@ -327,7 +341,6 @@ namespace DOL.UnitTests.BotSim
                 w.Agents.First(a => a.Side == 0 && a.IsLeader).Tactics = new MezzedLeader(leader.Tactics, 2_000, 25_000);
                 return w;
             },
-            Variants = { SimVariant.NoSharedFocus() },
             Expectations =
             {
                 IdleBelow(25),
@@ -361,7 +374,6 @@ namespace DOL.UnitTests.BotSim
                     a.MezzedUntil = w.Now + _duration;
                     a.Unbreakable = true;
                     a.AttackingNow = false;
-                    a.Target = null;
                     w.Log($"{a.Name} is mezzed for {_duration / 1000} s (scripted)");
                     return;
                 }

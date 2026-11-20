@@ -61,7 +61,7 @@ namespace DOL.UnitTests
             AssertRealmEven(results);
 
             if (Strict)
-                Assert.That(findings.Where(f => f.Variant == "current" && !f.Ok).Select(f => f.Expectation), Is.Empty,
+                Assert.That(findings.Where(f => f.Live && !f.Ok).Select(f => f.Expectation), Is.Empty,
                     "BOT_SIM_STRICT=1: the live rules miss these expectations.");
         }
 
@@ -89,7 +89,7 @@ namespace DOL.UnitTests
         public void SameSeedGivesTheSameRun()
         {
             SimScenario scenario = SimScenarios.CrowdControlHeavy();
-            var setup = new SimSetup { Side0 = eRealm.Albion, Side1 = eRealm.Hibernia, Seed = 7, Variant = SimVariant.Current() };
+            var setup = new SimSetup { Side0 = eRealm.Albion, Side1 = eRealm.Hibernia, Seed = 7, Variant = SimVariant.FightMode() };
             string first = SimReport.Json(new[] { SimRunner.RunOne(scenario, setup) }, Array.Empty<SimFinding>());
             string second = SimReport.Json(new[] { SimRunner.RunOne(scenario, setup) }, Array.Empty<SimFinding>());
             Assert.That(second, Is.EqualTo(first));
