@@ -41,8 +41,12 @@ namespace DOL.UnitTests.BotSim
     /// </summary>
     public class CurrentBotTactics : ISimTactics
     {
-        /// <summary>What-if switch: enemies that hit a groupmate join this bot's aggro list (live: off).</summary>
-        public bool DefendGroupmates { get; init; }
+        /// <summary>
+        /// Live for bots in a player's group (temporary companions): CompanionPvpEngagement.Observe gives the whole group one
+        /// focus, the leader's target or else the enemy that last hit a groupmate nearest the leader, and orders every bot in
+        /// range onto it. Off approximates groups without it (autonomous gamebot groups, not modelled exactly).
+        /// </summary>
+        public bool SharedFocus { get; init; } = true;
         public string Label { get; init; } = "current";
         public string Name => Label;
 
@@ -59,10 +63,15 @@ namespace DOL.UnitTests.BotSim
                 a.DistanceTo(leaderTarget) <= SimWorld.AggroRadius && CanAggro(w, a, leaderTarget) && !a.Aggro.ContainsKey(leaderTarget))
                 a.Aggro[leaderTarget] = 1;
 
-            if (DefendGroupmates)
-                foreach (var pair in a.DefendUntil.Where(p => p.Value > now && p.Key.Alive).ToList())
-                    if (a.DistanceTo(pair.Key) <= SimWorld.AggroRadius && CanAggro(w, a, pair.Key) && !a.Aggro.ContainsKey(pair.Key))
-                        a.Aggro[pair.Key] = 1;
+            a.OrderedTarget = null;
+            SimAgent focus = SharedFocus ? GroupFocus(w, a) : null;
+            // AssistPlayerAttack: support bots hold support; others take an ordered pull onto the focus.
+            if (focus != null && !a.Kit.Heals && a.DistanceTo(focus) <= SimWorld.AggroRadius && CanAggro(w, a, focus))
+            {
+                a.OrderedTarget = focus;
+                if (!a.Aggro.ContainsKey(focus))
+                    a.Aggro[focus] = 1;
+            }
 
             if (a.Kit.Heals && TryHeal(w, a))
                 return;
@@ -103,6 +112,18 @@ namespace DOL.UnitTests.BotSim
             }
         }
 
+        /// <summary>CompanionPvpEngagement.Observe's focus: the leader's enemy target, else the live threat nearest the leader.</summary>
+        public static SimAgent GroupFocus(SimWorld w, SimAgent a)
+        {
+            SimAgent leader = a.Leader;
+            if (leader == null || !leader.Alive)
+                return null;
+            if (LeaderIsFighting(w, leader) && leader.Target is { Alive: true } target)
+                return target.Kit.IsNpc ? null : target; // Order() takes enemy bots only; NPCs come through plain assist
+            return w.Enemies(a).Where(e => w.IsThreat(a.Side, e) && e.DistanceTo(leader) <= SimWorld.AggroRadius)
+                .OrderBy(e => e.DistanceTo(leader)).FirstOrDefault();
+        }
+
         public static bool LeaderIsFighting(SimWorld w, SimAgent leader) =>
             leader.AttackingNow || leader.Casting != null && leader.Casting.Target.Side != leader.Side;
 
@@ -121,8 +142,8 @@ namespace DOL.UnitTests.BotSim
             SimAgent leader = a.Leader;
             if (leader != null && leader.Alive && leader.Target == target && LeaderIsFighting(w, leader))
                 return false;
-            if (a.DefendUntil.TryGetValue(target, out long until) && until > w.Now)
-                return false;
+            if (a.OrderedTarget == target || a.Tactics is CurrentBotTactics { SharedFocus: true } && w.IsThreat(a.Side, target))
+                return false; // CompanionPvpEngagement.Focused / Defending
             if (target.Mezzed(w.Now))
                 return w.Enemies(a).Any(e => e != target && !e.Kit.IsNpc && !e.Mezzed(w.Now) && e.DistanceTo(a) <= BotPvpCrowdControl.FreeEnemyRadius);
             if (!w.Claims.TryGetValue(target, out SimWorld.SimClaim claim) || claim.Caster == a || !claim.Caster.Alive || claim.Caster.Side != a.Side)
@@ -135,6 +156,11 @@ namespace DOL.UnitTests.BotSim
 
         protected virtual SimAgent ChooseTarget(SimWorld w, SimAgent a, out string why)
         {
+            if (a.OrderedTarget is { Alive: true } ordered && CanAggro(w, a, ordered))
+            {
+                why = "";
+                return ordered;
+            }
             if (a.Target != null && a.Aggro.ContainsKey(a.Target) && a.Target.Alive && CanAggro(w, a, a.Target) && !Protected(w, a, a.Target))
             {
                 why = "";

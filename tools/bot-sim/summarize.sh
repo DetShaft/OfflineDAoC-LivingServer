@@ -14,8 +14,8 @@ echo "== findings.tsv =="
 cat "$tsv"
 for md in "$dir"/*.md; do
   [ -f "$md" ] || continue
-  echo "== $(basename "$md") (tables; timeline in the artifact) =="
-  sed -n '1,/^## Timeline/p' "$md"
+  echo "== $(basename "$md") =="
+  cat "$md"
 done
 echo "::notice title=Bot AI simulation::$pass expectations met, $found findings (all variants). Reports: bot-sim artifact."
 while IFS=$'\t' read -r result scenario variant expectation measured; do

@@ -30,11 +30,11 @@ namespace DOL.UnitTests.BotSim
             Name = "current", Description = "Live rules (BotBrain as of this build).", Side0Bots = () => new CurrentBotTactics(),
         };
 
-        public static SimVariant DefendGroupmates() => new()
+        public static SimVariant NoSharedFocus() => new()
         {
-            Name = "what-if: defend groupmates",
-            Description = "Not shipped. Live rules plus: an enemy that hits a groupmate joins every nearby bot's aggro list.",
-            Side0Bots = () => new CurrentBotTactics { DefendGroupmates = true, Label = "defend groupmates" },
+            Name = "no shared focus",
+            Description = "Live rules without CompanionPvpEngagement's group focus: bots fight only the leader's target and enemies that hit them. Roughly how a group without the companion focus behaves (autonomous gamebot groups are not modelled exactly).",
+            Side0Bots = () => new CurrentBotTactics { SharedFocus = false, Label = "no shared focus" },
         };
     }
 
@@ -183,7 +183,7 @@ namespace DOL.UnitTests.BotSim
             Title = "8v8 open-field group fight",
             Why = "Baseline: two matched groups (tank, 2 melee, 2 casters, mezzer, 2 healers) meet on open ground. Both leaders are scripted players who attack the nearest enemy.",
             Build = s => TwoGroups(s, StandardGroup, 2_400),
-            Variants = { SimVariant.DefendGroupmates() },
+            Variants = { SimVariant.NoSharedFocus() },
             Expectations =
             {
                 IdleBelow(20),
@@ -285,7 +285,7 @@ namespace DOL.UnitTests.BotSim
             Issues = "#151 #152",
             Why = "Both groups bring three mezzers (one also carries the slow backup area mez). Checks the PvP CC rules: area mez needs 2+ free enemies, a 60 s area mez hold, no mez on enemies groupmates hit, and claims that end when the cast stops.",
             Build = s => TwoGroups(s, CrowdControlGroup, 2_400, extraSlowMez: true),
-            Variants = { SimVariant.DefendGroupmates() },
+            Variants = { SimVariant.NoSharedFocus() },
             Expectations =
             {
                 new SimExpectation
@@ -319,7 +319,7 @@ namespace DOL.UnitTests.BotSim
         {
             Name = "leader-mezzed",
             Title = "Leader mezzed while enemies attack",
-            Why = "The player leading side 0 is mezzed 2 s in (before contact) for 25 s, while side 1 charges. Live bots assist only while the leader attacks, so this is the case that motivates active fight mode.",
+            Why = "The player leading side 0 is mezzed 2 s in (before contact) for 25 s, while side 1 charges. With the leader not attacking, live bots wait until an enemy hits a groupmate (the shared group focus) or themselves. This is the case that motivates active fight mode.",
             Build = s =>
             {
                 SimWorld w = TwoGroups(s, StandardGroup, 2_000);
@@ -327,7 +327,7 @@ namespace DOL.UnitTests.BotSim
                 w.Agents.First(a => a.Side == 0 && a.IsLeader).Tactics = new MezzedLeader(leader.Tactics, 2_000, 25_000);
                 return w;
             },
-            Variants = { SimVariant.DefendGroupmates() },
+            Variants = { SimVariant.NoSharedFocus() },
             Expectations =
             {
                 IdleBelow(25),
