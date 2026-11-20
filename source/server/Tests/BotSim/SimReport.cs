@@ -94,19 +94,23 @@ namespace DOL.UnitTests.BotSim
 
             sb.AppendLine("## Side 0 bots by role (all realms)");
             sb.AppendLine();
-            sb.AppendLine("| Variant | Role | Idle in combat | Damage dealt | Damage taken | Healing | Deaths | Targets chosen | CC casts | Wasted CC | Casts interrupted | Leash drops | Recalls | Mean / max distance from leader |");
-            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+            sb.AppendLine("| Variant | Role | Idle in combat | Longest idle stretch (mean / max) | Damage dealt | Damage taken | Healing | Deaths | Targets chosen | CC casts | Wasted CC | Casts interrupted | Leash drops (support) | Recalls | Close-ups | Melee hits on pets (player near) / all hits | Mean / max distance from leader | Mean / max distance to back line |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
             foreach (string variant in variants)
                 foreach (var role in results.Where(r => r.Variant == variant).SelectMany(r => r.Bots()).GroupBy(b => b.Role).OrderBy(g => g.Key))
                 {
                     var bots = role.ToList();
                     long combat = bots.Sum(b => b.Metrics.InCombatMs);
                     double idle = combat == 0 ? 0 : 100.0 * bots.Sum(b => b.Metrics.IdleInCombatMs) / combat;
-                    sb.AppendLine($"| {variant} | {role.Key} | {F1(idle)}% | {F(bots.Average(b => b.Metrics.DamageDealt))} | {F(bots.Average(b => b.Metrics.DamageTaken))} | " +
+                    var spaced = bots.Where(b => b.Metrics.BackLineSamples > 0).ToList();
+                    string backLine = spaced.Count == 0 ? "-" : $"{F(spaced.Average(b => b.Metrics.MeanDistanceToBackLine))} / {F(spaced.Max(b => b.Metrics.MaxDistanceToBackLine))}";
+                    sb.AppendLine($"| {variant} | {role.Key} | {F1(idle)}% | {F1(bots.Average(b => b.Metrics.LongestIdleMs) / 1000.0)}s / {F1(bots.Max(b => b.Metrics.LongestIdleMs) / 1000.0)}s | " +
+                                  $"{F(bots.Average(b => b.Metrics.DamageDealt))} | {F(bots.Average(b => b.Metrics.DamageTaken))} | " +
                                   $"{F(bots.Average(b => b.Metrics.HealingDone))} | {bots.Average(b => b.Metrics.Deaths):0.00} | {bots.Average(b => b.Metrics.TargetsChosen.Count):0.0} | " +
                                   $"{bots.Average(b => b.Metrics.CcCasts):0.0} | {bots.Average(b => b.Metrics.WastedCc):0.0} | {bots.Average(b => b.Metrics.CastsInterrupted):0.0} | " +
-                                  $"{bots.Average(b => b.Metrics.LeashDrops):0.0} | {bots.Average(b => b.Metrics.Recalls):0.0} | " +
-                                  $"{F(bots.Average(b => b.Metrics.MeanDistanceFromLeader))} / {F(bots.Max(b => b.Metrics.MaxDistanceFromLeader))} |");
+                                  $"{bots.Average(b => b.Metrics.LeashDrops):0.0} ({bots.Average(b => b.Metrics.SupportLeashDrops):0.0}) | {bots.Average(b => b.Metrics.Recalls):0.0} | " +
+                                  $"{bots.Average(b => b.Metrics.CloseUps):0.0} | {bots.Sum(b => b.Metrics.MeleeHitsOnPetsPlayerNear)} / {bots.Sum(b => b.Metrics.MeleeHits)} | " +
+                                  $"{F(bots.Average(b => b.Metrics.MeanDistanceFromLeader))} / {F(bots.Max(b => b.Metrics.MaxDistanceFromLeader))} | {backLine} |");
                 }
             sb.AppendLine();
 
@@ -201,6 +205,9 @@ namespace DOL.UnitTests.BotSim
                         enemiesMezzed = a.Metrics.EnemiesMezzed, brokeOwnSideMez = a.Metrics.BrokeOwnSideMez, castsInterrupted = a.Metrics.CastsInterrupted,
                         maxDistanceFromLeader = Math.Round(a.Metrics.MaxDistanceFromLeader), meanDistanceFromLeader = Math.Round(a.Metrics.MeanDistanceFromLeader),
                         msBeyondAssistRadius = a.Metrics.MsBeyondAssistRadius, leashDrops = a.Metrics.LeashDrops, recalls = a.Metrics.Recalls,
+                        supportLeashDrops = a.Metrics.SupportLeashDrops, closeUps = a.Metrics.CloseUps, longestIdleMs = a.Metrics.LongestIdleMs,
+                        meleeHits = a.Metrics.MeleeHits, meleeHitsOnPets = a.Metrics.MeleeHitsOnPets, meleeHitsOnPetsPlayerNear = a.Metrics.MeleeHitsOnPetsPlayerNear,
+                        maxDistanceToBackLine = Math.Round(a.Metrics.MaxDistanceToBackLine), meanDistanceToBackLine = Math.Round(a.Metrics.MeanDistanceToBackLine),
                         targets = a.Metrics.TargetsChosen.Select(t => new { t.Time, t.Target }),
                         idleReasons = a.Metrics.IdleReasons,
                         activityMs = a.Metrics.ActivityMs.ToDictionary(p => p.Key.ToString(), p => p.Value),

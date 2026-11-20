@@ -3125,6 +3125,17 @@ namespace DOL.GS
             return true;
         }
 
+        /// <summary>
+        /// #176: a cast that failed its line of sight check. GameNPC starts a follow on the target; the bot brain also
+        /// remembers it, so a ranged caster keeps walking until the target is in sight (BotBrain.WalkForLineOfSight)
+        /// instead of stopping to cast into the same ridge on its next think.
+        /// </summary>
+        public override void OnCastSpellLosCheckFail(GameObject target)
+        {
+            base.OnCastSpellLosCheckFail(target);
+            (Brain as BotBrain)?.OnSpellLineOfSightFailed(target);
+        }
+
         public override void OnAttackedByEnemy(AttackData ad)
         {
             // Notify BotBrain of the attack so it can add aggro and transition to combat state

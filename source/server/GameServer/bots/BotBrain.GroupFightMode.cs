@@ -22,31 +22,33 @@ namespace DOL.AI.Brain
         /// the player's target first while they attack it, a tank's peel, then the group focus.
         /// Healers go through AssistPlayerAttack, which keeps them support-first (#48). Crowd control keeps its own
         /// turn (#152) and skips the focus (<see cref="PlayerGroupFightMode.IsFocus"/>).
+        /// Returns true when the bot used this think to close up on its melee (#177); the caller then ends the think.
         /// </summary>
-        private void ThinkGroupFightMode()
+        private bool ThinkGroupFightMode()
         {
             GameBot bot = BotBody;
             // Found at any distance: the leash must still reach a bot that chased past the assist radius.
             GamePlayer leader = PlayerGroupFightMode.LeaderOf(bot, requireNear: false);
             if (leader == null || !PlayerGroupFightMode.InScope(leader) ||
                 FSM.GetCurrentState() == FSM.GetState(eFSMStateType.PASSIVE))
-                return;
+                return false;
             bool active = PlayerGroupFightMode.Observe(bot, leader, out GameLiving focus);
             // The player, or once the player is dead the groupmate nearest their body (#170).
             GameLiving anchor = PlayerGroupFightMode.Anchor(leader);
-            if (anchor == null) return;
+            if (anchor == null) return false;
             // A bot with a siege job (engineer, ram crew) answers to its job, not to the chase distance.
-            if (BotSiegeRuntime.Assigned(bot)) return;
+            if (BotSiegeRuntime.Assigned(bot)) return false;
 
             // The leash never drops the player's selected target or their /pull order. In fight mode it covers every
             // target; once fight mode has ended (the enemy ran out of range, so no hostile is seen near the player) it
             // keeps holding enemy players and bots only, so a bot cannot chase a runner across the zone (the harness
             // saw bots 8,600 units out) while PvE pulls stay untouched.
             EnforceGroupFightLeash(bot, leader, anchor, leader.IsAlive ? leader.TargetObject as GameLiving : null, enemyPlayersOnly: !active);
-            if (!active || !bot.IsWithinRadius(anchor, GROUP_DEFENSE_ASSIST_RADIUS)) return;
+            if (!active || !bot.IsWithinRadius(anchor, GROUP_DEFENSE_ASSIST_RADIUS)) return false;
             GameLiving leaderTarget = PlayerGroupFightMode.LeaderTarget(leader);
             // Never cut a cast short (a heal, a mez) to take a new target.
-            if (Body.IsCasting) return;
+            if (Body.IsCasting) return false;
+            if (CloseUpOnMelee(bot, anchor)) return true;
             // A door the player is hitting is the door crew's: a caster that cannot hurt it takes the focus instead (#133).
             if (leaderTarget != null && !CanAggroTarget(leaderTarget)) leaderTarget = null;
 
@@ -89,11 +91,16 @@ namespace DOL.AI.Brain
                 }
                 // Otherwise: already fighting something legal near the group, no switching back and forth.
             }
-            if (pick == null || !Body.IsWithinRadius(pick, GROUP_DEFENSE_ASSIST_RADIUS)) return;
-            if (Body.TargetObject == pick && HasAggro) return;
+            if (pick == null || !Body.IsWithinRadius(pick, GROUP_DEFENSE_ASSIST_RADIUS)) return false;
+            // #177: never pick what the support leash would drop at once (the player's target is exempt there too).
+            if (reason != GroupFightPolicy.PickReason.Leader && !PlayerGroupFightMode.IsBackLine(bot) &&
+                GroupFightPolicy.BeyondSupport(PlayerGroupFightMode.DistanceToBackLine(bot, anchor, pick), PlayerGroupFightMode.ChaseDistance,
+                    false, HittingGroup(bot, anchor, pick, PlayerGroupFightMode.ChaseDistance)))
+                return false;
+            if (Body.TargetObject == pick && HasAggro) return false;
             // Healers stay support-first (#48): they join only when the idle-assist rule allows it, and are otherwise
             // left to heal (AssistPlayerAttack would stop their casts to hold support).
-            if (BotPartyRoles.IsSupport(bot) && !MaySupportIdleCombatAssist(pick)) return;
+            if (BotPartyRoles.IsSupport(bot) && !MaySupportIdleCombatAssist(pick)) return false;
 
             // A switch must outweigh the aggro the old target has built up, or the attack turn keeps the old one
             // (CleanUpAggroListAndGetHighestModifiedThreat keeps the current target on a tie or better).
@@ -111,7 +118,40 @@ namespace DOL.AI.Brain
                          $"fromBot={(int)Body.GetDistanceTo(pick)} leaderAttacking={leader.IsAttacking} leaderMezzed={leader.IsMezzed} leaderAlive={leader.IsAlive} " +
                          $"engaged={Body.TargetObject == pick && HasAggro}");
             }
+            return false;
         }
+
+        private long _nextCloseUpLog;
+
+        /// <summary>
+        /// #177: a ranged caster (not a healer: those hold a healer post among the group) that is not under attack walks
+        /// to within <see cref="GroupFightPolicy.CasterHold"/> of the nearest groupmate fighting in melee once it is
+        /// farther than <see cref="GroupFightPolicy.CasterReach"/>. A caster under attack keeps its kite rules (#136).
+        /// </summary>
+        private bool CloseUpOnMelee(GameBot bot, GameLiving anchor)
+        {
+            if (BotPartyRoles.IsSupport(bot) || !PrefersCurrentSpellRange() || Body.IsCrowdControlled) return false;
+            GameLiving melee = PlayerGroupFightMode.NearestFightingMelee(bot, anchor);
+            int distance = melee == null ? int.MaxValue : (int)Body.GetDistanceTo(melee);
+            bool casting = Body.IsCasting || Body.castingComponent?.HasPendingSkillRequests == true;
+            if (!GroupFightPolicy.CasterClosesIn(casting, RecentDirectAttacker() != null, distance)) return false;
+            BotBody.WakeRecoveryRest();
+            Body.StopAttack();
+            Body.Follow(melee, (short)GroupFightPolicy.CasterHold, (short)MAX_AGGRO_LIST_DISTANCE);
+            long now = GameLoop.GameLoopTime;
+            if (now >= _nextCloseUpLog)
+            {
+                _nextCloseUpLog = now + 5_000;
+                log.Info($"GROUP_FIGHT_CLOSE_UP bot=\"{bot.Name}\" class=\"{bot.ClassName}\" melee=\"{melee.Name}\" distance={distance} " +
+                         $"hold={GroupFightPolicy.CasterHold} anchor=\"{anchor.Name}\"");
+            }
+            return true;
+        }
+
+        /// <summary>The target is hitting this bot, or a groupmate within the chase distance of the anchor.</summary>
+        private static bool HittingGroup(GameBot bot, GameLiving anchor, GameLiving target, int chase) =>
+            (target.IsAttacking || target.IsCasting) && target.TargetObject is GameLiving victim &&
+            (victim == bot || victim.Group == bot.Group && bot.Group != null && anchor.IsWithinRadius(victim, chase));
 
         private static string BotRoleLabel(GameBot bot) =>
             BotPartyRoles.IsSupport(bot) ? "support" : BotPartyRoles.IsTank(bot) ? "tank" :
@@ -148,11 +188,15 @@ namespace DOL.AI.Brain
                 if (enemyPlayersOnly && (!BotPvpCrowdControl.PlayerLike(target) || !BotSiegeRuntime.LegalEnemy(anchor, target))) continue;
                 bool sameRegion = target.CurrentRegionID == anchor.CurrentRegionID;
                 int distance = sameRegion ? (int)anchor.GetDistanceTo(target) : int.MaxValue;
-                if (sameRegion && distance <= chase) continue;
-                bool hittingGroup = (target.IsAttacking || target.IsCasting) && target.TargetObject is GameLiving victim &&
-                    (victim == bot || victim.Group == bot.Group && bot.Group != null && anchor.IsWithinRadius(victim, chase));
+                if (sameRegion && distance <= chase && (enemyPlayersOnly || PlayerGroupFightMode.IsBackLine(bot))) continue;
+                bool hittingGroup = sameRegion && HittingGroup(bot, anchor, target, chase);
                 bool players = target == leaderSelected || target == leaderAttacking || target == playerOrdered;
-                if (!GroupFightPolicy.BeyondLeash(distance, chase, players, hittingGroup)) continue;
+                // #177: the support leash, for the front line only, in fight mode only. A caster's own targets stay
+                // within its spell range anyway.
+                int fromBackLine = !enemyPlayersOnly && sameRegion && distance <= chase && !PlayerGroupFightMode.IsBackLine(bot)
+                    ? PlayerGroupFightMode.DistanceToBackLine(bot, anchor, target) : int.MaxValue;
+                bool beyondSupport = GroupFightPolicy.BeyondSupport(fromBackLine, chase, players, hittingGroup);
+                if (!beyondSupport && !GroupFightPolicy.BeyondLeash(distance, chase, players, hittingGroup)) continue;
 
                 // An automatic ordered pull on it ends too, or the attack turn takes it straight back.
                 if (target == ordered) CancelOrderedPull(target);
@@ -173,7 +217,8 @@ namespace DOL.AI.Brain
                 {
                     _lastLeashDrop = target;
                     log.Info($"GROUP_FIGHT_LEASH bot=\"{bot.Name}\" leader=\"{leader.Name}\" target=\"{target.Name}\" " +
-                             $"fromLeader={(sameRegion ? distance : -1)} botFromAnchor={(int)Body.GetDistanceTo(anchor)} anchor=\"{anchor.Name}\" chase={chase}");
+                             $"fromLeader={(sameRegion ? distance : -1)} botFromAnchor={(int)Body.GetDistanceTo(anchor)} anchor=\"{anchor.Name}\" chase={chase} " +
+                             $"why={(beyondSupport ? "support" : "chase")} fromBackLine={(fromBackLine == int.MaxValue ? -1 : fromBackLine)}");
                 }
             }
         }

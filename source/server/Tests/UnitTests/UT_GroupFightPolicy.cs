@@ -156,5 +156,57 @@ namespace DOL.UnitTests
             Assert.That(BotPvpCrowdControlPolicy.Threatens(false, false, true, true, 300, 250, 2_500), Is.False, "Targets someone else.");
             Assert.That(BotPvpCrowdControlPolicy.Threatens(true, true, true, true, 300, 250, 2_500), Is.False, "Mezzed.");
         }
+
+        [Test]
+        public void PetsYieldToAPlayerPick()
+        {
+            // #175: a pet that hits a bot no longer takes it off its fight-mode pick.
+            Assert.That(PetYields(TargetRole.Pet, TargetRole.Fighter), Is.True);
+            Assert.That(PetYields(TargetRole.Pet, TargetRole.Healer), Is.True);
+            Assert.That(PetYields(TargetRole.Pet, TargetRole.Pet), Is.False, "Pet against pet: the old rules decide.");
+            Assert.That(PetYields(TargetRole.Fighter, TargetRole.Healer), Is.False, "Only pets yield; players keep the old rules.");
+        }
+
+        [Test]
+        public void HiddenEnemiesStayCandidatesForSixSeconds()
+        {
+            // #176
+            Assert.That(StillInSight(true, 10_000, -1), Is.True);
+            Assert.That(StillInSight(false, 10_000, -1), Is.False, "Never seen.");
+            Assert.That(StillInSight(false, 10_000, 5_000), Is.True);
+            Assert.That(StillInSight(false, 11_000, 5_000), Is.False);
+        }
+
+        [Test]
+        public void SupportLeashFromTheNearestCasterOrHealer()
+        {
+            // #177: Jay's numbers, casters 1,000 behind and the target 1,500 the other way.
+            Assert.That(BeyondSupport(2_500, 1_500, leaderTarget: false, attackingGroupNearLeader: false), Is.True);
+            Assert.That(BeyondSupport(1_400, 1_500, false, false), Is.False);
+            Assert.That(BeyondSupport(2_500, 1_500, leaderTarget: true, attackingGroupNearLeader: false), Is.False, "The player's target.");
+            Assert.That(BeyondSupport(2_500, 1_500, false, attackingGroupNearLeader: true), Is.False, "It is hitting the group.");
+            Assert.That(BeyondSupport(int.MaxValue, 1_500, false, false), Is.False, "No back line in reach: only the player leash.");
+        }
+
+        [Test]
+        public void CastersCloseUpOnTheirMelee()
+        {
+            Assert.That(CasterClosesIn(casting: false, underAttack: false, distanceToMelee: 1_800), Is.True);
+            Assert.That(CasterClosesIn(false, false, 1_000), Is.False);
+            Assert.That(CasterClosesIn(casting: true, underAttack: false, distanceToMelee: 1_800), Is.False, "Never walk out of a cast.");
+            Assert.That(CasterClosesIn(false, underAttack: true, distanceToMelee: 1_800), Is.False, "Under attack: the kite rules decide.");
+            Assert.That(CasterClosesIn(false, false, int.MaxValue), Is.False, "Nobody fighting in melee.");
+        }
+
+        [Test]
+        public void CastersWalkForLineOfSight()
+        {
+            // #176: now, blockedUntil, sameTarget, inSightNow, distance
+            Assert.That(BotLineOfSightPolicy.Walks(1_000, 4_000, true, false, 1_200), Is.True);
+            Assert.That(BotLineOfSightPolicy.Walks(1_000, 4_000, true, true, 1_200), Is.False, "In sight again.");
+            Assert.That(BotLineOfSightPolicy.Walks(5_000, 4_000, true, false, 1_200), Is.False, "The hold ran out.");
+            Assert.That(BotLineOfSightPolicy.Walks(1_000, 4_000, false, false, 1_200), Is.False, "Another target.");
+            Assert.That(BotLineOfSightPolicy.Walks(1_000, 4_000, true, false, 300), Is.False, "Close enough to cast.");
+        }
     }
 }

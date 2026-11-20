@@ -9,6 +9,10 @@ on:
         description: "Scenario name to run (blank: all). Example: leader-mezzed"
         required: false
         default: ""
+      seeds:
+        description: "Seeds per realm pairing (blank: 3). More seeds tell a real change from seed noise."
+        required: false
+        default: ""
       strict:
         description: "Fail when the live rules miss an expectation"
         type: boolean
@@ -37,6 +41,7 @@ jobs:
           BOT_SIM_DIR: ${{ github.workspace }}/bot-sim
           BOT_SIM_STRICT: ${{ inputs.strict && '1' || '0' }}
           SCENARIO: ${{ inputs.scenario }}
+          BOT_SIM_SEEDS: ${{ inputs.seeds }}
         run: |
           filter="FullyQualifiedName~UT_BotSim"
           if [ -n "$SCENARIO" ]; then filter="FullyQualifiedName~UT_BotSim&Name~$SCENARIO"; fi

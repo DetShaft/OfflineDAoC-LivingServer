@@ -1592,7 +1592,9 @@ namespace DOL.AI.Brain
                 AssistPlayerAttack(leaderTarget);
 
             // Issue #165: in a battleground fight the player's group picks its own targets and keeps a chase leash.
-            ThinkGroupFightMode();
+            // #177: a caster closing up on its melee spends this think walking.
+            if (ThinkGroupFightMode())
+                return;
 
             if (BotBody?.TryMatchOwnerLevel() == true)
                 return;
@@ -3369,7 +3371,8 @@ namespace DOL.AI.Brain
             // protecting a group member. Generic aggro may still contain the
             // previous pull and used to make archers/casters repeatedly switch
             // away from the fight their pet had already started.
-            Body.TargetObject = protectionTarget ?? directAttacker ?? activePetTarget ?? CalculateNextAttackTarget();
+            Body.TargetObject = KeepFightModePickOverPet(protectionTarget ?? directAttacker ?? activePetTarget ?? CalculateNextAttackTarget(),
+                protectionTarget);
             // A tethered boss outside its tether is immune: stop hitting it and lead it home (AutonomousTetherReset).
             if (Body.TargetObject is GameNPC tetheredBoss && AutonomousTetherReset.TryHandle(BotBody, tetheredBoss))
                 return;
@@ -3418,6 +3421,11 @@ namespace DOL.AI.Brain
                     return;
 
                 bool rangedCaster = PrefersCurrentSpellRange();
+
+                // #176: the last cast at this target failed its line of sight check; walk toward it until it is in
+                // sight, instead of stopping and casting into the ridge again every think.
+                if (rangedCaster && Body.TargetObject is GameLiving hiddenTarget && WalkForLineOfSight(hiddenTarget))
+                    return;
 
                 // A melee bot already chasing its own target at stick range keeps
                 // that order. Clearing it every think made NpcStartAttack stop the
@@ -4380,7 +4388,8 @@ namespace DOL.AI.Brain
                     {
                         bool meleePressure = Body.IsBeingInterruptedByOther &&
                             Body.IsWithinRadius(Body.TargetObject, Body.MeleeAttackRange + 35);
-                        if (!BotCasterPriority.AllowInstant(spell, PrefersCurrentSpellRange(), meleePressure))
+                        if (!BotCasterPriority.AllowInstant(spell, PrefersCurrentSpellRange(), meleePressure) ||
+                            !ClericBotSpellPolicy.AllowsOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.Radius))
                             continue;
                         if (CheckInstantOffensiveSpells(spell))
                             return true;
@@ -4627,6 +4636,7 @@ namespace DOL.AI.Brain
                 Body.TargetObject is not GameLiving target || !target.IsAlive ||
                 !BardBotCrowdControlPolicy.AllowsOrdinaryOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.SpellType) ||
                 !ShamanBotCombatPolicy.AllowsOrdinaryOffense((eCharacterClass)BotBody.CharacterClass.ID, spell) ||
+                !ClericBotSpellPolicy.AllowsOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.Radius) ||
                 BotSpellPower.BlocksAttackerRotation(BotBody, spell) ||
                 !NeedsOffensiveSpellApplication(target, spell) ||
                 Body.GetSkillDisabledDuration(spell) > 0 || Body.Mana < BotBody.PowerCost(spell))
@@ -4663,7 +4673,8 @@ namespace DOL.AI.Brain
 
         protected virtual bool CheckOffensiveSpells(Spell spell)
         {
-            if (spell == null || Body.Mana < BotBody.PowerCost(spell))
+            if (spell == null || Body.Mana < BotBody.PowerCost(spell) ||
+                !ClericBotSpellPolicy.AllowsOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.Radius))
                 return false;
 
             if (spell.NeedInstrument && !TryEquipRealInstrument(BotBody, spell.InstrumentRequirement))
@@ -4751,6 +4762,7 @@ namespace DOL.AI.Brain
         {
             if (spell == null || IsOutclassedDamageSpell(spell) || Body.Mana < BotBody.PowerCost(spell) ||
                 !BardBotCrowdControlPolicy.AllowsOrdinaryOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.SpellType) ||
+                !ClericBotSpellPolicy.AllowsOffense((eCharacterClass)BotBody.CharacterClass.ID, spell.Radius) ||
                 spell.HasRecastDelay && Body.GetSkillDisabledDuration(spell) > 0)
                 return false;
 
