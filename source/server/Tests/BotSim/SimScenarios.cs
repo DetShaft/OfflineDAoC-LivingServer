@@ -166,8 +166,8 @@ namespace DOL.UnitTests.BotSim
         {
             var w = new SimWorld(s.Seed);
             AddGroup(w, 0, s.Side0, roles, new Vec2(0, -gap / 2), s.Variant.Side0Bots(), new ScriptedLeader(), extraSlowMez);
-            ISimTactics enemy = SimVariant.AutonomousEnemy();
-            AddGroup(w, 1, s.Side1, roles, new Vec2(0, gap / 2), enemy, enemy, extraSlowMez);
+            // The enemy leader is scripted to charge (an autonomous group heading for the fight); its bots are autonomous.
+            AddGroup(w, 1, s.Side1, roles, new Vec2(0, gap / 2), SimVariant.AutonomousEnemy(), new ScriptedLeader(), extraSlowMez);
             return w;
         }
 

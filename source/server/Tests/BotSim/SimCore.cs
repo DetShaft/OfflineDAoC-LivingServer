@@ -268,6 +268,14 @@ namespace DOL.UnitTests.BotSim
             source.Metrics.DamageByTarget[target.Name] = sum + amount;
             target.Aggro.TryGetValue(source, out double aggro);
             target.Aggro[source] = aggro + amount;
+            // BotBrain.NotifyNearbyGroupBots -> OnGroupMemberAttacked: every bot of the victim's group within 2,000 units
+            // adds the attacker to its aggro list (level + damage). Both companions and autonomous bots do this.
+            foreach (SimAgent member in target.Group)
+                if (member != target && member.Alive && member.IsBot && member.DistanceTo(target) <= AggroRadius)
+                {
+                    member.Aggro.TryGetValue(source, out double memberAggro);
+                    member.Aggro[source] = memberAggro + source.Level + amount;
+                }
             if (!target.Kit.IsNpc)
             {
                 if (!LastHitOnSide.TryGetValue(target.Side, out var hits))
