@@ -294,7 +294,7 @@ namespace DOL.UnitTests.BotSim
         public Func<SimWorld, SimAgent, SimAgent> PickTarget { get; init; }
         /// <summary>The player never attacks (leash scenario).</summary>
         public bool Passive { get; init; }
-        public int EngageRadius { get; init; } = SimWorld.AggroRadius;
+        public int EngageRadius { get; init; } = 5_000; // a player sees and charges the enemy group across the field
 
         public void Think(SimWorld w, SimAgent a)
         {
