@@ -19,7 +19,7 @@ namespace DOL.AI.Brain
         /// <summary>
         /// Issue #165: this bot's fight-mode turn in the player's group. Runs the group scan, keeps the bot within the
         /// chase distance of the player, and, while fight mode is on, gives an idle bot a target of its own:
-        /// the player's target first (even while the player is mezzed), a tank's peel, then the group focus.
+        /// the player's target first while they attack it, a tank's peel, then the group focus.
         /// Healers go through AssistPlayerAttack, which keeps them support-first (#48). Crowd control keeps its own
         /// turn (#152) and skips the focus (<see cref="PlayerGroupFightMode.IsFocus"/>).
         /// </summary>

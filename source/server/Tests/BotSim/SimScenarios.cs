@@ -41,7 +41,7 @@ namespace DOL.UnitTests.BotSim
         public static SimVariant FightMode() => new()
         {
             Name = "fight mode (#170)", Live = true,
-            Description = "Fight mode with the #170 fixes: it keeps running when the player dies (group anchor), a better-role enemy replaces the focus, busy bots switch to it, no cast-time CC while a hit could land before the cast ends, a mezzed attacker is left alone, a leash that holds after fight mode ends and on its own picks, and no companion focus while fight mode is on. Picks the player's target (even while mezzed), a tank peel, or the shared focus (healers, then casters, then lowest health), keeps a 1,500-unit chase leash, and keeps CC off the focus.",
+            Description = "Fight mode with the #170 fixes: it keeps running when the player dies (group anchor), a better-role enemy replaces the focus, busy bots switch to it, no cast-time CC while a hit could land before the cast ends, a mezzed attacker is left alone, a leash that holds after fight mode ends and on its own picks, and no companion focus while fight mode is on. Picks the player's target while they attack it, a tank peel, or the shared focus (healers, then casters, then lowest health), keeps a 1,500-unit chase leash, and keeps CC off the focus.",
             Side0Bots = () => new FightModeTactics(),
         };
 
@@ -50,7 +50,7 @@ namespace DOL.UnitTests.BotSim
         {
             Name = "fight mode (#165), before #170",
             Description = "Comparison: fight mode as merged in PR #168, with both sides on the rules before #170 (the CC and mez-protection fixes change every bot, enemy gamebots included).",
-            Side0Bots = () => new FightModeTactics { Fixes170 = false, Label = "fight mode (#165), before #170" },
+            Side0Bots = () => new FightModeTactics { Fixes170 = false, SelectedTargetFirst = true, Label = "fight mode (#165), before #170" },
             Side1Bots = () => new CurrentBotTactics { SharedFocus = false, CompanionRecall = false, ProximityAggroRadius = 1_500, Fixes170 = false, Label = "autonomous enemy (before #170)" },
         };
 
@@ -366,9 +366,9 @@ namespace DOL.UnitTests.BotSim
             {
                 new SimVariant
                 {
-                    Name = "fight mode (#170), player target only while attacking",
-                    Description = "Comparison, not shipped: as fight mode (#170), but the player's selected target is not put first while the player is not attacking (here: mezzed). Shows what the 'player's target first, even while mezzed' rule costs in this fight.",
-                    Side0Bots = () => new FightModeTactics { SelectedTargetFirst = false, Label = "fight mode (#170), player target only while attacking" },
+                    Name = "fight mode (#170), selected target first (old rule)",
+                    Description = "Comparison, no longer shipped: as fight mode (#170), but the player's selected target comes first even while the player is mezzed (the rule before the owner's decision of 2026-11-20).",
+                    Side0Bots = () => new FightModeTactics { SelectedTargetFirst = true, Label = "fight mode (#170), selected target first (old rule)" },
                 },
             },
             Expectations =
