@@ -72,12 +72,6 @@ namespace DOL.GS
         /// Mez and root break on damage, so they are never aimed at an enemy groupmates are already hitting.
         /// Stuns and snares still land usefully on a target under attack.
         /// </summary>
-        /// <summary>
-        /// #170: a CC spell with a cast time is not started while an enemy is hitting or casting at the caster: any
-        /// damage interrupts it (the 8v8 harness lost about half of all CC casts to interrupts). Instant CC always may.
-        /// </summary>
-        public static bool CastSurvives(int castTimeMilliseconds, bool underFire) => castTimeMilliseconds <= 0 || !underFire;
-
         public static bool BreaksOnDamage(BotCasterSurvival.ControlKind kind) =>
             kind is BotCasterSurvival.ControlKind.Mez or BotCasterSurvival.ControlKind.Root;
     }

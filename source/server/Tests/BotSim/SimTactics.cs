@@ -274,27 +274,17 @@ namespace DOL.UnitTests.BotSim
         {
             if (w.Now < a.InterruptedUntil)
                 return false;
-<<<<<<< HEAD
             // #170: an enemy that will hit the caster before a cast ends interrupts it (BotBrain.TryPvpCrowdControl,
             // BotPvpCrowdControlPolicy.Threatens). Sim casters and mezzers are the ranged attackers; nobody carries a bow.
             var threats = Fixes170 ? w.Enemies(a).Where(e => e.Alive && !e.Mezzed(w.Now) && (e.Target == a || e.Casting?.Target == a)).ToList()
                 : new List<SimAgent>();
             bool UnderFire(int castTime) => threats.Any(e => BotPvpCrowdControlPolicy.Threatens(true, false, e.Casting?.Target == a,
                 e.Kit.CastsNukes, (int)e.DistanceTo(a), e.Kit.MeleeRange + 50, castTime));
-=======
-            // #170: an enemy swinging at or casting on the caster will interrupt a cast (BotBrain.TryPvpCrowdControl).
-            bool underFire = Fixes170 && w.Enemies(a).Any(e => e.Alive && !e.Mezzed(w.Now) &&
-                (e.AttackingNow && e.Target == a && e.DistanceTo(a) <= e.Kit.MeleeRange + 150 || e.Casting?.Target == a));
->>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
             var bySpell = a.CcSpells.ToDictionary(s => s.Spell);
             foreach (Spell ordered in BotPvpCrowdControlPolicy.Order(a.CcSpells.Select(s => s.Spell)))
             {
                 SimSpell spell = bySpell[ordered];
-<<<<<<< HEAD
                 if (!BotPvpCrowdControlPolicy.CastSurvives(spell.CastMilliseconds, UnderFire(spell.CastMilliseconds)))
-=======
-                if (!BotPvpCrowdControlPolicy.CastSurvives(spell.CastMilliseconds, underFire))
->>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
                     continue;
                 var inRange = w.Enemies(a).Where(e => !e.Kit.IsNpc && a.DistanceTo(e) <= spell.Range && !e.Mezzed(w.Now) && !w.ImmuneToMez(e) &&
                                                       !SkipForCrowdControl(w, a, e) &&
@@ -503,7 +493,6 @@ namespace DOL.UnitTests.BotSim
             if (!Fixes170 && !leader.Alive)
                 return;
             SimAgent anchor = Anchor(leader);
-<<<<<<< HEAD
             if (anchor == null)
                 return;
             bool near = a.DistanceTo(anchor) <= SimWorld.AggroRadius;
@@ -518,15 +507,6 @@ namespace DOL.UnitTests.BotSim
                 return;
             if (!Fixes170)
                 Leash(w, a, leader, anchor, enemyPlayersOnly: false);
-=======
-            if (anchor == null || a.DistanceTo(anchor) > SimWorld.AggroRadius)
-                return;
-            GroupState st = State(leader);
-            Scan(w, leader, anchor, st);
-            if (!st.Active)
-                return;
-            Leash(w, a, leader, anchor);
->>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
             if (a.Casting != null || a.Kit.Heals)
                 return; // never cut a cast short; healers stay support-first (#48)
 
@@ -581,11 +561,7 @@ namespace DOL.UnitTests.BotSim
         }
 
         /// <summary>BotBrain.EnforceGroupFightLeash with the real GroupFightPolicy.BeyondLeash.</summary>
-<<<<<<< HEAD
         private void Leash(SimWorld w, SimAgent a, SimAgent leader, SimAgent anchor, bool enemyPlayersOnly)
-=======
-        private void Leash(SimWorld w, SimAgent a, SimAgent leader, SimAgent anchor)
->>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
         {
             SimAgent leaderAttacking = leader.Alive && leader.AttackingNow ? leader.Target : null;
             SimAgent leaderSelected = leader.Alive ? leader.Target : null;
@@ -601,13 +577,9 @@ namespace DOL.UnitTests.BotSim
                     continue;
                 SimAgent victim = t.Casting?.Target ?? (t.AttackingNow ? t.Target : null);
                 bool hittingGroup = victim != null && (victim == a || victim.Side == a.Side && anchor.DistanceTo(victim) <= ChaseDistance);
-<<<<<<< HEAD
                 // #170 follow-up: an automatic ordered pull (fight mode's pick, the group focus) is no longer exempt;
                 // the sim has no /pull, and the player's own attack is leaderAttacking.
                 bool players = t == leaderSelected || t == leaderAttacking || !Fixes170 && t == a.OrderedTarget;
-=======
-                bool players = t == leaderSelected || t == leaderAttacking || t == a.OrderedTarget;
->>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
                 if (!GroupFightPolicy.BeyondLeash(distance, ChaseDistance, players, hittingGroup))
                     continue;
                 a.Aggro.Remove(t);

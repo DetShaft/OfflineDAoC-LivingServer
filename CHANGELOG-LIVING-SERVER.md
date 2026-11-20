@@ -25,7 +25,6 @@ All tests only: not yet seen in game.
   - Bots already fighting switch to that focus when it is a better target (a healer over a caster over a melee).
   - Mezzers no longer start a cast-time mez while an enemy is hitting them, and bots leave a mezzed enemy alone while another
     is free, even one that hit a groupmate. Applies to every bot (companions, group bots and gamebots), the same in every realm.
-<<<<<<< HEAD
   - Follow-up: a mezzer also holds a cast-time mez while an enemy caster has it targeted and in range, or an enemy melee
     could reach it before the cast ends.
   - Follow-up: the chase leash now holds. Fight mode's own target and the group focus no longer count as your orders, the
@@ -33,8 +32,6 @@ All tests only: not yet seen in game.
     calls back a bot however far it ran. Your selected target and your /pull order are still never dropped.
   - Follow-up: while fight mode is on, it alone picks the group bots' targets, so they no longer flip between its target
     and the older group focus on every cast.
-=======
->>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
 
 ## Beta 1.1.23 — 2026-11-19
 

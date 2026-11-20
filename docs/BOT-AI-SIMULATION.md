@@ -62,13 +62,9 @@ Variants (side 0's rules):
   #170 CC and mez-protection fixes change every bot, enemy gamebots included, so the enemy reverts too). Kept to show
   what #170 changed.
 - **fight mode (#170)**: the live variant, fight mode with the #170 fixes (group anchor once the leader is dead, focus
-<<<<<<< HEAD
   upgrade, busy bots switch, no cast-time CC under fire, mezzed attackers protected), and the follow-up (threats that land
   before a cast ends, a leash that holds outside fight mode and on automatic ordered pulls, no companion focus while fight
   mode is on). CI warns about its findings and
-=======
-  upgrade, busy bots switch, no cast-time CC under fire, mezzed attackers protected). CI warns about its findings and
->>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
   strict mode fails on them.
 - `keep-lord-after-doors` also runs **rule before #160** (the old door rule) to show what #160 changed.
 - `open-field-8v8` also runs **mirror control**: side 0's bots use the enemy's autonomous rules, so both sides are
@@ -90,12 +86,8 @@ the real server code wherever a bot rule is a pure function.
 - `GroupFightPolicy` (fight mode, #165, #170): `PickFocus`, `PickPeel`, `BeyondLeash`, `FollowsLeaderTarget`, `ShouldExit`,
   `ShouldReplaceFocus`, `ShouldSwitchToFocus`, `AnchorIndex` (the group anchor once the leader is dead), the 15 s
   threat memory and the 1,500 chase distance.
-<<<<<<< HEAD
 - `BotPvpCrowdControlPolicy.CastSurvives` and `Threatens` (#170): no cast-time CC while an enemy would hit the caster
   before the cast ends (casting at it, a caster targeting it in range, or melee close enough to arrive). The scan, the leader-target rule and the leash loop follow
-=======
-- `BotPvpCrowdControlPolicy.CastSurvives` (#170): no cast-time CC while an enemy is hitting or casting at the caster. The scan, the leader-target rule and the leash loop follow
->>>>>>> 94bb72802f554114e79a234f95ed344f14a494b9
   `PlayerGroupFightMode` and `BotBrain.ThinkGroupFightMode` by hand.
 - `TemporaryCompanionRecovery`: the 3,000-unit recall distance and 2 s check.
 - Constants: assist radius 2,000 (`GROUP_DEFENSE_ASSIST_RADIUS`) and aggro list distance 6,000.
