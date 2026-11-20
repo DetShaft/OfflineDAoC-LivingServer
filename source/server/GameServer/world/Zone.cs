@@ -158,6 +158,13 @@ namespace DOL.GS
             }
         }
 
+        /// <summary>
+        /// Siegecraft kits (ram, catapult, trebuchet, ballista) can be deployed here: the frontiers and the battlegrounds.
+        /// The battlegrounds have keeps too; with only <see cref="IsOF"/> a player's ram kit, and the siege engineer who
+        /// casts it for the player (#148), failed with "You cannot use siege weapons here!" at Killaloe.
+        /// </summary>
+        public bool AllowsSiege => IsOF || IsBG;
+
         public bool IsOF
         {
             get

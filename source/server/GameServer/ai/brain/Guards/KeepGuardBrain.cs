@@ -24,6 +24,16 @@ namespace DOL.AI.Brain
             FSM.Add(new GuardState_RETURN_TO_SPAWN(this));
         }
 
+        /// <summary>
+        /// How far above or below this guard a target may stand and still be aggroed. Unlimited for guards (wall archers
+        /// shoot down into the courtyard); a keep lord fights on his own floor (<see cref="LordBrain"/>).
+        /// </summary>
+        public virtual int MaxAggroHeightDifference => int.MaxValue;
+
+        /// <summary>Pure rule: a target at <paramref name="targetZ"/> is within reach of the floor at <paramref name="bodyZ"/>.</summary>
+        public static bool WithinAggroHeight(int bodyZ, int targetZ, int maxDifference) =>
+            maxDifference == int.MaxValue || System.Math.Abs((long) targetZ - bodyZ) <= maxDifference;
+
         public void SetAggression(int aggroLevel, int aggroRange)
         {
             AggroLevel = aggroLevel;
@@ -34,7 +44,7 @@ namespace DOL.AI.Brain
         {
             foreach (GamePlayer player in Body.GetPlayersInRadius((ushort) AggroRange))
             {
-                if (!CanAggroTarget(player))
+                if (!WithinAggroHeight(Body.Z, player.Z, MaxAggroHeightDifference) || !CanAggroTarget(player))
                     continue;
 
                 if (Body is not GuardStealther && player.IsStealthed)
@@ -53,6 +63,8 @@ namespace DOL.AI.Brain
         {
             foreach (GameNPC npc in Body.GetNPCsInRadius((ushort)AggroRange))
             {
+                if (!WithinAggroHeight(Body.Z, npc.Z, MaxAggroHeightDifference))
+                    continue;
                 GameBot autonomous = npc as GameBot ?? (npc.Brain as IControlledBrain)?.GetLivingOwner() as GameBot;
                 if (autonomous?.IsAutonomousWorldBot == true)
                 {

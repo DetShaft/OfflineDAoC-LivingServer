@@ -64,5 +64,18 @@ namespace DOL.UnitTests
             double distance = System.Math.Sqrt((x - 1000) * (x - 1000) + (y - 1000) * (y - 1000));
             Assert.That(SiegeEngineerPlan.InRamBand(distance), Is.True);
         }
+
+        [Test]
+        public void SiegeKitsWorkInTheBattlegroundsAndFrontiers()
+        {
+            // #148 (1.1.23): the engineer followed Jay to the Killaloe door but the ram spell refused the zone, because
+            // only frontier zones counted. Battlegrounds (Killaloe 253, Thidranki 252...) have keeps and take siege too.
+            static Zone Make(ushort id) => new(null, id, $"zone{id}", 0, 0, 8, 8, id, false, 0, false, 0, 0, 0, 0, 0);
+            Assert.That(Make(253).AllowsSiege, Is.True, "Killaloe");
+            Assert.That(Make(252).AllowsSiege, Is.True, "Thidranki");
+            Assert.That(Make(11).AllowsSiege, Is.True, "Forest Sauvage (frontier)");
+            Assert.That(Make(249).AllowsSiege, Is.False, "Darkness Falls");
+            Assert.That(Make(1).AllowsSiege, Is.False, "a classic PvE zone");
+        }
     }
 }
