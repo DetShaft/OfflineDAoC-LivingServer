@@ -134,7 +134,8 @@ namespace DOL.AI.Brain
             GameLiving melee = PlayerGroupFightMode.NearestFightingMelee(bot, anchor);
             int distance = melee == null ? int.MaxValue : (int)Body.GetDistanceTo(melee);
             bool casting = Body.IsCasting || Body.castingComponent?.HasPendingSkillRequests == true;
-            if (!GroupFightPolicy.CasterClosesIn(casting, RecentDirectAttacker() != null, distance)) return false;
+            if (distance == int.MaxValue || distance <= GroupFightPolicy.CasterReach) return false;
+            if (!GroupFightPolicy.CasterClosesIn(casting, RecentDirectAttacker() != null, EnemyInSpellReach(), distance)) return false;
             BotBody.WakeRecoveryRest();
             Body.StopAttack();
             Body.Follow(melee, (short)GroupFightPolicy.CasterHold, (short)MAX_AGGRO_LIST_DISTANCE);
@@ -146,6 +147,17 @@ namespace DOL.AI.Brain
                          $"hold={GroupFightPolicy.CasterHold} anchor=\"{anchor.Name}\"");
             }
             return true;
+        }
+
+        /// <summary>#177: a fight-mode candidate within this caster's spell range and in sight (navmesh line of sight).</summary>
+        private bool EnemyInSpellReach()
+        {
+            int range = SpellApproachRange();
+            if (range <= 0) return false;
+            foreach (GameLiving enemy in PlayerGroupFightMode.Candidates(BotBody))
+                if (enemy.IsAlive && !enemy.IsMezzed && Body.IsWithinRadius(enemy, range) && BotSiegeRuntime.Visible(Body, enemy))
+                    return true;
+            return false;
         }
 
         /// <summary>The target is hitting this bot, or a groupmate within the chase distance of the anchor.</summary>

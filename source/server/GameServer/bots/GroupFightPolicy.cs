@@ -159,11 +159,13 @@ namespace DOL.GS
 
         /// <summary>
         /// #177: a ranged caster that is not casting and not under attack closes up on the nearest groupmate fighting in
-        /// melee, so it can peel, mez or nuke for it in time. A caster under attack keeps its kite rules (#136).
+        /// melee, so it can peel, mez or nuke for it in time. A caster under attack keeps its kite rules (#136), and one
+        /// with an enemy in spell range and in sight keeps casting: walking then cost the group its damage and mezzes
+        /// (harness, los-ridge: 6 of 18 wins fell to 0, mezzer damage to a quarter).
         /// <paramref name="distanceToMelee"/> is <see cref="int.MaxValue"/> when no groupmate is fighting in melee.
         /// </summary>
-        public static bool CasterClosesIn(bool casting, bool underAttack, int distanceToMelee) =>
-            !casting && !underAttack && distanceToMelee != int.MaxValue && distanceToMelee > CasterReach;
+        public static bool CasterClosesIn(bool casting, bool underAttack, bool enemyInReach, int distanceToMelee) =>
+            !casting && !underAttack && !enemyInReach && distanceToMelee != int.MaxValue && distanceToMelee > CasterReach;
 
         public static string Label(TargetRole role) => role switch
         {

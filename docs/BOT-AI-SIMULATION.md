@@ -67,7 +67,7 @@ Variants (side 0's rules):
 - **fight mode (#175-#177)**: the live variant: fight mode (#170) plus #175 (a pet that hits a bot does not take it off its
   fight-mode pick), #176 (an enemy behind a ridge stays a candidate for 6 s; a cast that failed its line of sight check walks
   until the target is in sight, for every bot) and #177 (front-line bots also drop a target past the chase distance from the
-  nearest caster or healer; ranged casters not under attack close up to 900 of the nearest fighting melee once past 1,200).
+  nearest caster or healer; ranged casters not under attack and with no enemy in spell range and sight close up to 900 of the nearest fighting melee once past 1,200).
   CI warns about its findings and strict mode fails on them.
 - **fight mode (#170)**: v1.1.24's fight mode, before #175-#177 on both sides. Fight mode with the #170 fixes (group anchor once the leader is dead, focus
   upgrade, busy bots switch, no cast-time CC under fire, mezzed attackers protected), and the follow-up (threats that land
