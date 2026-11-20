@@ -7,6 +7,7 @@ extends SceneTree
 # loaded at run time, not preloaded: a preload of zone_viewer.gd while this script compiles never finished (headless), nor names that are class_names
 var chat
 var viewer
+var player
 
 var fails := 0
 
@@ -20,6 +21,7 @@ func check(what: String, ok: bool) -> void:
 func _initialize() -> void:
 	chat = load("res://game/ui/chat_window.gd")
 	viewer = load("res://game/zone_viewer.gd")
+	player = load("res://game/player.gd")
 	# issue #76
 	check("launcher's APPDATA wins", chat.user_appdata("Windows", "C:\\Users\\jay\\AppData\\Roaming", "C:\\Users\\jay")
 			== "C:\\Users\\jay\\AppData\\Roaming")
@@ -33,4 +35,8 @@ func _initialize() -> void:
 	check("none yet: wait a while", not viewer.npc_wait_done(1000, 1000, 0))
 	check("an empty place: give up", viewer.npc_wait_done(viewer.NPC_EMPTY_MS, viewer.NPC_EMPTY_MS, 0))
 	check("never longer than the cap", viewer.npc_wait_done(viewer.NPC_WAIT_MAX_MS, 0, 300))
+	# issue #149 (1.1.23): stunned / mezzed - no moving, no running in place, no turning; rooted - turning only
+	check("free: input kept", player.cc_input(1.0, -1.0, 1.0, false, false) == [1.0, -1.0, 1.0])
+	check("stunned: nothing moves or turns", player.cc_input(1.0, -1.0, 1.0, true, true) == [0.0, 0.0, 0.0])
+	check("rooted: turning only", player.cc_input(1.0, 1.0, -1.0, true, false) == [0.0, 0.0, -1.0])
 	quit(fails)

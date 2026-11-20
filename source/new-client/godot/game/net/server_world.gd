@@ -127,6 +127,7 @@ func _on_world(kind: String, d: Dictionary) -> void:
 		"max_speed":                                       # your speed in percent of the base run speed (encumbrance,
 			if viewer and viewer.player:                     # buffs, snares - the server's, as the old client used it)
 				_apply_max_speed(int(d.percent))
+				viewer.player.server_no_turn = (int(d.get("no_turn", 0)) & 1) != 0
 		"detail":
 			if Server.take_detail(d):                        # an item's hover text (kept for the hover box)
 				return

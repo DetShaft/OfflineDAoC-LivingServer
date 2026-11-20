@@ -11,6 +11,16 @@ namespace DOL.AI.Brain
 	{
 		public LordBrain() : base() { }
 
+		/// <summary>
+		/// #162 (Killaloe, 1.1.23): Jarl Killaloe aggroed bots on the floor below his room (his room 9345, the floor below
+		/// 9107). The navmesh line-of-sight ray is two-dimensional, so it passed under his floor, and he pulled the group
+		/// into a fight on the bottom floor while the casters never came up. A lord now aggroes only targets on his own
+		/// floor, less than a storey (about 240) above or below him. Damage done to him still brings him into a fight.
+		/// </summary>
+		public const int LordFloorHeight = 160;
+
+		public override int MaxAggroHeightDifference => LordFloorHeight;
+
 		public override void Think()
 		{
 			if (Body != null && Body.Spells.Count == 0)

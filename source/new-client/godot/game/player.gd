@@ -81,6 +81,7 @@ var sitting := false                   # /sit (Combat.sit): sit_down once, then 
 var speed_mult := 1.0                  # sprint (x1.3, Abilities)
 var cc := ""                           # "stun" / "mez" / "root" from monster spells (Casting): no moving
 var server_hold := false               # the server's game: its MaxSpeed is 0 (stunned, mezzed, rooted, too heavy) - no
+var server_no_turn := false            # the server's game: its MaxSpeed packet's turning-disabled flag (stun, mez)
                                        # moving, or the server snaps you back to where you were held (issue #149)
 var snare_mult := 1.0                  # snares: the run speed's share left
 var shade := false                       # a Necromancer with a servant up (Pets)
@@ -700,7 +701,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			cam_pitch = clampf(cam_pitch - dy * 0.004, -1.35, 0.6)
 		else:
 			cam_pitch = clampf(cam_pitch - dy * 0.004, -CAM_PITCH, CAM_PITCH)
-		if rmb:
+		if rmb and not turn_locked():
 			char_yaw = cam_yaw                          # steering: the character follows the camera
 	elif event is InputEventMouseButton:
 		if event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
@@ -712,7 +713,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif not (rmb or lmb) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 				get_viewport().warp_mouse(_cursor_at)
-			if event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+			if event.pressed and event.button_index == MOUSE_BUTTON_RIGHT and not turn_locked():
 				char_yaw = cam_yaw                      # right-click snaps the character to the camera heading
 		elif event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and _over_window():
 			pass                                        # the wheel over a window scrolls it, never the camera
@@ -769,6 +770,19 @@ func held() -> bool:
 	return cc != "" or server_hold
 
 
+## Stunned or mesmerized: no turning either (the server's DisableTurning; a root still lets you turn).
+func turn_locked() -> bool:
+	return cc == "stun" or cc == "mez" or server_no_turn
+
+
+## Pure: the movement input that survives crowd control (issue #149, 1.1.23: the stunned figure still ran in place and
+## turned, which read as walking). Returns [ahead, strafe, turn].
+static func cc_input(ahead: float, strafe: float, turn: float, is_held: bool, is_turn_locked: bool) -> Array:
+	if not is_held:
+		return [ahead, strafe, turn]
+	return [0.0, 0.0, 0.0 if is_turn_locked else turn]
+
+
 func _physics_process(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_physics_step(delta)
@@ -817,7 +831,8 @@ func _physics_step(delta: float) -> void:
 			stop_track()
 		else:
 			var d := track_target.global_position - global_position
-			char_yaw = atan2(-d.x, -d.z)
+			if not turn_locked():
+				char_yaw = atan2(-d.x, -d.z)
 			var gap := Vector2(d.x, d.z).length()
 			if track_mode == "follow" and gap > FOLLOW_GAP_M or track_mode == "stick" and gap > STICK_GAP_M:
 				fwd = true
@@ -830,6 +845,11 @@ func _physics_step(delta: float) -> void:
 	strafe += (1.0 if _act("strafe_right") else 0.0) - (1.0 if _act("strafe_left") else 0.0)
 	strafe = clampf(strafe, -1.0, 1.0)
 	var ahead := (1.0 if fwd else 0.0) - (1.0 if back else 0.0)
+	if not flying:
+		var kept := cc_input(ahead, strafe, turn, held(), turn_locked())
+		ahead = kept[0]
+		strafe = kept[1]
+		turn = kept[2]
 
 	if flying:
 		_fly(delta, ahead, strafe, turn)
