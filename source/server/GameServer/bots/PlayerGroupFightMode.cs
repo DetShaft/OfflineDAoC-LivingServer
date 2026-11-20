@@ -50,9 +50,11 @@ namespace DOL.GS
 
         /// <summary>
         /// The real player who leads this bot's group, when the bot is with the group; otherwise null. The player may be
-        /// dead (#170): the bot then stays within the assist radius of the group's anchor instead.
+        /// dead (#170): the bot then stays within the assist radius of the group's anchor instead. With
+        /// <paramref name="requireNear"/> false the bot may be any distance away in the same region, so the chase leash
+        /// can still call back a bot that ran past the assist radius.
         /// </summary>
-        public static GamePlayer LeaderOf(GameBot bot)
+        public static GamePlayer LeaderOf(GameBot bot, bool requireNear = true)
         {
             if (bot?.IsPlayerLedGroup != true || bot.PlayerGroupLeader is not { } leader || !bot.IsAlive ||
                 bot.ObjectState != GameObject.eObjectState.Active || bot.Group == null || bot.Group != leader.Group ||
@@ -60,7 +62,7 @@ namespace DOL.GS
                 bot.IsOnStableMasterRoute || bot.IsReturningAfterRelease)
                 return null;
             GameLiving anchor = Anchor(leader);
-            return anchor != null && bot.IsWithinRadius(anchor, DOL.AI.Brain.BotBrain.GROUP_DEFENSE_ASSIST_RADIUS) ? leader : null;
+            return anchor != null && (!requireNear || bot.IsWithinRadius(anchor, DOL.AI.Brain.BotBrain.GROUP_DEFENSE_ASSIST_RADIUS)) ? leader : null;
         }
 
         /// <summary>
@@ -123,6 +125,17 @@ namespace DOL.GS
                 focus = state.Focus;
                 return state.Active;
             }
+        }
+
+        /// <summary>
+        /// #170 follow-up: fight mode is on for this bot's group, so it chooses the bots' targets. The companion group
+        /// focus (CompanionPvpEngagement.Observe) then stays out: both ordered pulls every half second and the bots flipped
+        /// between the two targets (the leader-mezzed harness saw casters alternate targets on every cast).
+        /// </summary>
+        public static bool ActiveFor(GameBot bot)
+        {
+            if (bot?.Group == null || !Enabled || !Groups.TryGetValue(bot.Group, out GroupState state)) return false;
+            lock (state) return state.Active;
         }
 
         /// <summary>The group's shared focus, so crowd control never mezzes the target the group is about to hit.</summary>

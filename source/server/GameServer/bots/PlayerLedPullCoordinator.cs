@@ -41,7 +41,12 @@ namespace DOL.GS
             GameBot[] helpers = group.GetMembersInTheGroup().OfType<GameBot>()
                 .Where(bot => Available(bot, player) && bot.IsWithinRadius(target, BotBrain.GROUP_DEFENSE_ASSIST_RADIUS) &&
                     bot.Brain is BotBrain).ToArray();
-            foreach (GameBot bot in helpers) bot.EnterPlayerLedGroup(player);
+            foreach (GameBot bot in helpers)
+            {
+                bot.EnterPlayerLedGroup(player);
+                // The fight-mode leash never drops the player's /pull target (#170 follow-up).
+                ((BotBrain)bot.Brain).PlayerPullOrder = target;
+            }
             if (CompanionPvpEngagement.Enemy(player, target) && helpers.Any(bot => CompanionPvpEngagement.Leader(bot) == player))
             {
                 // RvR is not a PvE tank-contact pull. A resting companion or an

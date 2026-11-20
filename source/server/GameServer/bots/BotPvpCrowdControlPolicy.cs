@@ -46,15 +46,32 @@ namespace DOL.GS
         public static bool AreaClusterWorthCasting(int freeEnemiesInArea) => freeEnemiesInArea >= MinAreaTargets;
 
         /// <summary>
-        /// Mez and root break on damage, so they are never aimed at an enemy groupmates are already hitting.
-        /// Stuns and snares still land usefully on a target under attack.
-        /// </summary>
-        /// <summary>
         /// #170: a CC spell with a cast time is not started while an enemy is hitting or casting at the caster: any
         /// damage interrupts it (the 8v8 harness lost about half of all CC casts to interrupts). Instant CC always may.
         /// </summary>
         public static bool CastSurvives(int castTimeMilliseconds, bool underFire) => castTimeMilliseconds <= 0 || !underFire;
 
+        /// <summary>Run speed (with a speed buff) used to judge whether a melee enemy reaches the caster before a cast ends.</summary>
+        public const int ClosingSpeed = 250;
+
+        /// <summary>A ranged enemy (caster or archer) targeting the caster this close can land a hit during the cast.</summary>
+        public const int RangedThreatRange = 1500;
+
+        /// <summary>
+        /// #170 follow-up: whether this enemy would interrupt a cast of <paramref name="castTimeMilliseconds"/>. It must be
+        /// free and targeting the caster, and then either casting already, a ranged attacker (caster or archer) in range
+        /// (it can start a spell mid-cast), or a melee enemy close enough to reach the caster before the cast ends. The
+        /// first rule only counted hits already in flight, and the CC-heavy harness still lost most CC casts to interrupts.
+        /// </summary>
+        public static bool Threatens(bool targetsCaster, bool mezzed, bool casting, bool rangedAttacker, int distance,
+            int meleeReach, int castTimeMilliseconds) =>
+            targetsCaster && !mezzed && (casting || rangedAttacker && distance <= RangedThreatRange ||
+                distance <= meleeReach + (long)ClosingSpeed * System.Math.Max(0, castTimeMilliseconds) / 1000);
+
+        /// <summary>
+        /// Mez and root break on damage, so they are never aimed at an enemy groupmates are already hitting.
+        /// Stuns and snares still land usefully on a target under attack.
+        /// </summary>
         public static bool BreaksOnDamage(BotCasterSurvival.ControlKind kind) =>
             kind is BotCasterSurvival.ControlKind.Mez or BotCasterSurvival.ControlKind.Root;
     }
