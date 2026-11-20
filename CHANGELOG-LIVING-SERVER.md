@@ -8,6 +8,20 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.25 — 2026-11-20
+
+All tests only: not yet seen in game.
+- **Group fight mode edge cases (#175, #176, #177), checked in the bot AI simulation:**
+  - Pets rank below all players when bots pick targets (Jay's rule), so a bot no longer leaves a player to fight a pet.
+  - Bots walk around an obstacle that blocks line of sight and remember an enemy they saw for 6 s, instead of standing
+    still or dropping the fight at a ridge or corner.
+  - Support bots stay on a leash near the group, and casters close in on melee only when they have nothing to cast at.
+    The server log records `GROUP_FIGHT_PET_SKIP`, `BOT_LOS_WALK`, `why=support` and `GROUP_FIGHT_CLOSE_UP`.
+- **Cleric bots (#178):** Clerics smite single targets only, never area spells that would pull extra enemies.
+- **Loot (#182):** bots roll Need only on loot whose bonuses suit their class, using a per-class stat table. When several
+  bots could Need the same piece, the best class fit wins. Greed and Pass are unchanged.
+- **Friar loot fit (#183):** Strength first, then Piety, with Dexterity, Quickness and Constitution.
+
 ## Beta 1.1.24 — 2026-11-20
 
 All tests only: not yet seen in game.

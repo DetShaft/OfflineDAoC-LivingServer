@@ -34,7 +34,7 @@ const FriendsWindow := preload("res://game/ui/friends_window.gd")
 const LfgWindow := preload("res://game/ui/lfg_window.gd")
 const CommanderPanel := preload("res://game/ui/commander_panel.gd")
 const LootRollWindow := preload("res://game/ui/loot_roll_window.gd")
-const LIVING_SERVER_CLIENT_PATCH := "1.1.24"
+const LIVING_SERVER_CLIENT_PATCH := "1.1.25"
 
 var root: Control
 var ui_scale := 1.0
