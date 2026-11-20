@@ -40,6 +40,8 @@ namespace DOL.GS
             public GameLiving Focus;
             public GameLiving[] Candidates = Array.Empty<GameLiving>();
             public readonly Dictionary<GameLiving, long> Threats = new();
+            /// <summary>#176: when the anchor last saw each enemy (line of sight), for <see cref="GroupFightPolicy.StillInSight"/>.</summary>
+            public readonly Dictionary<GameLiving, long> LastSeen = new();
         }
 
         private static readonly ConditionalWeakTable<Group, GroupState> Groups = new();
@@ -180,11 +182,61 @@ namespace DOL.GS
             if (group == null || !(enemy.IsAttacking || enemy.IsCasting) || enemy.TargetObject is not GameLiving victim ||
                 !group.IsInTheGroup(victim))
                 return false;
-            if (victim is GameBot bot)
+            return IsBackLine(victim);
+        }
+
+        /// <summary>A groupmate who fights from the back: a healer or support class, or a list caster.</summary>
+        public static bool IsBackLine(GameLiving member)
+        {
+            if (member is GameBot bot)
                 return BotPartyRoles.IsSupport(bot) || bot.CharacterClass?.ClassType == eClassType.ListCaster;
-            if (victim is GamePlayer player && player.CharacterClass is { } cls)
+            if (member is GamePlayer player && player.CharacterClass is { } cls)
                 return cls.ClassType == eClassType.ListCaster || BotPartyRoles.HoldsBackLine((eCharacterClass)cls.ID);
             return false;
+        }
+
+        /// <summary>
+        /// #177: the distance from <paramref name="target"/> to the group's nearest living back-line member (not
+        /// <paramref name="self"/>) within the assist radius of the anchor; <see cref="int.MaxValue"/> when there is none.
+        /// </summary>
+        public static int DistanceToBackLine(GameLiving self, GameLiving anchor, GameLiving target)
+        {
+            if (self?.Group == null || anchor == null || target == null) return int.MaxValue;
+            int best = int.MaxValue;
+            foreach (GameLiving member in self.Group.GetMembersInTheGroup())
+            {
+                if (member == null || member == self || !member.IsAlive || member.ObjectState != GameObject.eObjectState.Active ||
+                    member.CurrentRegionID != anchor.CurrentRegionID || target.CurrentRegionID != member.CurrentRegionID ||
+                    !anchor.IsWithinRadius(member, DOL.AI.Brain.BotBrain.GROUP_DEFENSE_ASSIST_RADIUS) || !IsBackLine(member))
+                    continue;
+                best = Math.Min(best, (int)member.GetDistanceTo(target));
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// #177: the nearest living groupmate fighting in melee (not back line, attacking) within the assist radius of the
+        /// anchor, or null.
+        /// </summary>
+        public static GameLiving NearestFightingMelee(GameLiving self, GameLiving anchor)
+        {
+            if (self?.Group == null || anchor == null) return null;
+            GameLiving best = null;
+            double bestDistance = double.MaxValue;
+            foreach (GameLiving member in self.Group.GetMembersInTheGroup())
+            {
+                if (member == null || member == self || !member.IsAlive || member.ObjectState != GameObject.eObjectState.Active ||
+                    !member.IsAttacking || member.CurrentRegionID != self.CurrentRegionID || IsBackLine(member) ||
+                    !anchor.IsWithinRadius(member, DOL.AI.Brain.BotBrain.GROUP_DEFENSE_ASSIST_RADIUS))
+                    continue;
+                double distance = self.GetDistanceTo(member);
+                if (distance < bestDistance)
+                {
+                    best = member;
+                    bestDistance = distance;
+                }
+            }
+            return best;
         }
 
         /// <summary>
@@ -222,10 +274,26 @@ namespace DOL.GS
             // those join through the threat list once they hit someone).
             IEnumerable<GameLiving> near = anchor.GetPlayersInRadius((ushort)chase).Cast<GameLiving>()
                 .Concat(anchor.GetNPCsInRadius((ushort)chase).Where(BotPvpCrowdControl.PlayerLike));
+            // #176: an enemy that stepped behind terrain stays a candidate for GroupFightPolicy.SightMemoryMilliseconds, so
+            // a ridge between the player and the focus no longer empties or flips the focus and idles the group.
+            foreach (GameLiving gone in state.LastSeen.Where(p => !GroupFightPolicy.StillInSight(false, now, p.Value) ||
+                         !p.Key.IsAlive || p.Key.ObjectState != GameObject.eObjectState.Active).Select(p => p.Key).ToArray())
+                state.LastSeen.Remove(gone);
             foreach (GameLiving enemy in near)
-                if (enemy != leader && enemy != anchor && !enemy.IsStealthed && !candidates.Contains(enemy) &&
-                    BotSiegeRuntime.LegalEnemy(anchor, enemy) && Hostile(anchor, enemy) && BotSiegeRuntime.Visible(anchor, enemy))
+            {
+                if (enemy == leader || enemy == anchor || enemy.IsStealthed || candidates.Contains(enemy) ||
+                    !BotSiegeRuntime.LegalEnemy(anchor, enemy) || !Hostile(anchor, enemy))
+                    continue;
+                bool visible = BotSiegeRuntime.Visible(anchor, enemy);
+                if (visible)
+                {
+                    if (state.LastSeen.Count >= 128 && !state.LastSeen.ContainsKey(enemy))
+                        state.LastSeen.Remove(state.LastSeen.MinBy(p => p.Value).Key);
+                    state.LastSeen[enemy] = now;
+                }
+                if (GroupFightPolicy.StillInSight(visible, now, state.LastSeen.TryGetValue(enemy, out long seen) ? seen : -1))
                     candidates.Add(enemy);
+            }
             state.Candidates = candidates.ToArray();
 
             if (candidates.Count > 0)
@@ -241,6 +309,7 @@ namespace DOL.GS
             {
                 state.Active = false;
                 state.Focus = null;
+                state.LastSeen.Clear();
                 Log.Info($"GROUP_FIGHT_MODE event=exit leader=\"{leader.Name}\" seconds={(now - state.EnteredAt) / 1000} " +
                          $"quiet_ms={now - state.LastHostile} region={anchor.CurrentRegionID}");
                 return;

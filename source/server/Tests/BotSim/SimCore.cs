@@ -10,7 +10,7 @@ namespace DOL.UnitTests.BotSim
     // ISimTactics; the default tactics (CurrentBotTactics) call the real pure bot policies where they exist. See
     // docs/BOT-AI-SIMULATION.md for what is and is not modelled.
 
-    public enum SimRole { Tank, Melee, Caster, Healer, Mezzer, Lord, Guard }
+    public enum SimRole { Tank, Melee, Caster, Healer, Mezzer, Lord, Guard, Pet }
 
     public enum SimActivity { Dead, Controlled, Idle, Following, Approaching, Attacking, Casting, Healing, Interrupted, Kiting, Fleeing }
 
@@ -44,6 +44,8 @@ namespace DOL.UnitTests.BotSim
         public bool Heals;
         public bool CastsMez;
         public bool IsNpc;
+        /// <summary>A player's or gamebot's pet (#175): an NPC with no class, owned by a caster, that dies with it.</summary>
+        public bool IsPet;
 
         public static SimKit For(SimRole role) => role switch
         {
@@ -54,6 +56,7 @@ namespace DOL.UnitTests.BotSim
             SimRole.Mezzer => new SimKit { Role = role, HealthFactor = 0.75, MeleeFactor = 0.4, CastsNukes = true, CastsMez = true },
             SimRole.Lord => new SimKit { Role = role, HealthFactor = 9.0, MeleeFactor = 2.4, SwingMilliseconds = 3_000, IsNpc = true },
             SimRole.Guard => new SimKit { Role = role, HealthFactor = 1.6, MeleeFactor = 1.1, IsNpc = true },
+            SimRole.Pet => new SimKit { Role = role, HealthFactor = 0.8, MeleeFactor = 0.9, SwingMilliseconds = 3_000, IsNpc = true, IsPet = true },
             _ => new SimKit { Role = role },
         };
     }
@@ -82,6 +85,7 @@ namespace DOL.UnitTests.BotSim
             (eRealm.Hibernia, SimRole.Mezzer) => "Bard",
             (_, SimRole.Lord) => "Keep lord",
             (_, SimRole.Guard) => "Keep guard",
+            (_, SimRole.Pet) => "Pet",
             _ => role.ToString(),
         };
 
@@ -128,6 +132,7 @@ namespace DOL.UnitTests.BotSim
         public bool IsBot; // the AI under test (not the scripted player, not keep NPCs or scripted enemies)
         public SimAgent Leader;
         public List<SimAgent> Group = new();
+        public SimAgent Owner; // a pet's owner (#175)
 
         public Vec2 Position;
         public double MaxHealth, Health;
@@ -157,6 +162,14 @@ namespace DOL.UnitTests.BotSim
         public SimAgent OrderedTarget; // the group focus this think (CompanionPvpEngagement.Observe -> OrderPull)
         public long NextRecallCheck;
         public long LastDamageTime = -100_000;
+        /// <summary>BotBrain._recentDirectAttacker: the last enemy that hit this agent, and when.</summary>
+        public SimAgent LastAttacker;
+        public long LastAttackedAt = -100_000;
+        /// <summary>#176: the last cast that failed its line of sight check (BotBrain.OnSpellLineOfSightFailed).</summary>
+        public SimAgent LosBlockedTarget;
+        public long LosBlockedUntil;
+        /// <summary>#176, the rules before: the think after a failed check walks, the next stops and casts again.</summary>
+        public bool LosFollowNext;
 
         // Per-tick outcome for metrics
         public SimActivity Activity;
@@ -191,6 +204,11 @@ namespace DOL.UnitTests.BotSim
 
         public readonly List<SimAgent> Agents = new();
         public readonly List<SimEvent> Timeline = new();
+        /// <summary>
+        /// #176: ridges that block line of sight (casts, heals, the fight-mode scan), not movement: a low rise a group can
+        /// walk over but not see or cast across.
+        /// </summary>
+        public readonly List<(Vec2 A, Vec2 B)> Walls = new();
         public readonly Random Random;
         public long Now;
         public readonly Dictionary<SimAgent, SimClaim> Claims = new();
@@ -235,6 +253,8 @@ namespace DOL.UnitTests.BotSim
         public const int HealCastMilliseconds = 3_000;
         public const int NukeRange = 1_500;
         public const int HealRange = 2_000;
+        /// <summary>#175 metric: a melee hit on a pet counts as "player near" when an enemy player stands this close.</summary>
+        public const int PlayerNearRadius = 1_000;
 
         public void Log(string text)
         {
@@ -251,6 +271,26 @@ namespace DOL.UnitTests.BotSim
 
         public bool ImmuneToMez(SimAgent target) => Now < target.MezImmuneUntil;
 
+        /// <summary>No ridge crosses the line between the two points.</summary>
+        public bool LineOfSight(Vec2 from, Vec2 to) => Walls.All(w => !Crosses(from, to, w.A, w.B));
+
+        public bool LineOfSight(SimAgent from, SimAgent to) => LineOfSight(from.Position, to.Position);
+
+        private static bool Crosses(Vec2 p1, Vec2 p2, Vec2 q1, Vec2 q2)
+        {
+            static double Cross(Vec2 o, Vec2 a, Vec2 b) => (a.X - o.X) * (b.Y - o.Y) - (a.Y - o.Y) * (b.X - o.X);
+            double d1 = Cross(q1, q2, p1), d2 = Cross(q1, q2, p2), d3 = Cross(p1, p2, q1), d4 = Cross(p1, p2, q2);
+            return (d1 > 0 && d2 < 0 || d1 < 0 && d2 > 0) && (d3 > 0 && d4 < 0 || d3 < 0 && d4 > 0);
+        }
+
+        /// <summary>Adds a pet for an owner, in front of it (#175). The pet is not in the group and dies with its owner.</summary>
+        public SimAgent AddPet(SimAgent owner, Vec2 position)
+        {
+            SimAgent pet = Add($"{owner.Name.Split('-')[0]}-Pet", owner.Realm, owner.Side, SimRole.Pet, owner.Level, position, new PetTactics());
+            pet.Owner = owner;
+            return pet;
+        }
+
         // ---- damage and control
 
         public void Damage(SimAgent source, SimAgent target, double amount, string how)
@@ -266,6 +306,18 @@ namespace DOL.UnitTests.BotSim
             target.Metrics.LastTakenTime = Now;
             source.Metrics.DamageByTarget.TryGetValue(target.Name, out double sum);
             source.Metrics.DamageByTarget[target.Name] = sum + amount;
+            target.LastAttacker = source;
+            target.LastAttackedAt = Now;
+            if (how == "melee")
+            {
+                source.Metrics.MeleeHits++;
+                if (target.Kit.IsPet)
+                {
+                    source.Metrics.MeleeHitsOnPets++;
+                    if (Enemies(source).Any(e => !e.Kit.IsNpc && e.DistanceTo(source) <= PlayerNearRadius))
+                        source.Metrics.MeleeHitsOnPetsPlayerNear++;
+                }
+            }
             target.Aggro.TryGetValue(source, out double aggro);
             target.Aggro[source] = aggro + amount;
             // BotBrain.NotifyNearbyGroupBots -> OnGroupMemberAttacked: every bot of the victim's group within 2,000 units
@@ -314,6 +366,13 @@ namespace DOL.UnitTests.BotSim
                 target.Casting = null;
                 target.AttackingNow = false;
                 Log($"{target.Label} dies to {source.Name} ({how})");
+                foreach (SimAgent pet in Agents.Where(p => p.Owner == target && p.Alive))
+                {
+                    pet.Health = 0;
+                    pet.Target = null;
+                    pet.AttackingNow = false;
+                    Log($"{pet.Name} is released with its owner");
+                }
             }
         }
 

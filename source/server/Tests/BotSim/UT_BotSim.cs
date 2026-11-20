@@ -43,7 +43,10 @@ namespace DOL.UnitTests
 
         private static bool Strict => Environment.GetEnvironmentVariable("BOT_SIM_STRICT") == "1";
 
-        public static string[] ScenarioNames() => new[] { "open-field-8v8", "keep-lord-after-doors", "cc-heavy", "leader-mezzed", "chase-leash" };
+        public static string[] ScenarioNames() => new[]
+        {
+            "open-field-8v8", "keep-lord-after-doors", "cc-heavy", "leader-mezzed", "chase-leash", "pets-8v8", "los-ridge", "split-kite",
+        };
 
         [TestCaseSource(nameof(ScenarioNames))]
         public void Scenario(string name)

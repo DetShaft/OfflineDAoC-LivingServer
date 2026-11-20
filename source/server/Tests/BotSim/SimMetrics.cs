@@ -16,7 +16,7 @@ namespace DOL.UnitTests.BotSim
         public double DamageDealt, DamageTaken, HealingDone;
         public int Kills, Deaths;
         public int CcCasts, WastedCc, EnemiesMezzed, MezzesBrokenByOwnSide, BrokeOwnSideMez, CastsInterrupted;
-        public int LeashDrops, Recalls;
+        public int LeashDrops, Recalls, SupportLeashDrops, CloseUps;
         public List<string> WastedCcReasons = new();
         public List<SimTargetChoice> TargetsChosen = new();
         public Dictionary<string, double> DamageByTarget = new();
@@ -28,6 +28,15 @@ namespace DOL.UnitTests.BotSim
 
         public double MaxDistanceFromLeader, DistanceSum;
         public long DistanceSamples, MsBeyondAssistRadius;
+
+        // #175: melee hits, and those on pets (while an enemy player stood within SimWorld.PlayerNearRadius)
+        public int MeleeHits, MeleeHitsOnPets, MeleeHitsOnPetsPlayerNear;
+        // #176: the longest unbroken stretch idle in combat
+        public long LongestIdleMs, CurrentIdleMs;
+        // #177: front-line bots' distance to the nearest living groupmate caster or healer, in combat
+        public double MaxDistanceToBackLine, BackLineDistanceSum;
+        public long BackLineSamples;
+        public double MeanDistanceToBackLine => BackLineSamples == 0 ? 0 : BackLineDistanceSum / BackLineSamples;
 
         // bookkeeping
         public bool PendingCcCast;
@@ -50,17 +59,33 @@ namespace DOL.UnitTests.BotSim
             m.ActivityMs[a.Activity] = sum + tick;
             if (a.Activity == SimActivity.Controlled)
                 m.ControlledMs += tick;
+            bool idle = false;
             if (w.SideInCombat(a))
             {
                 m.InCombatMs += tick;
                 if (a.Activity is SimActivity.Idle or SimActivity.Following)
                 {
+                    idle = true;
                     m.IdleInCombatMs += tick;
                     string reason = string.IsNullOrEmpty(a.Status) ? "unknown" : a.Status;
                     m.IdleReasons.TryGetValue(reason, out long r);
                     m.IdleReasons[reason] = r + tick;
                 }
+                if (a.Kit.Role is SimRole.Tank or SimRole.Melee && a.Group.Count > 0)
+                {
+                    SimAgent nearest = a.Group.Where(g => g != a && g.Alive && (g.Kit.Heals || g.Kit.CastsNukes))
+                        .OrderBy(g => g.DistanceTo(a)).FirstOrDefault();
+                    if (nearest != null)
+                    {
+                        double back = nearest.DistanceTo(a);
+                        m.MaxDistanceToBackLine = Math.Max(m.MaxDistanceToBackLine, back);
+                        m.BackLineDistanceSum += back;
+                        m.BackLineSamples++;
+                    }
+                }
             }
+            m.CurrentIdleMs = idle ? m.CurrentIdleMs + tick : 0;
+            m.LongestIdleMs = Math.Max(m.LongestIdleMs, m.CurrentIdleMs);
             if (a.Leader != null && a.Leader != a && a.Leader.Alive)
             {
                 double d = a.DistanceTo(a.Leader);

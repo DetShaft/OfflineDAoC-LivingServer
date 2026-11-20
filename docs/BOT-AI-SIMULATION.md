@@ -55,17 +55,24 @@ Metric definitions:
 | `cc-heavy` | Both groups bring three mezzers, one with the slow backup area mez (#151 / #152). |
 | `leader-mezzed` | The player is mezzed 2 s in, before contact, for 25 s while the enemy charges, with an enemy still selected. The case that motivated fight mode. |
 | `chase-leash` | Two enemy melee harass the group for 8 s, then run straight away. The player never moves. Measures how far bots chase. |
+| `pets-8v8` | The 8v8 with a pet for each caster on both sides, in front of the group (#175). Measures side 0's melee hits on pets while an enemy player is within 1,000 units. |
+| `los-ridge` | The 8v8 with a ridge across the middle that blocks sight but not movement (#176). Measures the longest idle stretch of casters and mezzers. |
+| `split-kite` | The player holds the middle; three enemy melee fight for 7 s, break off 1,400 units east for 7 s, and come back, while the enemy back line holds the west (#177). Measures how far side 0's melee get from the nearest friendly caster or healer. |
 
 Variants (side 0's rules):
 - **fight mode off**: the rules before #165 (server setting `bots / group_fight_mode` = False).
 - **fight mode (#165), before #170**: fight mode as merged in PR #168, with both sides on the rules before #170 (the
   #170 CC and mez-protection fixes change every bot, enemy gamebots included, so the enemy reverts too). Kept to show
   what #170 changed.
-- **fight mode (#170)**: the live variant, fight mode with the #170 fixes (group anchor once the leader is dead, focus
+- **fight mode (#175-#177)**: the live variant: fight mode (#170) plus #175 (a pet that hits a bot does not take it off its
+  fight-mode pick), #176 (an enemy behind a ridge stays a candidate for 6 s; a cast that failed its line of sight check walks
+  until the target is in sight, for every bot) and #177 (front-line bots also drop a target past the chase distance from the
+  nearest caster or healer; ranged casters not under attack close up to 900 of the nearest fighting melee once past 1,200).
+  CI warns about its findings and strict mode fails on them.
+- **fight mode (#170)**: v1.1.24's fight mode, before #175-#177 on both sides. Fight mode with the #170 fixes (group anchor once the leader is dead, focus
   upgrade, busy bots switch, no cast-time CC under fire, mezzed attackers protected), and the follow-up (threats that land
   before a cast ends, a leash that holds outside fight mode and on automatic ordered pulls, no companion focus while fight
-  mode is on). CI warns about its findings and
-  strict mode fails on them.
+  mode is on).
 - `keep-lord-after-doors` also runs **rule before #160** (the old door rule) to show what #160 changed.
 - `open-field-8v8` also runs **mirror control**: side 0's bots use the enemy's autonomous rules, so both sides are
   identical. It should win about half; if it does, the other variants' win rates come from their rules, not the setup.
@@ -85,7 +92,9 @@ the real server code wherever a bot rule is a pure function.
 - `GuardLord.BlocksTheWayIn`: whether the keep's doors still shield the lord from bots.
 - `GroupFightPolicy` (fight mode, #165, #170): `PickFocus`, `PickPeel`, `BeyondLeash`, `FollowsLeaderTarget`, `ShouldExit`,
   `ShouldReplaceFocus`, `ShouldSwitchToFocus`, `AnchorIndex` (the group anchor once the leader is dead), the 15 s
-  threat memory and the 1,500 chase distance.
+  threat memory and the 1,500 chase distance; #175-#177: `PetYields`, `StillInSight` (6 s sight memory), `BeyondSupport`
+  (the support leash), `CasterClosesIn`, `CasterReach` and `CasterHold`.
+- `BotLineOfSightPolicy.Walks` (#176): when a ranged bot keeps walking after a failed line of sight check.
 - `BotPvpCrowdControlPolicy.CastSurvives` and `Threatens` (#170): no cast-time CC while an enemy would hit the caster
   before the cast ends (casting at it, a caster targeting it in range, or melee close enough to arrive). The scan, the leader-target rule and the leash loop follow
   `PlayerGroupFightMode` and `BotBrain.ThinkGroupFightMode` by hand.
@@ -104,16 +113,23 @@ the real server code wherever a bot rule is a pure function.
 - They keep the current target, then pick the most-damaging enemy on the aggro list, then the nearest.
 - They follow the leader when farther than 650 units, and drop aggro beyond 6,000 units from themselves.
 - Healers heal the lowest groupmate under 75% and take no offense.
+- The direct attacker (added with #175): for a bot in the player's group, the enemy that hit it in the last 5 s becomes its
+  target (`AttackMostWanted`'s `directAttacker`), except a mezzed one. Autonomous enemies leave it out (an approximation of
+  `BotIncomingFireReaction`). Before, the harness gave the ordered pull priority instead, which hid the pet problem.
+- Line of sight before #176: a failed check stands the caster for a think, the next think follows the target, the one after
+  stops and casts again (about half the time standing). The real check goes through a client and its timing varies.
 - Defended attackers (12 s threat memory) are exempt from mez protection, except once mezzed (#170).
 
 **Modelled simply, not from game data:**
 - Health, swing damage, nukes and heals scale with level and role, the same in every realm.
 - Any damage interrupts a cast and blocks casting for 3 s (`spell_interrupt_duration`).
 - A mez breaks on damage, then gives 60 s of immunity, and has a 12% resist chance.
-- Movement is straight lines at 191 units/s with no terrain, line of sight or navmesh.
+- Movement is straight lines at 191 units/s with no terrain or navmesh. Ridges (`SimWorld.Walls`, #176) block sight for
+  casts, heals, CC, autonomous aggro and the fight-mode scan, not movement.
+- Pets (#175) fight the nearest enemy near their owner, are not in the group, and die with their owner.
 
-**Not simulated:** power and endurance, styles and positionals, buffs, stuns and roots (only mez), pets, songs,
-stealth, archers, realm abilities, line of sight, terrain, siege, the autonomous gamebot goal layer (travel, camps,
+**Not simulated:** power and endurance, styles and positionals, buffs, stuns and roots (only mez), pet classes' own
+rules (pets are plain melee), songs, stealth, archers, realm abilities, terrain beyond sight ridges, siege, the autonomous gamebot goal layer (travel, camps,
 group orders), real class spell lists, and Darkness Falls or raid AI.
 
 ## Adding a scenario

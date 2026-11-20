@@ -40,9 +40,18 @@ namespace DOL.UnitTests.BotSim
 
         public static SimVariant FightMode() => new()
         {
-            Name = "fight mode (#170)", Live = true,
-            Description = "Fight mode with the #170 fixes: it keeps running when the player dies (group anchor), a better-role enemy replaces the focus, busy bots switch to it, no cast-time CC while a hit could land before the cast ends, a mezzed attacker is left alone, a leash that holds after fight mode ends and on its own picks, and no companion focus while fight mode is on. Picks the player's target while they attack it, a tank peel, or the shared focus (healers, then casters, then lowest health), keeps a 1,500-unit chase leash, and keeps CC off the focus.",
+            Name = "fight mode (#175-#177)", Live = true,
+            Description = "The live rules: fight mode (#170) plus the #175-#177 fixes. #175: in fight mode an enemy pet that hits a bot does not take it off its pick. #176: an enemy behind a ridge stays a fight-mode candidate for 6 s after the player last saw it, and a cast that failed its line of sight check keeps the bot walking toward the target until it is in sight (every bot, enemies too). #177: front-line bots also drop a target past the chase distance from the group's nearest caster or healer (the support leash), and ranged casters not under attack close up to 900 units of the nearest groupmate fighting in melee once they are past 1,200.",
             Side0Bots = () => new FightModeTactics(),
+        };
+
+        /// <summary>Fight mode as shipped in v1.1.24 (#170 and its follow-ups), both sides without the #175-#177 fixes.</summary>
+        public static SimVariant FightMode170() => new()
+        {
+            Name = "fight mode (#170)",
+            Description = "Comparison: fight mode as shipped in v1.1.24, before #175-#177, on both sides (the line of sight walk, #176, changes every bot). Fight mode with the #170 fixes: it keeps running when the player dies (group anchor), a better-role enemy replaces the focus, busy bots switch to it, no cast-time CC while a hit could land before the cast ends, a mezzed attacker is left alone, a leash that holds after fight mode ends and on its own picks, and no companion focus while fight mode is on. Picks the player's target while they attack it, a tank peel, or the shared focus (healers, then casters, then lowest health), keeps a 1,500-unit chase leash, and keeps CC off the focus.",
+            Side0Bots = () => new FightModeTactics { EdgeCaseFixes = false, Label = "fight mode (#170)" },
+            Side1Bots = () => new CurrentBotTactics { SharedFocus = false, CompanionRecall = false, ProximityAggroRadius = 1_500, DirectAttackerFirst = false, EdgeCaseFixes = false, Label = "autonomous enemy (before #176)" },
         };
 
         /// <summary>The rules shipped in PR #168, on both sides (the CC fixes in #170 apply to every bot, enemies too).</summary>
@@ -50,13 +59,13 @@ namespace DOL.UnitTests.BotSim
         {
             Name = "fight mode (#165), before #170",
             Description = "Comparison: fight mode as merged in PR #168, with both sides on the rules before #170 (the CC and mez-protection fixes change every bot, enemy gamebots included).",
-            Side0Bots = () => new FightModeTactics { Fixes170 = false, SelectedTargetFirst = true, Label = "fight mode (#165), before #170" },
-            Side1Bots = () => new CurrentBotTactics { SharedFocus = false, CompanionRecall = false, ProximityAggroRadius = 1_500, Fixes170 = false, Label = "autonomous enemy (before #170)" },
+            Side0Bots = () => new FightModeTactics { Fixes170 = false, EdgeCaseFixes = false, SelectedTargetFirst = true, Label = "fight mode (#165), before #170" },
+            Side1Bots = () => new CurrentBotTactics { SharedFocus = false, CompanionRecall = false, ProximityAggroRadius = 1_500, DirectAttackerFirst = false, Fixes170 = false, EdgeCaseFixes = false, Label = "autonomous enemy (before #170)" },
         };
 
         /// <summary>The enemy side: an autonomous gamebot group (no companion focus or recall; attacks enemies within 1,500 on sight).</summary>
         public static ISimTactics AutonomousEnemy() =>
-            new CurrentBotTactics { SharedFocus = false, CompanionRecall = false, ProximityAggroRadius = 1_500, Label = "autonomous enemy" };
+            new CurrentBotTactics { SharedFocus = false, CompanionRecall = false, ProximityAggroRadius = 1_500, DirectAttackerFirst = false, Label = "autonomous enemy" };
 
         public static SimVariant NoSharedFocus() => new()
         {
@@ -81,7 +90,7 @@ namespace DOL.UnitTests.BotSim
         public int Seconds = 120;
         public int[] Seeds = { 1, 2, 3 };
         public Func<SimSetup, SimWorld> Build;
-        public List<SimVariant> Variants = new() { SimVariant.Current(), SimVariant.FightModeBefore170(), SimVariant.FightMode() };
+        public List<SimVariant> Variants = new() { SimVariant.Current(), SimVariant.FightModeBefore170(), SimVariant.FightMode170(), SimVariant.FightMode() };
         public List<SimExpectation> Expectations = new();
     }
 
@@ -132,6 +141,7 @@ namespace DOL.UnitTests.BotSim
         public static IReadOnlyList<SimScenario> All() => new[]
         {
             OpenFieldEightVsEight(), KeepLordAfterDoors(), CrowdControlHeavy(), LeaderMezzed(), ChaseLeash(),
+            PetsEightVsEight(), LineOfSightRidge(), SplitKite(),
         };
 
         /// <summary>
@@ -366,9 +376,9 @@ namespace DOL.UnitTests.BotSim
             {
                 new SimVariant
                 {
-                    Name = "fight mode (#170), selected target first (old rule)",
-                    Description = "Comparison, no longer shipped: as fight mode (#170), but the player's selected target comes first even while the player is mezzed (the rule before the owner's decision of 2026-11-20).",
-                    Side0Bots = () => new FightModeTactics { SelectedTargetFirst = true, Label = "fight mode (#170), selected target first (old rule)" },
+                    Name = "fight mode, selected target first (old rule)",
+                    Description = "Comparison, no longer shipped: as the live fight mode, but the player's selected target comes first even while the player is mezzed (the rule before the owner's decision of 2026-11-20).",
+                    Side0Bots = () => new FightModeTactics { SelectedTargetFirst = true, Label = "fight mode, selected target first (old rule)" },
                 },
             },
             Expectations =
@@ -449,6 +459,136 @@ namespace DOL.UnitTests.BotSim
                         return (over == 0, $"farthest {max:0} units; {over} of {bots.Count} bot-runs went past {LeashLimit}");
                     },
                 },
+            },
+        };
+
+        // ---- 6. pets (#175)
+
+        public static SimExpectation WinsHalf() => new()
+        {
+            Text = "The player's group wins at least half of its fights",
+            Check = runs =>
+            {
+                int side0 = runs.Count(r => r.WinnerSide == 0), side1 = runs.Count(r => r.WinnerSide == 1);
+                return (side0 * 2 >= runs.Count, $"side 0 won {side0}, side 1 won {side1}, {runs.Count - side0 - side1} timed out, of {runs.Count}");
+            },
+        };
+
+        /// <summary>Gives each caster of the group a pet, placed 300 units in front of it.</summary>
+        public static void AddPets(SimWorld w, IEnumerable<SimAgent> group, int side)
+        {
+            double facing = side == 0 ? 1 : -1;
+            foreach (SimAgent caster in group.Where(g => g.Role == SimRole.Caster).ToList())
+                w.AddPet(caster, new Vec2(caster.Position.X, caster.Position.Y + 300 * facing));
+        }
+
+        public static SimScenario PetsEightVsEight() => new()
+        {
+            Name = "pets-8v8",
+            Title = "8v8 with pets on the front line (#175)",
+            Issues = "#175",
+            Why = "The open-field 8v8, with a pet for each of the two casters on both sides (Bonedancer, Theurgist, Cabalist or Animist style pets), standing in front of the group. Pets go for the nearest enemy, so they meet the enemy melee first. Measures how many of side 0's melee hits land on pets while an enemy player stands within 1,000 units.",
+            Build = s =>
+            {
+                SimWorld w = TwoGroups(s, StandardGroup, 2_400);
+                AddPets(w, w.Agents.Where(a => a.Side == 0).ToList(), 0);
+                AddPets(w, w.Agents.Where(a => a.Side == 1 && !a.Kit.IsPet).ToList(), 1);
+                return w;
+            },
+            Expectations =
+            {
+                new SimExpectation
+                {
+                    Text = "Side 0 melee bots put under 15% of their melee hits on pets while an enemy player is within 1,000 units",
+                    Check = runs =>
+                    {
+                        var melee = AllBots(runs).Where(b => b.Role == SimRole.Melee).ToList();
+                        int hits = melee.Sum(b => b.Metrics.MeleeHits), onPets = melee.Sum(b => b.Metrics.MeleeHitsOnPetsPlayerNear);
+                        double pct = hits == 0 ? 0 : 100.0 * onPets / hits;
+                        return (pct < 15, $"{onPets} of {hits} melee hits on pets with a player near ({pct:0.0}%), {melee.Sum(b => b.Metrics.MeleeHitsOnPets)} on pets in all");
+                    },
+                },
+                WinsHalf(),
+                IdleBelow(20),
+            },
+        };
+
+        // ---- 7. line of sight (#176)
+
+        public static SimScenario LineOfSightRidge() => new()
+        {
+            Name = "los-ridge",
+            Title = "A ridge between the groups (#176)",
+            Issues = "#176",
+            Why = "The open-field 8v8 with a 1,400-unit ridge across the middle that blocks sight (casts, heals, the fight-mode scan) but not movement. Melee walk over it; casters, mezzers and healers must move to see. Measures the longest idle stretch and the idle time of side 0's bots while their side is in combat.",
+            Build = s =>
+            {
+                SimWorld w = TwoGroups(s, StandardGroup, 2_400);
+                w.Walls.Add((new Vec2(-700, 0), new Vec2(700, 0)));
+                w.Log("A ridge from (-700,0) to (700,0) blocks sight between the groups.");
+                return w;
+            },
+            Expectations =
+            {
+                IdleBelow(20),
+                new SimExpectation
+                {
+                    Text = "No side 0 caster or mezzer stands idle in combat for more than 3 s at a stretch",
+                    Check = runs =>
+                    {
+                        var casters = AllBots(runs).Where(b => b.Role is SimRole.Caster or SimRole.Mezzer).ToList();
+                        long longest = casters.Count == 0 ? 0 : casters.Max(b => b.Metrics.LongestIdleMs);
+                        int over = casters.Count(b => b.Metrics.LongestIdleMs > 3_000);
+                        double meanLongest = casters.Count == 0 ? 0 : casters.Average(b => b.Metrics.LongestIdleMs) / 1000.0;
+                        return (over == 0, $"longest {longest / 1000.0:0.0} s, mean longest {meanLongest:0.0} s; {over} of {casters.Count} bot-runs over 3 s");
+                    },
+                },
+                WinsHalf(),
+            },
+        };
+
+        // ---- 8. split by kiting enemies (#177)
+
+        public const int BackLineLimit = 2_000;
+
+        public static SimScenario SplitKite() => new()
+        {
+            Name = "split-kite",
+            Title = "Enemy melee bait the group's melee away from its casters (#177)",
+            Issues = "#177",
+            Why = "Side 0 holds the middle: the player (a melee character) stands still. The enemy's three melee come in from the east, fight for 7 s, break off toward a bait point 1,400 units east of the player for 7 s, and come back; the enemy's casters, mezzer and healers hold the west flank (the enemy leader is a caster that holds its spot). Measures how far side 0's melee bots get from the nearest friendly caster or healer.",
+            Build = s =>
+            {
+                var w = new SimWorld(s.Seed);
+                AddGroup(w, 0, s.Side0, StandardGroup, new Vec2(0, 0), s.Variant.Side0Bots(), new ScriptedLeader { Passive = true });
+                SimRole[] enemy = { SimRole.Caster, SimRole.Tank, SimRole.Melee, SimRole.Melee, SimRole.Caster, SimRole.Mezzer, SimRole.Healer, SimRole.Healer };
+                List<SimAgent> side1 = AddGroup(w, 1, s.Side1, enemy, new Vec2(-1_000, 1_000), s.Variant.Enemy(), new HoldAndNukeTactics());
+                var bait = new Vec2(1_400, 300);
+                int i = 0;
+                foreach (SimAgent m in side1.Where(a => a.Role is SimRole.Tank or SimRole.Melee))
+                {
+                    m.Tactics = new BaiterTactics { BaitPoint = new Vec2(bait.X, bait.Y + 120 * i) };
+                    m.Position = m.Home = new Vec2(1_000 + 120 * i, 900);
+                    i++;
+                }
+                return w;
+            },
+            Expectations =
+            {
+                new SimExpectation
+                {
+                    Text = $"No side 0 melee bot gets more than {BackLineLimit} units from the nearest friendly caster or healer",
+                    Check = runs =>
+                    {
+                        var front = AllBots(runs).Where(b => b.Role is SimRole.Melee or SimRole.Tank && b.Metrics.BackLineSamples > 0).ToList();
+                        double max = front.Count == 0 ? 0 : front.Max(b => b.Metrics.MaxDistanceToBackLine);
+                        double mean = front.Count == 0 ? 0 : front.Average(b => b.Metrics.MeanDistanceToBackLine);
+                        int over = front.Count(b => b.Metrics.MaxDistanceToBackLine > BackLineLimit);
+                        return (over == 0, $"farthest {max:0}, mean {mean:0}; {over} of {front.Count} bot-runs past {BackLineLimit}");
+                    },
+                },
+                WinsHalf(),
+                IdleBelow(25),
             },
         };
     }

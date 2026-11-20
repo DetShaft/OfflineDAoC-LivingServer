@@ -1592,7 +1592,9 @@ namespace DOL.AI.Brain
                 AssistPlayerAttack(leaderTarget);
 
             // Issue #165: in a battleground fight the player's group picks its own targets and keeps a chase leash.
-            ThinkGroupFightMode();
+            // #177: a caster closing up on its melee spends this think walking.
+            if (ThinkGroupFightMode())
+                return;
 
             if (BotBody?.TryMatchOwnerLevel() == true)
                 return;
@@ -3369,7 +3371,8 @@ namespace DOL.AI.Brain
             // protecting a group member. Generic aggro may still contain the
             // previous pull and used to make archers/casters repeatedly switch
             // away from the fight their pet had already started.
-            Body.TargetObject = protectionTarget ?? directAttacker ?? activePetTarget ?? CalculateNextAttackTarget();
+            Body.TargetObject = KeepFightModePickOverPet(protectionTarget ?? directAttacker ?? activePetTarget ?? CalculateNextAttackTarget(),
+                protectionTarget);
             // A tethered boss outside its tether is immune: stop hitting it and lead it home (AutonomousTetherReset).
             if (Body.TargetObject is GameNPC tetheredBoss && AutonomousTetherReset.TryHandle(BotBody, tetheredBoss))
                 return;
@@ -3418,6 +3421,11 @@ namespace DOL.AI.Brain
                     return;
 
                 bool rangedCaster = PrefersCurrentSpellRange();
+
+                // #176: the last cast at this target failed its line of sight check; walk toward it until it is in
+                // sight, instead of stopping and casting into the ridge again every think.
+                if (rangedCaster && Body.TargetObject is GameLiving hiddenTarget && WalkForLineOfSight(hiddenTarget))
+                    return;
 
                 // A melee bot already chasing its own target at stick range keeps
                 // that order. Clearing it every think made NpcStartAttack stop the
