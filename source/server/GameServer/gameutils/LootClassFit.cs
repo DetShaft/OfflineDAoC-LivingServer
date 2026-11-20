@@ -42,7 +42,7 @@ namespace DOL.GS
             [eCharacterClass.Infiltrator] = "DEX3 QUI3 STR2 CON2",
             [eCharacterClass.Scout] = "DEX3 QUI2 CON2 STR1",
             [eCharacterClass.Minstrel] = "CHR3 DEX2 QUI2 CON2 STR1",
-            [eCharacterClass.Friar] = "PIE3 DEX2 QUI2 CON2 STR2",
+            [eCharacterClass.Friar] = "STR3 PIE2 DEX2 QUI2 CON2",
             [eCharacterClass.Cleric] = "PIE3 DEX3 CON2",
             [eCharacterClass.Heretic] = "PIE3 DEX2 CON2 STR2 QUI1",
             [eCharacterClass.Cabalist] = "INT3 DEX3 CON2",
