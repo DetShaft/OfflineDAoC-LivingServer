@@ -334,7 +334,7 @@ namespace DOL.UnitTests.BotSim
         public void Think(SimWorld w, SimAgent a)
         {
             foreach (SimAgent enemy in a.Aggro.Keys.ToList())
-                if (!enemy.Alive || enemy.DistanceTo(a.Home) > 2_500)
+                if (!enemy.Alive || enemy.Position.DistanceTo(a.Home) > 2_500)
                     a.Aggro.Remove(enemy);
             foreach (SimAgent enemy in w.Enemies(a).Where(e => e.DistanceTo(a) <= AggroRange))
                 if (!a.Aggro.ContainsKey(enemy))
