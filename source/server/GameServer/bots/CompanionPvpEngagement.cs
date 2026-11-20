@@ -123,8 +123,9 @@ namespace DOL.GS
                 focus = now < state.FocusUntil ? state.Focus : null;
                 if (!Live(leader, focus)) state.Focus = focus = null;
                 if (focus == null)
+                    // #170: a free attacker before a mezzed one, so the group does not break a groupmate's mez.
                     focus = state.Threats.Where(p => p.Value > now && Live(leader, p.Key))
-                        .OrderBy(p => leader.GetDistanceTo(p.Key)).Select(p => p.Key).FirstOrDefault();
+                        .OrderBy(p => p.Key.IsMezzed).ThenBy(p => leader.GetDistanceTo(p.Key)).Select(p => p.Key).FirstOrDefault();
             }
             GameLiving ordered = PlayerLedPullCoordinator.FindLeaderTarget(leader);
             if (ordered != null) { Order(leader, ordered); focus = Enemy(leader, ordered) ? ordered : null; }

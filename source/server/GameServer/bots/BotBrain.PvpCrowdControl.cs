@@ -29,10 +29,15 @@ namespace DOL.AI.Brain
                 .OrderBy(Body.GetDistanceTo).Take(24).ToArray();
             if (enemies.Length == 0) return false;
             long now = GameLoop.GameLoopTime;
+            // #170: an enemy swinging at or casting on this bot will interrupt any cast; only instant CC goes out then.
+            bool underFire = Body.GetNPCsInRadius(1800).Where(BotPvpCrowdControl.PlayerLike).Cast<GameLiving>()
+                .Concat(Body.GetPlayersInRadius(1800)).Any(e => e.IsAlive && e.Realm != Body.Realm && e.TargetObject == Body &&
+                    !e.IsMezzed && (e.IsAttacking && e.IsWithinRadius(Body, Body.MeleeAttackRange + 150) || e.IsCasting));
             foreach (Spell spell in BotPvpCrowdControlPolicy.Order(BotBody.CrowdControlSpells))
             {
                 if (spell.Level>Body.Level || Body.GetSkillDisabledDuration(spell)>0 || Body.Mana<BotBody.PowerCost(spell) ||
-                    spell.CastTime>0 && Body.IsBeingInterrupted && !spell.Uninterruptible) continue;
+                    spell.CastTime>0 && Body.IsBeingInterrupted && !spell.Uninterruptible ||
+                    !spell.Uninterruptible && !BotPvpCrowdControlPolicy.CastSurvives(spell.CastTime, underFire)) continue;
                 bool area = BotPvpCrowdControlPolicy.IsAreaMez(spell);
                 // #152: an area mez is an opener. After an attempt it waits out the 60 s mez immunity it hands out.
                 if (area && !BotPvpCrowdControlPolicy.AreaMezReady(now, _lastPvpAreaMez)) continue;

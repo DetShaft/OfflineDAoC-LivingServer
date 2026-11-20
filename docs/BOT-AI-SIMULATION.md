@@ -75,8 +75,10 @@ the real server code wherever a bot rule is a pure function.
   mezzed enemy is left alone.
 - `BotCasterSurvival.Decide`, `LegsLeft`, `AwayPoint`, `KindOf`: the caster kite decision and kite legs.
 - `GuardLord.BlocksTheWayIn`: whether the keep's doors still shield the lord from bots.
-- `GroupFightPolicy` (fight mode, #165): `PickFocus`, `PickPeel`, `BeyondLeash`, `FollowsLeaderTarget`, `ShouldExit`,
-  the 15 s threat memory and the 1,500 chase distance. The scan, the leader-target rule and the leash loop follow
+- `GroupFightPolicy` (fight mode, #165, #170): `PickFocus`, `PickPeel`, `BeyondLeash`, `FollowsLeaderTarget`, `ShouldExit`,
+  `ShouldReplaceFocus`, `ShouldSwitchToFocus`, `AnchorIndex` (the group anchor once the leader is dead), the 15 s
+  threat memory and the 1,500 chase distance.
+- `BotPvpCrowdControlPolicy.CastSurvives` (#170): no cast-time CC while an enemy is hitting or casting at the caster. The scan, the leader-target rule and the leash loop follow
   `PlayerGroupFightMode` and `BotBrain.ThinkGroupFightMode` by hand.
 - `TemporaryCompanionRecovery`: the 3,000-unit recall distance and 2 s check.
 - Constants: assist radius 2,000 (`GROUP_DEFENSE_ASSIST_RADIUS`) and aggro list distance 6,000.
@@ -93,7 +95,7 @@ the real server code wherever a bot rule is a pure function.
 - They keep the current target, then pick the most-damaging enemy on the aggro list, then the nearest.
 - They follow the leader when farther than 650 units, and drop aggro beyond 6,000 units from themselves.
 - Healers heal the lowest groupmate under 75% and take no offense.
-- Defended attackers (12 s threat memory) are exempt from mez protection.
+- Defended attackers (12 s threat memory) are exempt from mez protection, except once mezzed (#170).
 
 **Modelled simply, not from game data:**
 - Health, swing damage, nukes and heals scale with level and role, the same in every realm.

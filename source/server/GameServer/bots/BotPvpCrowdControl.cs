@@ -28,10 +28,13 @@ namespace DOL.GS
             GameBot bot = attacker as GameBot;
             if (bot == null && attacker is GameNPC npc && npc.Brain is IControlledBrain pet) bot = pet.GetLivingOwner() as GameBot;
             if (bot == null) return false;
-            if (CompanionPvpEngagement.Focused(attacker, target) || CompanionPvpEngagement.Defending(attacker, target)) return false;
+            if (CompanionPvpEngagement.Focused(attacker, target)) return false;
             // A real player's explicit attack remains authoritative.
             if (bot.Owner is GamePlayer player && player.IsAttacking && player.TargetObject == target) return false;
+            // #170: a mezzed attacker is left alone like any other mezzed enemy while another is free. Before, an enemy
+            // that had hit a groupmate (Defending) stayed fair game after a groupmate mezzed it, so casters broke the mez.
             if (target.IsMezzed) return OtherEnemyFree(bot);
+            if (CompanionPvpEngagement.Defending(attacker, target)) return false;
             if (!Claims.TryGetValue(target, out Claim claim)) return false;
             lock (claim)
             {

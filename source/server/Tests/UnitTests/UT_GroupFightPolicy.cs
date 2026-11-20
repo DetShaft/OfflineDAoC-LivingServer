@@ -104,5 +104,42 @@ namespace DOL.UnitTests
             Assert.That(FollowsLeaderTarget(true, true), Is.False, "A groupmate's mez must hold.");
             Assert.That(FollowsLeaderTarget(false, false), Is.False);
         }
+
+        [Test]
+        public void BetterRoleReplacesAStickyFocus()
+        {
+            // #170: the first focus was the enemy melee that charged in; the healer behind it must take over.
+            Assert.That(ShouldReplaceFocus(C(TargetRole.Fighter, hp: 20), C(TargetRole.Healer)), Is.True);
+            Assert.That(ShouldReplaceFocus(C(TargetRole.Caster), C(TargetRole.Healer)), Is.True);
+            Assert.That(ShouldReplaceFocus(C(TargetRole.Caster, hp: 90), C(TargetRole.Caster, hp: 10)), Is.False,
+                "Never flip between equals.");
+            Assert.That(ShouldReplaceFocus(C(TargetRole.Healer), C(TargetRole.Caster)), Is.False);
+            Assert.That(ShouldReplaceFocus(C(TargetRole.Healer, mezzed: true), C(TargetRole.Fighter)), Is.True);
+        }
+
+        [Test]
+        public void BusyBotsSwitchOnlyUpward()
+        {
+            Assert.That(ShouldSwitchToFocus(TargetRole.Fighter, TargetRole.Healer), Is.True);
+            Assert.That(ShouldSwitchToFocus(TargetRole.Pet, TargetRole.Fighter), Is.True);
+            Assert.That(ShouldSwitchToFocus(TargetRole.Caster, TargetRole.Caster), Is.False);
+            Assert.That(ShouldSwitchToFocus(TargetRole.Healer, TargetRole.Caster), Is.False);
+        }
+
+        [Test]
+        public void AnchorIsTheLivingGroupmateNearestTheBody()
+        {
+            Assert.That(AnchorIndex(new[] { true, true, true }, new[] { 900, 120, 400 }), Is.EqualTo(1));
+            Assert.That(AnchorIndex(new[] { true, false, true }, new[] { 900, 120, 400 }), Is.EqualTo(2), "Dead groupmates are skipped.");
+            Assert.That(AnchorIndex(new[] { false, false }, new[] { 1, 2 }), Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void CastTimeCrowdControlWaitsWhileUnderFire()
+        {
+            Assert.That(BotPvpCrowdControlPolicy.CastSurvives(2_500, underFire: true), Is.False);
+            Assert.That(BotPvpCrowdControlPolicy.CastSurvives(2_500, underFire: false), Is.True);
+            Assert.That(BotPvpCrowdControlPolicy.CastSurvives(0, underFire: true), Is.True, "Instant CC always may.");
+        }
     }
 }

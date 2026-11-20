@@ -84,6 +84,30 @@ namespace DOL.GS
             return a.DistanceFromLeader < b.DistanceFromLeader;
         }
 
+        /// <summary>
+        /// #170: a sticky focus gives way only to an enemy of a better role (a healer over a caster, a caster over a
+        /// fighter), so the group turns to the back line once it is in reach but never flips between equals.
+        /// </summary>
+        public static bool ShouldReplaceFocus(Candidate current, Candidate best) => current.Mezzed || best.Role < current.Role;
+
+        /// <summary>
+        /// #170: a bot already fighting a live target takes the group focus when the focus is of a better role. Before,
+        /// a bot with any target kept it and never reached the healer fight mode had picked.
+        /// </summary>
+        public static bool ShouldSwitchToFocus(TargetRole current, TargetRole focus) => focus < current;
+
+        /// <summary>
+        /// #170: the anchor when the player is dead: the living groupmate nearest the player's body. Returns the index,
+        /// or -1 when nobody is alive. <paramref name="alive"/> and <paramref name="distanceToLeader"/> run in step.
+        /// </summary>
+        public static int AnchorIndex(IReadOnlyList<bool> alive, IReadOnlyList<int> distanceToLeader)
+        {
+            int best = -1;
+            for (int i = 0; i < alive.Count; i++)
+                if (alive[i] && (best < 0 || distanceToLeader[i] < distanceToLeader[best])) best = i;
+            return best;
+        }
+
         /// <summary>Fight mode ends once no hostile has been seen for <see cref="ExitDelayMilliseconds"/>.</summary>
         public static bool ShouldExit(long now, long lastHostileSeen) => now - lastHostileSeen >= ExitDelayMilliseconds;
 
