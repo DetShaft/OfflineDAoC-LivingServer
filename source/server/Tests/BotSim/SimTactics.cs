@@ -408,6 +408,9 @@ namespace DOL.UnitTests.BotSim
         /// the ridge again, so the caster stood about every other think. With the fix
         /// (BotLineOfSightPolicy.Walks) it keeps walking until the target is in sight. True: the turn was spent.
         /// </summary>
+        /// <summary>GameNPC.OnCastSpellLosCheckFail follows the target to about melee range.</summary>
+        private const int LosFollowDistance = 100;
+
         protected bool LineOfSightTurn(SimWorld w, SimAgent a, SimAgent target)
         {
             bool inSight = w.LineOfSight(a, target);
@@ -424,10 +427,12 @@ namespace DOL.UnitTests.BotSim
                 a.LosFollowNext = false;
                 return false;
             }
-            if (!EdgeCaseFixes && a.LosFollowNext && a.LosBlockedTarget == target)
+            // GameNPC.OnCastSpellLosCheckFail's follow (both builds): one think of walking after each failed check.
+            // With the fix this is what is left once the walk has reached ApproachDistance or the hold ran out.
+            if (a.LosFollowNext && a.LosBlockedTarget == target)
             {
                 a.LosFollowNext = false;
-                a.MoveGoal = target.Position.Toward(a.Position, BotLineOfSightPolicy.ApproachDistance);
+                a.MoveGoal = target.Position.Toward(a.Position, LosFollowDistance);
                 a.Activity = SimActivity.Approaching;
                 a.Status = "following after a failed line of sight check";
                 return true;

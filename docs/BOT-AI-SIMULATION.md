@@ -56,7 +56,7 @@ Metric definitions:
 | `leader-mezzed` | The player is mezzed 2 s in, before contact, for 25 s while the enemy charges, with an enemy still selected. The case that motivated fight mode. |
 | `chase-leash` | Two enemy melee harass the group for 8 s, then run straight away. The player never moves. Measures how far bots chase. |
 | `pets-8v8` | The 8v8 with a pet for each caster on both sides, in front of the group (#175). Measures side 0's melee hits on pets while an enemy player is within 1,000 units. |
-| `los-ridge` | The 8v8 with a ridge across the middle that blocks sight but not movement (#176). Measures the longest idle stretch of casters and mezzers. |
+| `los-ridge` | The 8v8 with a ridge just in front of side 0 that blocks sight but not movement (#176). Measures the longest idle stretch of casters and mezzers. |
 | `split-kite` | The player holds the middle; three enemy melee fight for 7 s, break off 1,400 units east for 7 s, and come back, while the enemy back line holds the west (#177). Measures how far side 0's melee get from the nearest friendly caster or healer. |
 
 Variants (side 0's rules):

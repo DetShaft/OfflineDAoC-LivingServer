@@ -184,10 +184,10 @@ namespace DOL.UnitTests.BotSim
             return group;
         }
 
-        private static SimWorld TwoGroups(SimSetup s, SimRole[] roles, double gap, bool extraSlowMez = false)
+        private static SimWorld TwoGroups(SimSetup s, SimRole[] roles, double gap, bool extraSlowMez = false, ScriptedLeader leader = null)
         {
             var w = new SimWorld(s.Seed);
-            AddGroup(w, 0, s.Side0, roles, new Vec2(0, -gap / 2), s.Variant.Side0Bots(), new ScriptedLeader(), extraSlowMez);
+            AddGroup(w, 0, s.Side0, roles, new Vec2(0, -gap / 2), s.Variant.Side0Bots(), leader ?? new ScriptedLeader(), extraSlowMez);
             // The enemy leader is scripted to charge (an autonomous group heading for the fight); its bots are autonomous.
             AddGroup(w, 1, s.Side1, roles, new Vec2(0, gap / 2), s.Variant.Enemy(), new ScriptedLeader(), extraSlowMez);
             return w;
@@ -490,7 +490,11 @@ namespace DOL.UnitTests.BotSim
             Why = "The open-field 8v8, with a pet for each of the two casters on both sides (Bonedancer, Theurgist, Cabalist or Animist style pets), standing in front of the group. Pets go for the nearest enemy, so they meet the enemy melee first. Measures how many of side 0's melee hits land on pets while an enemy player stands within 1,000 units.",
             Build = s =>
             {
-                SimWorld w = TwoGroups(s, StandardGroup, 2_400);
+                // The player fights the nearest enemy player, not a pet: what is measured is the bots' own choice.
+                SimWorld w = TwoGroups(s, StandardGroup, 2_400, leader: new ScriptedLeader
+                {
+                    PickTarget = (world, me) => world.Enemies(me).Where(e => !e.Kit.IsPet).OrderBy(e => e.DistanceTo(me)).FirstOrDefault(),
+                });
                 AddPets(w, w.Agents.Where(a => a.Side == 0).ToList(), 0);
                 AddPets(w, w.Agents.Where(a => a.Side == 1 && !a.Kit.IsPet).ToList(), 1);
                 return w;
@@ -520,12 +524,13 @@ namespace DOL.UnitTests.BotSim
             Name = "los-ridge",
             Title = "A ridge between the groups (#176)",
             Issues = "#176",
-            Why = "The open-field 8v8 with a 1,400-unit ridge across the middle that blocks sight (casts, heals, the fight-mode scan) but not movement. Melee walk over it; casters, mezzers and healers must move to see. Measures the longest idle stretch and the idle time of side 0's bots while their side is in combat.",
+            Why = "The open-field 8v8 with a 1,000-unit ridge just in front of side 0 that blocks sight (casts, heals, the fight-mode scan) but not movement. Melee walk over it; casters, mezzers and healers must move to see. Measures the longest idle stretch and the idle time of side 0's bots while their side is in combat.",
             Build = s =>
             {
                 SimWorld w = TwoGroups(s, StandardGroup, 2_400);
-                w.Walls.Add((new Vec2(-700, 0), new Vec2(700, 0)));
-                w.Log("A ridge from (-700,0) to (700,0) blocks sight between the groups.");
+                // Just in front of side 0's back line, so the enemy comes over it and casters must step round or up to it.
+                w.Walls.Add((new Vec2(-500, -600), new Vec2(500, -600)));
+                w.Log("A ridge from (-500,-600) to (500,-600) blocks sight between the groups.");
                 return w;
             },
             Expectations =
