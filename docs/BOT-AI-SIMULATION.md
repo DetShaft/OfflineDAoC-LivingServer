@@ -25,7 +25,8 @@ in one of the owner's PC logs. Use the harness to find decision problems early a
 ## What a report shows
 
 Each scenario runs every variant in all six realm pairings (Alb vs Mid, Mid vs Alb, and so on) with three seeds.
-Side 0 is the player's group: a scripted player (the leader) plus seven bots, the AI under test. The report has:
+Side 0 is the player's group: a scripted player (the leader) plus seven bots, the AI under test. Side 1, where there
+is one, is a matched autonomous gamebot group that attacks enemies within 1,500 units on sight. The report has:
 
 - **Expectations:** pass, or **FINDING** with the measured value. Findings do not fail the build unless strict.
 - **Side 0 bots by realm:** wins, idle time in combat, damage dealt and taken, deaths, CC casts, wasted CC and the
@@ -50,11 +51,14 @@ Metric definitions:
 | `open-field-8v8` | Two matched groups (tank, 2 melee, 2 casters, mezzer, 2 healers) meet in the open. |
 | `keep-lord-after-doors` | A group in the courtyard after the gate and keep door fell, with the upper gatehouse doors standing (Dun Killaloe, 2026-11-19, #157 / #160). Compares the live door rule with the rule before #160. |
 | `cc-heavy` | Both groups bring three mezzers, one with the slow backup area mez (#151 / #152). |
-| `leader-mezzed` | The player is mezzed 2 s in, before contact, for 25 s while the enemy charges. The case that motivates active fight mode. |
+| `leader-mezzed` | The player is mezzed 2 s in, before contact, for 25 s while the enemy charges, with an enemy still selected. The case that motivated fight mode. |
 | `chase-leash` | Two enemy melee harass the group for 8 s, then run straight away. The player never moves. Measures how far bots chase. |
 
-Variants: **current** is the live rules. Some scenarios also run **what-if: defend groupmates** (not shipped: an
-enemy that hits a groupmate joins every nearby bot's aggro list) to show what a rule change would move.
+Variants (side 0's rules):
+- **fight mode off**: the rules before #165 (server setting `bots / group_fight_mode` = False).
+- **fight mode (#165)**: the shipped default since PR #168. This is the *live* variant: CI warns about its findings and
+  strict mode fails on them.
+- `keep-lord-after-doors` also runs **rule before #160** (the old door rule) to show what #160 changed.
 
 ## What it simulates, and what it does not
 
@@ -69,11 +73,21 @@ the real server code wherever a bot rule is a pure function.
   mezzed enemy is left alone.
 - `BotCasterSurvival.Decide`, `LegsLeft`, `AwayPoint`, `KindOf`: the caster kite decision and kite legs.
 - `GuardLord.BlocksTheWayIn`: whether the keep's doors still shield the lord from bots.
+- `GroupFightPolicy` (fight mode, #165): `PickFocus`, `PickPeel`, `BeyondLeash`, `FollowsLeaderTarget`, `ShouldExit`,
+  the 15 s threat memory and the 1,500 chase distance. The scan, the leader-target rule and the leash loop follow
+  `PlayerGroupFightMode` and `BotBrain.ThinkGroupFightMode` by hand.
+- `TemporaryCompanionRecovery`: the 3,000-unit recall distance and 2 s check.
 - Constants: assist radius 2,000 (`GROUP_DEFENSE_ASSIST_RADIUS`) and aggro list distance 6,000.
 
 **Mirrored by hand from `BotBrain` (could drift if the brain changes):**
 - Bots assist the leader's target only while the leader is attacking or casting a harmful spell (BotState_Idle /
-  BotState_Follow), and otherwise fight only enemies that hit them (the aggro list).
+  BotState_Follow), and otherwise fight enemies that hit them (the aggro list).
+- The companion group focus (`CompanionPvpEngagement.Observe`): the player's enemy target, else the enemy that hit a
+  groupmate in the last 12 s nearest the player, ordered onto every bot within 2,000 units. Healers hold support.
+- The companion recall: past 3,000 units from the player with no groupmate near the bot fighting, the bot is moved
+  back to the player.
+- Fight mode's target roles are mapped by role, not class (healers, casters and mezzers, melee, keep NPCs as pets), so
+  every realm is described the same way.
 - They keep the current target, then pick the most-damaging enemy on the aggro list, then the nearest.
 - They follow the leader when farther than 650 units, and drop aggro beyond 6,000 units from themselves.
 - Healers heal the lowest groupmate under 75% and take no offense.
@@ -99,8 +113,9 @@ group orders), real class spell lists, and Darkness Falls or raid AI.
 
 ## Testing a new rule set (for example active fight mode)
 
-Write an `ISimTactics` (or subclass `CurrentBotTactics` and override `ChooseTarget`, `TryCrowdControl` or
-`CasterTurn`), then add a `SimVariant` with it to the scenarios that matter. The report then shows it beside
+Write an `ISimTactics`, or subclass `CurrentBotTactics` and override `FightModeTurn`, `ChooseTarget`,
+`TryCrowdControl`, `SkipForCrowdControl` or `CasterTurn` (`FightModeTactics` is the example), then add a `SimVariant`
+with it (`SimVariant.FightMode()` shows how; set `Live` on the one that ships). The report then shows it beside
 **current** in every table. When the new rules move into `BotBrain`, move the shared decision into a pure static
 function in the server and call it from both, so the harness tests the shipped code rather than a copy.
 
