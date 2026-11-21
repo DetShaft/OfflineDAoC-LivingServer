@@ -57,6 +57,7 @@
         <ProjectReference Include="..\CoreDatabase\CoreDatabase.csproj" Name="CoreDatabase" />
         <EmbeddedResource Include=".\config\*" />
         <EmbeddedResource Include=".\bots\autonomous\data\capnbry_classic_si_goals.json" />
+        <EmbeddedResource Include=".\bots\autonomous\data\killaloe-camps.json" />
         <EmbeddedResource Include=".\bots\autonomous\data\chat\corpus.json" />
         <EmbeddedResource Include=".\bots\autonomous\data\chat\voices.json" />
         <EmbeddedResource Include=".\bots\autonomous\data\chat\places.json" />
@@ -71,6 +72,7 @@
         <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_keep_doors.sql" Link="data\killaloe_zone253_keep_doors.sql" />
         <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_keep_pads.sql" Link="data\killaloe_zone253_keep_pads.sql" />
         <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_playable.sql" Link="data\killaloe_zone253_playable.sql" />
+        <EmbeddedResource Include="..\..\tools\OfflineDaoc.Setup\data\killaloe_zone253_camps.sql" Link="data\killaloe_zone253_camps.sql" />
         <TranslationFiles Include=".\language\**\*.txt" />
         <APIDocs Include=".\API\docs\*" />
         <Content Include="API\docs\index.css" />

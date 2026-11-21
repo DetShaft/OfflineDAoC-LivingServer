@@ -22,6 +22,10 @@ namespace DOL.GS.DatabaseUpdate
         public const int ExpectedPlayableKeepNpcCount = 84;   // 93 before issue #153 dropped the nine PosternKeepers
         public const int ExpectedExtraFieldSpawnCount = 73;
         public const string ExtraFieldPackageId = "offline-killaloe-zone253-extra";
+        /// <summary>Mob camps across the empty ground (owner, 2026-11-21). See docs/KILLALOE-CAMPS.md.</summary>
+        public const int ExpectedCampMobCount = 240;
+        public const string CampPackageId = "offline-killaloe-zone253-camps";
+        public const string CampsMigrationId = "killaloe-zone253-camps-v1";
         public const int ExpectedKeepDoorCount = 17;
         /// <summary>Region 253 zone OffsetX/Y is 1. Captured X/Y are zone-local; add this so they match the client meshes.</summary>
         public const int ZoneSectorOffset = 8192;
@@ -49,6 +53,33 @@ namespace DOL.GS.DatabaseUpdate
             ApplyFieldSpawns(connection);
             ApplyKeepObjects(connection);
             ApplyPlayableFixes(connection);
+            ApplyCamps(connection);
+        }
+
+        /// <summary>
+        /// The camps copy field-pack rows, so they run after the playable fixes have set those rows' templates and
+        /// aggro. INSERT OR REPLACE by Mob_ID: a later start rewrites the same rows. Ground is fixed at start by
+        /// <see cref="DOL.GS.KillaloeZone253Camps"/>.
+        /// </summary>
+        private static void ApplyCamps(SQLiteConnection connection)
+        {
+            foreach (string statement in SplitSqlStatements(LoadEmbeddedText("killaloe_zone253_camps.sql"), skipArea: true))
+                Execute(connection, statement);
+
+            int camps = ScalarInt(connection, $"SELECT COUNT(*) FROM Mob WHERE PackageID='{CampPackageId}' AND Region=253");
+            if (camps != ExpectedCampMobCount)
+                throw new InvalidOperationException($"Killaloe has {camps:N0} camp mobs; expected {ExpectedCampMobCount:N0}.");
+
+            int outside = ScalarInt(connection, $"""
+                SELECT COUNT(*) FROM Mob WHERE PackageID='{CampPackageId}'
+                  AND (X<8192 OR X>73728 OR Y<8192 OR Y>73728 OR RoamingRange<300 OR NPCTemplateID<>-1)
+                """);
+            if (outside != 0)
+                throw new InvalidOperationException($"{outside:N0} Killaloe camp mob(s) are outside zone 253, barely roam or kept an OpenDAoC template.");
+
+            RecordMigration(connection, CampsMigrationId,
+                "Killaloe mob camps: copies of the field mobs in camps of four across the empty ground, the same count per realm third. Z is snapped to the navmesh at start.",
+                camps);
         }
 
         private static void ApplyFieldSpawns(SQLiteConnection connection)

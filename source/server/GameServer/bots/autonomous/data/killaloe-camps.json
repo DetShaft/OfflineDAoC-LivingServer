@@ -1,0 +1,2467 @@
+{
+ "_source": "source/tools/killaloe/gen_killaloe_camps.py. Region 253 world X/Y. z_guess is not the ground: the server snaps camp mobs to the navmesh at start. Mob_IDs match killaloe_zone253_camps.sql.",
+ "region": 253,
+ "package_id": "offline-killaloe-zone253-camps",
+ "camps": [
+  {
+   "id": "killaloe-camp-01",
+   "type": "large rat",
+   "realm_third": "Albion",
+   "x": 37370,
+   "y": 44141,
+   "z_guess": 8224,
+   "base_level": 15,
+   "levels": [
+    14,
+    15,
+    16,
+    15
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-01-1",
+     "x": 37367,
+     "y": 44135,
+     "level": 14
+    },
+    {
+     "mob_id": "killaloe-camp-01-2",
+     "x": 37338,
+     "y": 44050,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-01-3",
+     "x": 37263,
+     "y": 44112,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-01-4",
+     "x": 37338,
+     "y": 43995,
+     "level": 15
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-02",
+   "type": "forest cat",
+   "realm_third": "Albion",
+   "x": 40834,
+   "y": 48394,
+   "z_guess": 8289,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-02-1",
+     "x": 40818,
+     "y": 48387,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-02-2",
+     "x": 40929,
+     "y": 48207,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-02-3",
+     "x": 40986,
+     "y": 48523,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-02-4",
+     "x": 40762,
+     "y": 48505,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-03",
+   "type": "boogey spawn",
+   "realm_third": "Albion",
+   "x": 35799,
+   "y": 49106,
+   "z_guess": 8336,
+   "base_level": 16,
+   "levels": [
+    15,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-03-1",
+     "x": 35800,
+     "y": 49109,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-03-2",
+     "x": 35936,
+     "y": 49258,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-03-3",
+     "x": 36033,
+     "y": 49172,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-03-4",
+     "x": 35994,
+     "y": 49254,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-04",
+   "type": "clicking beetle",
+   "realm_third": "Albion",
+   "x": 17429,
+   "y": 53453,
+   "z_guess": 7922,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-04-1",
+     "x": 17426,
+     "y": 53464,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-04-2",
+     "x": 17424,
+     "y": 53309,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-04-3",
+     "x": 17599,
+     "y": 53624,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-04-4",
+     "x": 17423,
+     "y": 53710,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-05",
+   "type": "forlorn spectre",
+   "realm_third": "Albion",
+   "x": 32848,
+   "y": 54395,
+   "z_guess": 8057,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-05-1",
+     "x": 32809,
+     "y": 54407,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-05-2",
+     "x": 32637,
+     "y": 54512,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-05-3",
+     "x": 32853,
+     "y": 54597,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-05-4",
+     "x": 32731,
+     "y": 54539,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-06",
+   "type": "clicking beetle",
+   "realm_third": "Albion",
+   "x": 39007,
+   "y": 54518,
+   "z_guess": 8270,
+   "base_level": 16,
+   "levels": [
+    16,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-06-1",
+     "x": 39009,
+     "y": 54519,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-06-2",
+     "x": 39048,
+     "y": 54395,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-06-3",
+     "x": 38831,
+     "y": 54429,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-06-4",
+     "x": 38786,
+     "y": 54393,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-07",
+   "type": "forlorn spectre",
+   "realm_third": "Albion",
+   "x": 45440,
+   "y": 57218,
+   "z_guess": 7998,
+   "base_level": 19,
+   "levels": [
+    18,
+    19,
+    20,
+    19
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-07-1",
+     "x": 45407,
+     "y": 57202,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-07-2",
+     "x": 45465,
+     "y": 57041,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-07-3",
+     "x": 45343,
+     "y": 57368,
+     "level": 20
+    },
+    {
+     "mob_id": "killaloe-camp-07-4",
+     "x": 45534,
+     "y": 57212,
+     "level": 19
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-08",
+   "type": "boogey spawn",
+   "realm_third": "Albion",
+   "x": 19743,
+   "y": 58103,
+   "z_guess": 8022,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-08-1",
+     "x": 19740,
+     "y": 58119,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-08-2",
+     "x": 19877,
+     "y": 57966,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-08-3",
+     "x": 19936,
+     "y": 58058,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-08-4",
+     "x": 19512,
+     "y": 58146,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-09",
+   "type": "large rat",
+   "realm_third": "Albion",
+   "x": 26480,
+   "y": 59935,
+   "z_guess": 8075,
+   "base_level": 15,
+   "levels": [
+    14,
+    15,
+    16,
+    15
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-09-1",
+     "x": 26523,
+     "y": 59968,
+     "level": 14
+    },
+    {
+     "mob_id": "killaloe-camp-09-2",
+     "x": 26382,
+     "y": 59988,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-09-3",
+     "x": 26601,
+     "y": 59738,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-09-4",
+     "x": 26343,
+     "y": 60012,
+     "level": 15
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-10",
+   "type": "forest cat",
+   "realm_third": "Albion",
+   "x": 41117,
+   "y": 60065,
+   "z_guess": 8252,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-10-1",
+     "x": 41104,
+     "y": 60071,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-10-2",
+     "x": 41023,
+     "y": 59997,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-10-3",
+     "x": 40867,
+     "y": 60118,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-10-4",
+     "x": 41220,
+     "y": 60295,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-11",
+   "type": "boogey spawn",
+   "realm_third": "Albion",
+   "x": 35134,
+   "y": 61755,
+   "z_guess": 8107,
+   "base_level": 16,
+   "levels": [
+    15,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-11-1",
+     "x": 35083,
+     "y": 61776,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-11-2",
+     "x": 34982,
+     "y": 61613,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-11-3",
+     "x": 34959,
+     "y": 61613,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-11-4",
+     "x": 35150,
+     "y": 61959,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-12",
+   "type": "boogey spawn",
+   "realm_third": "Albion",
+   "x": 48448,
+   "y": 63568,
+   "z_guess": 7926,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-12-1",
+     "x": 48477,
+     "y": 63599,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-12-2",
+     "x": 48489,
+     "y": 63368,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-12-3",
+     "x": 48451,
+     "y": 63740,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-12-4",
+     "x": 48634,
+     "y": 63530,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-13",
+   "type": "forlorn spectre",
+   "realm_third": "Albion",
+   "x": 20778,
+   "y": 63957,
+   "z_guess": 8028,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-13-1",
+     "x": 20770,
+     "y": 63909,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-13-2",
+     "x": 20738,
+     "y": 63770,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-13-3",
+     "x": 21002,
+     "y": 63980,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-13-4",
+     "x": 20926,
+     "y": 63792,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-14",
+   "type": "clicking beetle",
+   "realm_third": "Albion",
+   "x": 16007,
+   "y": 65758,
+   "z_guess": 8012,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-14-1",
+     "x": 15964,
+     "y": 65722,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-14-2",
+     "x": 15978,
+     "y": 65578,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-14-3",
+     "x": 16105,
+     "y": 65529,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-14-4",
+     "x": 16137,
+     "y": 65806,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-15",
+   "type": "clicking beetle",
+   "realm_third": "Albion",
+   "x": 43405,
+   "y": 66229,
+   "z_guess": 8788,
+   "base_level": 16,
+   "levels": [
+    16,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-15-1",
+     "x": 43426,
+     "y": 66254,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-15-2",
+     "x": 43298,
+     "y": 66407,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-15-3",
+     "x": 43323,
+     "y": 66327,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-15-4",
+     "x": 43426,
+     "y": 65994,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-16",
+   "type": "clicking beetle",
+   "realm_third": "Albion",
+   "x": 53098,
+   "y": 67907,
+   "z_guess": 7924,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-16-1",
+     "x": 53073,
+     "y": 67948,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-16-2",
+     "x": 53317,
+     "y": 67894,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-16-3",
+     "x": 53063,
+     "y": 67780,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-16-4",
+     "x": 53238,
+     "y": 67837,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-17",
+   "type": "forest cat",
+   "realm_third": "Albion",
+   "x": 47785,
+   "y": 68980,
+   "z_guess": 8783,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-17-1",
+     "x": 47792,
+     "y": 68985,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-17-2",
+     "x": 47769,
+     "y": 68754,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-17-3",
+     "x": 47940,
+     "y": 68827,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-17-4",
+     "x": 47699,
+     "y": 68878,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-18",
+   "type": "boogey spawn",
+   "realm_third": "Albion",
+   "x": 34178,
+   "y": 69368,
+   "z_guess": 8143,
+   "base_level": 16,
+   "levels": [
+    15,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-18-1",
+     "x": 34214,
+     "y": 69345,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-18-2",
+     "x": 33949,
+     "y": 69441,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-18-3",
+     "x": 34330,
+     "y": 69376,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-18-4",
+     "x": 34098,
+     "y": 69597,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-19",
+   "type": "forlorn spectre",
+   "realm_third": "Albion",
+   "x": 19371,
+   "y": 69776,
+   "z_guess": 8124,
+   "base_level": 19,
+   "levels": [
+    18,
+    19,
+    20,
+    19
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-19-1",
+     "x": 19363,
+     "y": 69768,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-19-2",
+     "x": 19448,
+     "y": 69574,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-19-3",
+     "x": 19185,
+     "y": 69655,
+     "level": 20
+    },
+    {
+     "mob_id": "killaloe-camp-19-4",
+     "x": 19587,
+     "y": 69711,
+     "level": 19
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-20",
+   "type": "large rat",
+   "realm_third": "Albion",
+   "x": 24404,
+   "y": 69815,
+   "z_guess": 8135,
+   "base_level": 15,
+   "levels": [
+    14,
+    15,
+    16,
+    15
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-20-1",
+     "x": 24405,
+     "y": 69813,
+     "level": 14
+    },
+    {
+     "mob_id": "killaloe-camp-20-2",
+     "x": 24527,
+     "y": 69890,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-20-3",
+     "x": 24476,
+     "y": 69964,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-20-4",
+     "x": 24240,
+     "y": 69777,
+     "level": 15
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-21",
+   "type": "clicking beetle",
+   "realm_third": "Hibernia",
+   "x": 33158,
+   "y": 16024,
+   "z_guess": 8201,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-21-1",
+     "x": 33183,
+     "y": 16019,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-21-2",
+     "x": 33012,
+     "y": 16178,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-21-3",
+     "x": 33120,
+     "y": 16129,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-21-4",
+     "x": 33221,
+     "y": 16239,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-22",
+   "type": "forlorn spectre",
+   "realm_third": "Hibernia",
+   "x": 39999,
+   "y": 16359,
+   "z_guess": 7969,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-22-1",
+     "x": 40018,
+     "y": 16394,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-22-2",
+     "x": 39910,
+     "y": 16434,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-22-3",
+     "x": 40015,
+     "y": 16246,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-22-4",
+     "x": 39896,
+     "y": 16378,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-23",
+   "type": "large rat",
+   "realm_third": "Hibernia",
+   "x": 16281,
+   "y": 16435,
+   "z_guess": 8048,
+   "base_level": 15,
+   "levels": [
+    14,
+    15,
+    16,
+    15
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-23-1",
+     "x": 16283,
+     "y": 16480,
+     "level": 14
+    },
+    {
+     "mob_id": "killaloe-camp-23-2",
+     "x": 16431,
+     "y": 16306,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-23-3",
+     "x": 16374,
+     "y": 16386,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-23-4",
+     "x": 16370,
+     "y": 16580,
+     "level": 15
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-24",
+   "type": "boogey spawn",
+   "realm_third": "Hibernia",
+   "x": 21581,
+   "y": 16460,
+   "z_guess": 8173,
+   "base_level": 16,
+   "levels": [
+    15,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-24-1",
+     "x": 21578,
+     "y": 16425,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-24-2",
+     "x": 21696,
+     "y": 16228,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-24-3",
+     "x": 21463,
+     "y": 16260,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-24-4",
+     "x": 21461,
+     "y": 16251,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-25",
+   "type": "forest cat",
+   "realm_third": "Hibernia",
+   "x": 28326,
+   "y": 18143,
+   "z_guess": 8264,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-25-1",
+     "x": 28329,
+     "y": 18141,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-25-2",
+     "x": 28320,
+     "y": 17908,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-25-3",
+     "x": 28305,
+     "y": 18008,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-25-4",
+     "x": 28310,
+     "y": 18041,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-26",
+   "type": "boogey spawn",
+   "realm_third": "Hibernia",
+   "x": 33662,
+   "y": 21222,
+   "z_guess": 8280,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-26-1",
+     "x": 33644,
+     "y": 21176,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-26-2",
+     "x": 33671,
+     "y": 21480,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-26-3",
+     "x": 33516,
+     "y": 21138,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-26-4",
+     "x": 33763,
+     "y": 21408,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-27",
+   "type": "forlorn spectre",
+   "realm_third": "Hibernia",
+   "x": 40783,
+   "y": 21748,
+   "z_guess": 7943,
+   "base_level": 19,
+   "levels": [
+    18,
+    19,
+    20,
+    19
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-27-1",
+     "x": 40736,
+     "y": 21757,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-27-2",
+     "x": 40599,
+     "y": 21700,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-27-3",
+     "x": 40573,
+     "y": 21798,
+     "level": 20
+    },
+    {
+     "mob_id": "killaloe-camp-27-4",
+     "x": 40560,
+     "y": 21786,
+     "level": 19
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-28",
+   "type": "clicking beetle",
+   "realm_third": "Hibernia",
+   "x": 24214,
+   "y": 22313,
+   "z_guess": 8018,
+   "base_level": 16,
+   "levels": [
+    16,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-28-1",
+     "x": 24217,
+     "y": 22310,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-28-2",
+     "x": 24110,
+     "y": 22096,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-28-3",
+     "x": 24353,
+     "y": 22218,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-28-4",
+     "x": 24205,
+     "y": 22416,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-29",
+   "type": "large rat",
+   "realm_third": "Hibernia",
+   "x": 43485,
+   "y": 26619,
+   "z_guess": 7994,
+   "base_level": 15,
+   "levels": [
+    14,
+    15,
+    16,
+    15
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-29-1",
+     "x": 43482,
+     "y": 26579,
+     "level": 14
+    },
+    {
+     "mob_id": "killaloe-camp-29-2",
+     "x": 43661,
+     "y": 26501,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-29-3",
+     "x": 43343,
+     "y": 26560,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-29-4",
+     "x": 43542,
+     "y": 26506,
+     "level": 15
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-30",
+   "type": "forest cat",
+   "realm_third": "Hibernia",
+   "x": 27552,
+   "y": 26706,
+   "z_guess": 8041,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-30-1",
+     "x": 27563,
+     "y": 26676,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-30-2",
+     "x": 27460,
+     "y": 26559,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-30-3",
+     "x": 27585,
+     "y": 26535,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-30-4",
+     "x": 27529,
+     "y": 26518,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-31",
+   "type": "forlorn spectre",
+   "realm_third": "Hibernia",
+   "x": 37364,
+   "y": 27295,
+   "z_guess": 8041,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-31-1",
+     "x": 37328,
+     "y": 27284,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-31-2",
+     "x": 37469,
+     "y": 27240,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-31-3",
+     "x": 37211,
+     "y": 27464,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-31-4",
+     "x": 37212,
+     "y": 27084,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-32",
+   "type": "boogey spawn",
+   "realm_third": "Hibernia",
+   "x": 18733,
+   "y": 27702,
+   "z_guess": 8039,
+   "base_level": 16,
+   "levels": [
+    15,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-32-1",
+     "x": 18740,
+     "y": 27704,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-32-2",
+     "x": 18620,
+     "y": 27742,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-32-3",
+     "x": 18608,
+     "y": 27762,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-32-4",
+     "x": 18745,
+     "y": 27527,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-33",
+   "type": "clicking beetle",
+   "realm_third": "Hibernia",
+   "x": 32476,
+   "y": 28648,
+   "z_guess": 8031,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-33-1",
+     "x": 32477,
+     "y": 28642,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-33-2",
+     "x": 32344,
+     "y": 28805,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-33-3",
+     "x": 32397,
+     "y": 28730,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-33-4",
+     "x": 32606,
+     "y": 28863,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-34",
+   "type": "boogey spawn",
+   "realm_third": "Hibernia",
+   "x": 24297,
+   "y": 31418,
+   "z_guess": 8064,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-34-1",
+     "x": 24302,
+     "y": 31461,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-34-2",
+     "x": 24393,
+     "y": 31422,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-34-3",
+     "x": 24328,
+     "y": 31638,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-34-4",
+     "x": 24402,
+     "y": 31500,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-35",
+   "type": "large rat",
+   "realm_third": "Hibernia",
+   "x": 39036,
+   "y": 32173,
+   "z_guess": 8043,
+   "base_level": 15,
+   "levels": [
+    14,
+    15,
+    16,
+    15
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-35-1",
+     "x": 39050,
+     "y": 32143,
+     "level": 14
+    },
+    {
+     "mob_id": "killaloe-camp-35-2",
+     "x": 38925,
+     "y": 32076,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-35-3",
+     "x": 38861,
+     "y": 32107,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-35-4",
+     "x": 38898,
+     "y": 32253,
+     "level": 15
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-36",
+   "type": "forlorn spectre",
+   "realm_third": "Hibernia",
+   "x": 31116,
+   "y": 33539,
+   "z_guess": 8006,
+   "base_level": 19,
+   "levels": [
+    18,
+    19,
+    20,
+    19
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-36-1",
+     "x": 31114,
+     "y": 33539,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-36-2",
+     "x": 31181,
+     "y": 33620,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-36-3",
+     "x": 31201,
+     "y": 33475,
+     "level": 20
+    },
+    {
+     "mob_id": "killaloe-camp-36-4",
+     "x": 31344,
+     "y": 33578,
+     "level": 19
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-37",
+   "type": "clicking beetle",
+   "realm_third": "Hibernia",
+   "x": 16171,
+   "y": 33559,
+   "z_guess": 8045,
+   "base_level": 16,
+   "levels": [
+    16,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-37-1",
+     "x": 16148,
+     "y": 33540,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-37-2",
+     "x": 16321,
+     "y": 33742,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-37-3",
+     "x": 16285,
+     "y": 33399,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-37-4",
+     "x": 16169,
+     "y": 33729,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-38",
+   "type": "forest cat",
+   "realm_third": "Hibernia",
+   "x": 25501,
+   "y": 36560,
+   "z_guess": 8032,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-38-1",
+     "x": 25489,
+     "y": 36565,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-38-2",
+     "x": 25529,
+     "y": 36694,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-38-3",
+     "x": 25520,
+     "y": 36742,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-38-4",
+     "x": 25703,
+     "y": 36578,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-39",
+   "type": "forlorn spectre",
+   "realm_third": "Hibernia",
+   "x": 38670,
+   "y": 37741,
+   "z_guess": 8145,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-39-1",
+     "x": 38621,
+     "y": 37712,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-39-2",
+     "x": 38710,
+     "y": 37898,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-39-3",
+     "x": 38636,
+     "y": 37565,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-39-4",
+     "x": 38793,
+     "y": 37952,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-40",
+   "type": "clicking beetle",
+   "realm_third": "Hibernia",
+   "x": 33280,
+   "y": 38085,
+   "z_guess": 8122,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-40-1",
+     "x": 33291,
+     "y": 38063,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-40-2",
+     "x": 33330,
+     "y": 38315,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-40-3",
+     "x": 33403,
+     "y": 38229,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-40-4",
+     "x": 33230,
+     "y": 37930,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-41",
+   "type": "boogey spawn",
+   "realm_third": "Hibernia",
+   "x": 19046,
+   "y": 38558,
+   "z_guess": 7985,
+   "base_level": 16,
+   "levels": [
+    15,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-41-1",
+     "x": 19022,
+     "y": 38548,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-41-2",
+     "x": 19207,
+     "y": 38663,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-41-3",
+     "x": 18972,
+     "y": 38635,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-41-4",
+     "x": 18975,
+     "y": 38420,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-42",
+   "type": "clicking beetle",
+   "realm_third": "Hibernia",
+   "x": 23577,
+   "y": 43349,
+   "z_guess": 8011,
+   "base_level": 16,
+   "levels": [
+    16,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-42-1",
+     "x": 23575,
+     "y": 43344,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-42-2",
+     "x": 23626,
+     "y": 43133,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-42-3",
+     "x": 23487,
+     "y": 43329,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-42-4",
+     "x": 23600,
+     "y": 43198,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-43",
+   "type": "large rat",
+   "realm_third": "Midgard",
+   "x": 55005,
+   "y": 16350,
+   "z_guess": 8009,
+   "base_level": 15,
+   "levels": [
+    14,
+    15,
+    16,
+    15
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-43-1",
+     "x": 54999,
+     "y": 16340,
+     "level": 14
+    },
+    {
+     "mob_id": "killaloe-camp-43-2",
+     "x": 54779,
+     "y": 16452,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-43-3",
+     "x": 55121,
+     "y": 16514,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-43-4",
+     "x": 54907,
+     "y": 16402,
+     "level": 15
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-44",
+   "type": "boogey spawn",
+   "realm_third": "Midgard",
+   "x": 69915,
+   "y": 17959,
+   "z_guess": 9706,
+   "base_level": 16,
+   "levels": [
+    15,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-44-1",
+     "x": 69919,
+     "y": 18006,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-44-2",
+     "x": 69901,
+     "y": 18049,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-44-3",
+     "x": 70098,
+     "y": 18123,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-44-4",
+     "x": 69976,
+     "y": 17797,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-45",
+   "type": "forest cat",
+   "realm_third": "Midgard",
+   "x": 62793,
+   "y": 19387,
+   "z_guess": 8796,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-45-1",
+     "x": 62822,
+     "y": 19372,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-45-2",
+     "x": 62795,
+     "y": 19478,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-45-3",
+     "x": 62889,
+     "y": 19345,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-45-4",
+     "x": 62861,
+     "y": 19254,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-46",
+   "type": "clicking beetle",
+   "realm_third": "Midgard",
+   "x": 69486,
+   "y": 24194,
+   "z_guess": 9722,
+   "base_level": 16,
+   "levels": [
+    16,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-46-1",
+     "x": 69494,
+     "y": 24165,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-46-2",
+     "x": 69349,
+     "y": 24088,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-46-3",
+     "x": 69386,
+     "y": 24219,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-46-4",
+     "x": 69375,
+     "y": 24364,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-47",
+   "type": "clicking beetle",
+   "realm_third": "Midgard",
+   "x": 55619,
+   "y": 24678,
+   "z_guess": 7940,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-47-1",
+     "x": 55599,
+     "y": 24713,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-47-2",
+     "x": 55652,
+     "y": 24511,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-47-3",
+     "x": 55705,
+     "y": 24762,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-47-4",
+     "x": 55853,
+     "y": 24696,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-48",
+   "type": "forlorn spectre",
+   "realm_third": "Midgard",
+   "x": 61531,
+   "y": 24784,
+   "z_guess": 8752,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-48-1",
+     "x": 61533,
+     "y": 24839,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-48-2",
+     "x": 61615,
+     "y": 24746,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-48-3",
+     "x": 61671,
+     "y": 24655,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-48-4",
+     "x": 61616,
+     "y": 25002,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-49",
+   "type": "boogey spawn",
+   "realm_third": "Midgard",
+   "x": 59953,
+   "y": 36064,
+   "z_guess": 8135,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-49-1",
+     "x": 59919,
+     "y": 36017,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-49-2",
+     "x": 59903,
+     "y": 35878,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-49-3",
+     "x": 59881,
+     "y": 36221,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-49-4",
+     "x": 59926,
+     "y": 36187,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-50",
+   "type": "large rat",
+   "realm_third": "Midgard",
+   "x": 64060,
+   "y": 41061,
+   "z_guess": 8117,
+   "base_level": 15,
+   "levels": [
+    14,
+    15,
+    16,
+    15
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-50-1",
+     "x": 64053,
+     "y": 41051,
+     "level": 14
+    },
+    {
+     "mob_id": "killaloe-camp-50-2",
+     "x": 63962,
+     "y": 41289,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-50-3",
+     "x": 63885,
+     "y": 40926,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-50-4",
+     "x": 64126,
+     "y": 40930,
+     "level": 15
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-51",
+   "type": "forlorn spectre",
+   "realm_third": "Midgard",
+   "x": 58610,
+   "y": 41861,
+   "z_guess": 8204,
+   "base_level": 19,
+   "levels": [
+    18,
+    19,
+    20,
+    19
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-51-1",
+     "x": 58558,
+     "y": 41872,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-51-2",
+     "x": 58533,
+     "y": 42067,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-51-3",
+     "x": 58404,
+     "y": 41857,
+     "level": 20
+    },
+    {
+     "mob_id": "killaloe-camp-51-4",
+     "x": 58440,
+     "y": 41756,
+     "level": 19
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-52",
+   "type": "boogey spawn",
+   "realm_third": "Midgard",
+   "x": 50527,
+   "y": 43180,
+   "z_guess": 8333,
+   "base_level": 16,
+   "levels": [
+    15,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-52-1",
+     "x": 50530,
+     "y": 43218,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-52-2",
+     "x": 50649,
+     "y": 43401,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-52-3",
+     "x": 50650,
+     "y": 43071,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-52-4",
+     "x": 50680,
+     "y": 43262,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-53",
+   "type": "forest cat",
+   "realm_third": "Midgard",
+   "x": 55030,
+   "y": 45794,
+   "z_guess": 8033,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-53-1",
+     "x": 55051,
+     "y": 45750,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-53-2",
+     "x": 55126,
+     "y": 45870,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-53-3",
+     "x": 55148,
+     "y": 45764,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-53-4",
+     "x": 55183,
+     "y": 45955,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-54",
+   "type": "clicking beetle",
+   "realm_third": "Midgard",
+   "x": 61689,
+   "y": 45935,
+   "z_guess": 8126,
+   "base_level": 17,
+   "levels": [
+    16,
+    17,
+    18,
+    17
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-54-1",
+     "x": 61690,
+     "y": 45943,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-54-2",
+     "x": 61527,
+     "y": 45820,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-54-3",
+     "x": 61791,
+     "y": 45909,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-54-4",
+     "x": 61784,
+     "y": 45817,
+     "level": 17
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-55",
+   "type": "forlorn spectre",
+   "realm_third": "Midgard",
+   "x": 65167,
+   "y": 61145,
+   "z_guess": 8197,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-55-1",
+     "x": 65131,
+     "y": 61141,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-55-2",
+     "x": 65269,
+     "y": 61259,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-55-3",
+     "x": 65128,
+     "y": 61004,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-55-4",
+     "x": 65187,
+     "y": 61262,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-56",
+   "type": "clicking beetle",
+   "realm_third": "Midgard",
+   "x": 61073,
+   "y": 64028,
+   "z_guess": 7924,
+   "base_level": 16,
+   "levels": [
+    16,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-56-1",
+     "x": 61047,
+     "y": 64046,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-56-2",
+     "x": 61318,
+     "y": 64072,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-56-3",
+     "x": 61275,
+     "y": 64022,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-56-4",
+     "x": 60853,
+     "y": 63917,
+     "level": 16
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-57",
+   "type": "boogey spawn",
+   "realm_third": "Midgard",
+   "x": 69357,
+   "y": 64205,
+   "z_guess": 8242,
+   "base_level": 18,
+   "levels": [
+    17,
+    18,
+    19,
+    18
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-57-1",
+     "x": 69360,
+     "y": 64162,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-57-2",
+     "x": 69125,
+     "y": 64253,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-57-3",
+     "x": 69331,
+     "y": 64072,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-57-4",
+     "x": 69273,
+     "y": 64122,
+     "level": 18
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-58",
+   "type": "large rat",
+   "realm_third": "Midgard",
+   "x": 64527,
+   "y": 67854,
+   "z_guess": 7924,
+   "base_level": 15,
+   "levels": [
+    14,
+    15,
+    16,
+    15
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-58-1",
+     "x": 64530,
+     "y": 67850,
+     "level": 14
+    },
+    {
+     "mob_id": "killaloe-camp-58-2",
+     "x": 64576,
+     "y": 68029,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-58-3",
+     "x": 64503,
+     "y": 67715,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-58-4",
+     "x": 64624,
+     "y": 67759,
+     "level": 15
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-59",
+   "type": "forlorn spectre",
+   "realm_third": "Midgard",
+   "x": 58998,
+   "y": 68640,
+   "z_guess": 7924,
+   "base_level": 19,
+   "levels": [
+    18,
+    19,
+    20,
+    19
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-59-1",
+     "x": 58939,
+     "y": 68647,
+     "level": 18
+    },
+    {
+     "mob_id": "killaloe-camp-59-2",
+     "x": 59197,
+     "y": 68779,
+     "level": 19
+    },
+    {
+     "mob_id": "killaloe-camp-59-3",
+     "x": 59219,
+     "y": 68769,
+     "level": 20
+    },
+    {
+     "mob_id": "killaloe-camp-59-4",
+     "x": 58997,
+     "y": 68510,
+     "level": 19
+    }
+   ]
+  },
+  {
+   "id": "killaloe-camp-60",
+   "type": "boogey spawn",
+   "realm_third": "Midgard",
+   "x": 69653,
+   "y": 69440,
+   "z_guess": 8164,
+   "base_level": 16,
+   "levels": [
+    15,
+    16,
+    17,
+    16
+   ],
+   "members": [
+    {
+     "mob_id": "killaloe-camp-60-1",
+     "x": 69681,
+     "y": 69460,
+     "level": 15
+    },
+    {
+     "mob_id": "killaloe-camp-60-2",
+     "x": 69514,
+     "y": 69356,
+     "level": 16
+    },
+    {
+     "mob_id": "killaloe-camp-60-3",
+     "x": 69633,
+     "y": 69327,
+     "level": 17
+    },
+    {
+     "mob_id": "killaloe-camp-60-4",
+     "x": 69594,
+     "y": 69207,
+     "level": 16
+    }
+   ]
+  }
+ ]
+}

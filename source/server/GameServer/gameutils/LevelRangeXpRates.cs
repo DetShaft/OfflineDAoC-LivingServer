@@ -62,6 +62,18 @@ namespace DOL.GS
             return rate;
         }
 
+        /// <summary>
+        /// <c>battleground_mob_xp_rate</c> for a monster kill (<see cref="eXPSource.NPC"/>) made in a battleground zone,
+        /// otherwise 1. Real players and autonomous gamebots both use it, so every realm levels the same way there.
+        /// </summary>
+        public static double BattlegroundMobRate(bool inBattleground, eXPSource source)
+        {
+            if (!inBattleground || source != eXPSource.NPC)
+                return 1.0;
+            double rate = ServerProperties.Properties.BATTLEGROUND_MOB_XP_RATE;
+            return double.IsNaN(rate) || rate <= 0 || rate > MaximumRate ? 1.0 : rate;
+        }
+
         /// <summary>The rate for an autonomous gamebot of this level (before the RvR-zone multiplier).</summary>
         public static double BotRate(int level)
         {

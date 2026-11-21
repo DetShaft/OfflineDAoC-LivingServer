@@ -162,7 +162,11 @@ namespace DOL.UnitTests
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-keep-253'
                         AND (Name LIKE '%Gatekeeper%' OR Name LIKE '%PosternKeeper%')),
                     (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253-extra' AND Region=253),
-                    (SELECT MIN(RoamingRange) FROM Mob WHERE PackageID IN ('offline-killaloe-zone253','offline-killaloe-zone253-extra'))
+                    (SELECT MIN(RoamingRange) FROM Mob WHERE PackageID IN ('offline-killaloe-zone253','offline-killaloe-zone253-extra')),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253-camps' AND Region=253),
+                    (SELECT COUNT(DISTINCT Name) FROM Mob WHERE PackageID='offline-killaloe-zone253-camps'),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253-camps' AND Name='Shadow in the Trees'),
+                    (SELECT COUNT(*) FROM Mob WHERE PackageID='offline-killaloe-zone253-camps' AND (Level<13 OR Level>20))
                 """;
             using var reader = verify.ExecuteReader();
             Assert.That(reader.Read(), Is.True);
@@ -206,6 +210,10 @@ namespace DOL.UnitTests
             Assert.That(reader.GetInt32(36), Is.EqualTo(0), "Enter and Exit Gatekeepers and PosternKeepers (issue #153) are gone; the keep doors are the way in and out.");
             Assert.That(reader.GetInt32(37), Is.EqualTo(KillaloeZone253Seeds.ExpectedExtraFieldSpawnCount), "One extra of each field mob.");
             Assert.That(reader.GetInt32(38), Is.GreaterThanOrEqualTo(300), "Field mobs roam.");
+            Assert.That(reader.GetInt32(39), Is.EqualTo(KillaloeZone253Seeds.ExpectedCampMobCount), "Camps are written once, also on the second start.");
+            Assert.That(reader.GetInt32(40), Is.EqualTo(5), "Camps use the five existing field mob types.");
+            Assert.That(reader.GetInt32(41), Is.EqualTo(0), "The named Shadow is not copied into camps.");
+            Assert.That(reader.GetInt32(42), Is.EqualTo(0), "Camp levels stay inside the field pack's 13-20.");
         }
     }
 }

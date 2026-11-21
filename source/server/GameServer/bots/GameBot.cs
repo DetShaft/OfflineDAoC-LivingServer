@@ -1845,6 +1845,8 @@ namespace DOL.GS
 
                 baseExperience = ScaleAutonomousExperience(baseExperience,
                     CurrentRegion?.IsRvR == true || CurrentZone?.IsRvR == true, Level);
+                baseExperience = (long)(baseExperience *
+                    LevelRangeXpRates.BattlegroundMobRate(CurrentZone?.IsBG == true, arguments.XPSource));
 
                 long itemExperienceBonus = GetModified(eProperty.XpPoints);
                 if (itemExperienceBonus != 0)

@@ -4411,7 +4411,8 @@ namespace DOL.GS
                     }
                 }
 
-                baseXp = (long) (baseXp * LevelRangeXpRates.PlayerRate(Level, CurrentRegion.IsRvR || CurrentZone.IsRvR));
+                baseXp = (long) (baseXp * LevelRangeXpRates.PlayerRate(Level, CurrentRegion.IsRvR || CurrentZone.IsRvR)
+                    * LevelRangeXpRates.BattlegroundMobRate(CurrentZone?.IsBG == true, arguments.XPSource));
 
                 long xpBonus = GetModified(eProperty.XpPoints);
 
