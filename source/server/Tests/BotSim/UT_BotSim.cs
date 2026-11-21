@@ -88,6 +88,28 @@ namespace DOL.UnitTests
             }
         }
 
+        /// <summary>
+        /// The battleground goal layer (owner, 2026-11-21; SimBattleground): tour phases by level tier against the old
+        /// "everyone charges anything within 5,000". Findings are reported like the fight scenarios'.
+        /// </summary>
+        [Test]
+        public void BattlegroundGoals()
+        {
+            var runs = SimBattleground.RunAll();
+            var findings = SimBattleground.Evaluate(runs);
+            SimBattleground.Write(runs, findings);
+            foreach (SimFinding f in findings)
+                TestContext.Progress.WriteLine($"[bot-sim] {(f.Ok ? "pass   " : "FINDING")} {f.Scenario} / {f.Variant}: {f.Expectation} -> {f.Measured}");
+            Assert.That(runs.All(r => r.Agents.Any(a => a.Kills > 0)), Is.True, "Every run has fights.");
+            var again = SimBattleground.RunOne(SimBattleground.Rules.Live, 2, 1, eRealm.Midgard);
+            var first = runs.Single(r => r.Rules == SimBattleground.Rules.Live && r.Seed == 2 && r.Rotation == 1 && r.PlayerRealm == eRealm.Midgard);
+            Assert.That(again.Agents.Select(a => (a.Kills, a.Deaths, a.MobKills, a.GrindSeconds)),
+                Is.EqualTo(first.Agents.Select(a => (a.Kills, a.Deaths, a.MobKills, a.GrindSeconds))), "The same seed gives the same run.");
+            if (Strict)
+                Assert.That(findings.Where(f => f.Live && !f.Ok).Select(f => f.Expectation), Is.Empty,
+                    "BOT_SIM_STRICT=1: the live rules miss these expectations.");
+        }
+
         [Test]
         public void SameSeedGivesTheSameRun()
         {

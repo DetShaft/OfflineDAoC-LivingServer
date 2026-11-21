@@ -28,6 +28,7 @@ namespace DOL.GS
             BattlegroundBrackets.Bracket bracket = BattlegroundBrackets.ForLevel(bot.Level);
             if (bracket == null)
             {
+                EndBattlegroundActivity(bot);
                 // Out-levelled: the tour ends here; leaving the battleground happens on the next goal's travel.
                 AutonomousObjectiveAssignments.EndBattlegroundTour(bot, $"Outgrew the battleground brackets at level {bot.Level}");
                 _nextPlanTick = 0;
@@ -35,6 +36,7 @@ namespace DOL.GS
             }
             if (bot.CurrentRegionID != bracket.RegionId)
             {
+                EndBattlegroundActivity(bot);
                 GameLocation entry = BattlegroundBrackets.BotArrival(bracket, bot.Realm);
                 return TravelToBattleground(bot, bracket, new(entry.X, entry.Y, entry.Z));
             }
@@ -58,6 +60,39 @@ namespace DOL.GS
                 _rvrDestination = null;
             }
             _rvrSharedEvent = false;
+
+            // What this bot does in this phase of its tour (AutonomousBattlegroundActivity): grind a mob camp, hunt the
+            // outskirts, or fight around the central keep with the realm's wave.
+            AutonomousBattlegroundActivity.Activity activity = UpdateBattlegroundActivity(bot, bracket);
+            if (activity != AutonomousBattlegroundActivity.Activity.Grind)
+                DropBattlegroundGrindCamp(bot);
+            if (activity == AutonomousBattlegroundActivity.Activity.Grind)
+            {
+                _rvrIntent = AutonomousRvrEventLayer.Intent.Roam;
+                if (GrindBattleground(brain, bot, bracket) is { } grinding)
+                {
+                    if (_battlegroundActivity != activity)
+                    {
+                        // A camp turned up after a keep-fights fallback.
+                        _battlegroundActivity = activity;
+                        AutonomousBattlegroundActivity.Report(AutonomousBattlegroundActivity.KeyOf(bot), activity);
+                    }
+                    return grinding;
+                }
+                // No camp with room or in level: this phase fights at the keep instead.
+                activity = AutonomousBattlegroundActivity.Activity.KeepFights;
+                if (_battlegroundActivity != activity)
+                {
+                    _battlegroundActivity = activity;
+                    AutonomousBattlegroundActivity.Report(AutonomousBattlegroundActivity.KeyOf(bot), activity);
+                }
+            }
+            if (activity == AutonomousBattlegroundActivity.Activity.OutskirtHunt)
+            {
+                _rvrIntent = AutonomousRvrEventLayer.Intent.Roam;
+                return HuntBattleground(bot, bracket, central);
+            }
+
             // Too few of the realm here for a wave: fight in the field instead of standing at the staging point or
             // feeding single bots to the keep's guards (Thidranki, 2026-10-17).
             bool tooFew = assault && AutonomousBattlegroundWave.TooFewForAssault(bot.Realm, bracket);
@@ -195,15 +230,24 @@ namespace DOL.GS
             if (!_battlegroundRoamPoint.HasValue || now >= _nextBattlegroundRoamTick ||
                 Vector3.DistanceSquared(current, _battlegroundRoamPoint.Value) < 200 * 200)
             {
-                // Roam between the field's landmarks: the central keep and the other realms' portal approaches.
-                eRealm[] others = [eRealm.Albion, eRealm.Midgard, eRealm.Hibernia];
-                Vector3[] anchors = others.Where(realm => realm != bot.Realm)
-                    .Select(realm => BattlegroundBrackets.BotArrival(bracket, realm))
-                    .Select(entry => Vector3.Lerp(new(entry.X, entry.Y, entry.Z),
-                        central != null ? new(central.X, central.Y, central.Z) : new(entry.X, entry.Y, entry.Z), 0.6f))
-                    .Append(central != null ? new Vector3(central.X, central.Y, central.Z) : current)
-                    .ToArray();
-                Vector3 anchor = anchors[Random.Shared.Next(anchors.Length)];
+                // Keep fighters lurk around the central keep for fights and siege chances (owner, 2026-11-21). Before,
+                // they roamed between the keep and points 40% of the way to the enemy portal keeps.
+                Vector3 anchor;
+                if (central != null)
+                {
+                    Vector2 lurk = AutonomousBattlegroundActivity.KeepLurkPoint(new(central.X, central.Y),
+                        Random.Shared.NextDouble(), Random.Shared.NextDouble());
+                    anchor = new(lurk.X, lurk.Y, central.Z);
+                }
+                else
+                {
+                    eRealm[] others = [eRealm.Albion, eRealm.Midgard, eRealm.Hibernia];
+                    Vector3[] anchors = others.Where(realm => realm != bot.Realm)
+                        .Select(realm => BattlegroundBrackets.BotArrival(bracket, realm))
+                        .Select(entry => new Vector3(entry.X, entry.Y, entry.Z))
+                        .ToArray();
+                    anchor = anchors[Random.Shared.Next(anchors.Length)];
+                }
                 Zone zone = bot.CurrentRegion?.GetZone((int)anchor.X, (int)anchor.Y) ?? bot.CurrentZone;
                 IPathfindingMgr nav = PathfindingProvider.Instance;
                 if (zone != null && nav.IsAvailable && nav.HasNavmesh(zone))
@@ -216,8 +260,9 @@ namespace DOL.GS
                 _nextBattlegroundRoamTick = now + 120_000 + bot.ObjectID % 30_000;
             }
             IssueVariedRvrPath(bot, _battlegroundRoamPoint.Value);
-            SetBattlegroundStatus(bot, bracket, "Roaming the battleground",
-                central != null ? $"{central.Name} is held by our realm" : "Hunting enemy realms on the field");
+            SetBattlegroundStatus(bot, bracket, central != null ? $"Lurking around {central.Name}" : "Roaming the battleground",
+                central == null ? "Hunting enemy realms on the field"
+                : central.Realm == bot.Realm ? $"{central.Name} is held by our realm" : $"Testing {Holder(central)} at {central.Name}");
             return true;
         }
 
