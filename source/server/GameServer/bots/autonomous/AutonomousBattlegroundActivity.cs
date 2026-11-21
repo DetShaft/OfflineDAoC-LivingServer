@@ -100,8 +100,82 @@ public static class AutonomousBattlegroundActivity
     /// A hunter leaves an enemy alone when the enemy stands in a group of three or more and the hunter's side near it
     /// would be outnumbered by more than one.
     /// </summary>
-    public static bool HunterAvoids(int enemiesAroundTarget, int friendsAroundHunter) =>
-        enemiesAroundTarget >= 3 && enemiesAroundTarget > friendsAroundHunter + 1;
+    public static bool HunterAvoids(int enemiesAroundTarget, int friendsAroundHunter, bool favorableCamp = false) =>
+        enemiesAroundTarget >= 3 && enemiesAroundTarget > friendsAroundHunter + 1 && !favorableCamp;
+
+    /// <summary>
+    /// A camp of three is worth jumping (owner, 2026-11-21: "hunters can take on camps of three, provided it's good
+    /// action"): at most three enemies, at least two of them busy with monsters, and either a second hunter alongside or
+    /// a level edge of three or more over the campers' average.
+    /// </summary>
+    public static bool FavorableCamp(int enemiesAroundTarget, int busyWithMonsters, int friendsAroundHunter, double levelEdge) =>
+        enemiesAroundTarget <= 3 && busyWithMonsters >= Math.Min(2, enemiesAroundTarget) &&
+        (friendsAroundHunter >= 2 || levelEdge >= 3);
+
+    // --- Keep sieges (owner, 2026-11-21: respond to active keep sieges, above all on the realm's own keep). ---
+
+    public enum SiegeResponse { None, Defend, ThirdParty }
+
+    /// <summary>A keep counts as under siege while an enemy realm damaged it within this long.</summary>
+    public const long SiegeActiveMilliseconds = 60_000;
+
+    /// <summary>Grinders leave their camp to defend their realm's keep only from this close.</summary>
+    public const int GrinderDefendDistance = 6_000;
+
+    /// <summary>
+    /// What a bot does about a siege in its battleground. Its own realm's keep: keep fighters and hunters defend, grinders
+    /// within <see cref="GrinderDefendDistance"/> too. Another realm's keep under attack by a third realm: keep fighters
+    /// already go there with their wave; half the hunters (by bot) come to pick off the fight's edges.
+    /// </summary>
+    public static SiegeResponse RespondToSiege(Activity activity, bool ownKeep, double distanceToKeep, long botKey)
+    {
+        if (ownKeep)
+            return activity != Activity.Grind || distanceToKeep <= GrinderDefendDistance ? SiegeResponse.Defend : SiegeResponse.None;
+        return activity == Activity.OutskirtHunt && Mix((ulong)botKey ^ 0x5EED) % 2 == 0 ? SiegeResponse.ThirdParty : SiegeResponse.None;
+    }
+
+    public static bool SiegeActive(long lastPressureMilliseconds, long nowMilliseconds) =>
+        lastPressureMilliseconds > 0 && nowMilliseconds - lastPressureMilliseconds <= SiegeActiveMilliseconds;
+
+    // --- Battleground parties (owner, 2026-11-21): bots on the same activity group up. ---
+
+    public const int KeepPartyMax = 8, KeepPartyMin = 3;
+    public const int HuntPartyMax = 3;
+    public const int GrindPartyMax = MaxGrindersPerCamp;
+    public const int PartyGatherRadius = 2_500;
+
+    /// <summary>Half the hunters (by bot) hunt in pairs or threes; the rest hunt alone.</summary>
+    public static bool HuntsInParty(long botKey) => Mix((ulong)botKey ^ 0xD0C5) % 2 == 0;
+
+    public static (int Min, int Max) PartySize(Activity activity) => activity switch
+    {
+        Activity.KeepFights => (KeepPartyMin, KeepPartyMax),
+        Activity.OutskirtHunt => (2, HuntPartyMax),
+        _ => (2, GrindPartyMax),
+    };
+
+    /// <summary>
+    /// Splits bots of one realm and one activity into parties: each leader (in the given order) takes the nearest free
+    /// bots within <see cref="PartyGatherRadius"/> up to the activity's maximum; a party smaller than the minimum is not
+    /// formed. Returns lists of indexes into <paramref name="positions"/>, leader first.
+    /// </summary>
+    public static List<int[]> FormParties(IReadOnlyList<Vector2> positions, Activity activity)
+    {
+        (int min, int max) = PartySize(activity);
+        var free = new List<int>(Enumerable.Range(0, positions.Count));
+        var parties = new List<int[]>();
+        while (free.Count >= min)
+        {
+            int leader = free[0];
+            free.RemoveAt(0);
+            int[] mates = free.Where(i => Vector2.Distance(positions[i], positions[leader]) <= PartyGatherRadius)
+                .OrderBy(i => Vector2.Distance(positions[i], positions[leader])).Take(max - 1).ToArray();
+            if (mates.Length + 1 < min) continue;
+            foreach (int mate in mates) free.Remove(mate);
+            parties.Add(new[] { leader }.Concat(mates).ToArray());
+        }
+        return parties;
+    }
 
     /// <summary>
     /// A hunter's order of targets, lowest first: campers fighting a monster and lower-level enemies come before the
@@ -193,6 +267,11 @@ public static class AutonomousBattlegroundActivity
     /// <summary>True when the bot counts toward its realm's keep assault wave (keep fighters, and bots not on a tour phase).</summary>
     public static bool JoinsKeepFights(long botKey) =>
         !Current.TryGetValue(botKey, out Activity activity) || activity == Activity.KeepFights;
+
+    public static Activity? ActivityOf(long botKey) => Current.TryGetValue(botKey, out Activity activity) ? activity : null;
+
+    /// <summary>The grind camp the bot holds now, or null.</summary>
+    public static string CampOf(long botKey) => GrindCamps.TryGetValue(botKey, out var hold) ? hold.Camp : null;
 
     public static void HoldCamp(long botKey, ushort region, eRealm realm, string campId, long nowMilliseconds) =>
         GrindCamps[botKey] = (region, realm, campId, nowMilliseconds);

@@ -243,7 +243,12 @@ public sealed partial class AutonomousWorldBotController
         foreach (GameLiving target in kept)
         {
             int around = EnemiesAround(target);
-            if (!FiringOnRealm(bot, target) && AutonomousBattlegroundActivity.HunterAvoids(around, friends))
+            // A camp of three busy with monsters is fair game with a partner or a level edge (owner, 2026-11-21).
+            GameLiving[] campers = nearby.Where(other => other.Realm == target.Realm && other is GamePlayer or GameBot &&
+                target.IsWithinRadius(other, AutonomousBattlegroundActivity.GroupRadius)).ToArray();
+            bool favorable = campers.Length > 0 && AutonomousBattlegroundActivity.FavorableCamp(around, campers.Count(FightingMonster),
+                friends, bot.Level - campers.Average(other => (int)other.Level));
+            if (!FiringOnRealm(bot, target) && AutonomousBattlegroundActivity.HunterAvoids(around, friends, favorable))
             {
                 avoided ??= target;
                 continue;

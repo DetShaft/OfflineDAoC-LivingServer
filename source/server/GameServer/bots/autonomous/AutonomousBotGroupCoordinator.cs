@@ -254,6 +254,9 @@ public static partial class AutonomousBotGroupCoordinator
             GameBot[] members = BotMembers(group);
             if (members.Length == 0)
                 return null;
+            // A battleground party is run by the battleground tour itself, not by a coordinator session.
+            if (AutonomousBattlegroundParties.IsParty(group))
+                return null;
 
             // Objective membership is authoritative.  A rebalance can never
             // leave a mixed PvE/RvR party running under the leader's old task.
@@ -1192,6 +1195,9 @@ public static partial class AutonomousBotGroupCoordinator
     public static bool CanInitiateNewPull(GameBot bot, bool corridorBlocker = false, bool raidDungeonTrash = false)
     {
         if (bot?.IsAutonomousWorldBot != true || bot.IsTemporaryGroupHelper || bot.IsPlayerLedGroup || bot.Group == null)
+            return true;
+        // Battleground party members pull on their own (grinders share a camp, not a puller).
+        if (AutonomousBattlegroundParties.IsParty(bot.Group))
             return true;
         lock (Sync)
         {

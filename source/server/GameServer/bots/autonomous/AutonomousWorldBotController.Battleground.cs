@@ -64,8 +64,19 @@ namespace DOL.GS
             // What this bot does in this phase of its tour (AutonomousBattlegroundActivity): grind a mob camp, hunt the
             // outskirts, or fight around the central keep with the realm's wave.
             AutonomousBattlegroundActivity.Activity activity = UpdateBattlegroundActivity(bot, bracket);
+            AutonomousBattlegroundParties.Pulse(GameLoop.GameLoopTime);
+            // A siege of the central keep comes first: the realm's own keep is defended, a third realm's siege draws hunters.
+            if (central != null && RespondToBattlegroundSiege(bot, bracket, central, activity) is { } siege)
+                return siege;
             if (activity != AutonomousBattlegroundActivity.Activity.Grind)
                 DropBattlegroundGrindCamp(bot);
+            // Party members follow their leader; grinders share the camp instead, and keep fighters storm with the wave.
+            if (activity != AutonomousBattlegroundActivity.Activity.Grind &&
+                AutonomousBattlegroundParties.LeaderOf(bot) is { } leader && leader != bot && leader.IsAlive &&
+                leader.CurrentRegionID == bot.CurrentRegionID &&
+                !(activity == AutonomousBattlegroundActivity.Activity.KeepFights && assault &&
+                  !AutonomousBattlegroundWave.TooFewForAssault(bot.Realm, bracket)))
+                return FollowBattlegroundParty(bot, bracket, leader, activity);
             if (activity == AutonomousBattlegroundActivity.Activity.Grind)
             {
                 _rvrIntent = AutonomousRvrEventLayer.Intent.Roam;

@@ -47,6 +47,9 @@ namespace DOL.GS
             _battlegroundActivity = null;
             _battlegroundChosen = null;
             _battlegroundAvoid = null;
+            _battlegroundSiegeResponse = AutonomousBattlegroundActivity.SiegeResponse.None;
+            if (AutonomousBattlegroundParties.IsParty(bot.Group))
+                bot.Group.RemoveMember(bot);
             AutonomousBattlegroundActivity.Forget(AutonomousBattlegroundActivity.KeyOf(bot));
         }
 
@@ -185,6 +188,86 @@ namespace DOL.GS
             SetBattlegroundStatus(bot, bracket, "Hunting the outskirts",
                 _battlegroundAvoid.HasValue ? "Steering clear of an enemy group; looking for campers and small fights"
                     : "Looking for campers and small fights");
+            return true;
+        }
+
+        private AutonomousBattlegroundActivity.SiegeResponse _battlegroundSiegeResponse;
+
+        /// <summary>
+        /// An active siege of the battleground's central keep (AutonomousBattlegroundActivity.RespondToSiege): the realm's
+        /// own keep is defended at its posts, and a third realm's siege of another realm's keep draws half the hunters to
+        /// its edges. Null when this bot does not respond, so its phase carries on.
+        /// </summary>
+        private bool? RespondToBattlegroundSiege(GameBot bot, BattlegroundBrackets.Bracket bracket, AbstractGameKeep central,
+            AutonomousBattlegroundActivity.Activity activity)
+        {
+            long now = GameLoop.GameLoopTime;
+            long key = AutonomousBattlegroundActivity.KeyOf(bot);
+            bool own = central.Realm == bot.Realm;
+            // Only hits from the holder's current enemies count: the holder's own hits from before a capture are not a siege.
+            // Own keep: either other realm sieging it. Another realm's keep: the third realm sieging it.
+            bool active = central.Realm != eRealm.None && new[] { eRealm.Albion, eRealm.Midgard, eRealm.Hibernia }
+                .Where(realm => realm != bot.Realm && realm != central.Realm)
+                .Any(realm => AutonomousBattlegroundActivity.SiegeActive(AutonomousRvrEventLayer.LastKeepPressureBy(central, realm), now));
+            double distance = Math.Sqrt(Vector2.DistanceSquared(new(bot.X, bot.Y), new(central.X, central.Y)));
+            AutonomousBattlegroundActivity.SiegeResponse response = active
+                ? AutonomousBattlegroundActivity.RespondToSiege(activity, own, distance, key)
+                : AutonomousBattlegroundActivity.SiegeResponse.None;
+            if (response != _battlegroundSiegeResponse)
+            {
+                Log.Info($"BG_SIEGE_RESPONSE bot={bot.Name} id={bot.DatabaseID} realm={GlobalConstants.RealmToName(bot.Realm)} level={bot.Level} " +
+                         $"keep=\"{central.Name}\" holder={(central.Realm == eRealm.None ? "none" : GlobalConstants.RealmToName(central.Realm))} " +
+                         $"activity={activity} response={response} previous={_battlegroundSiegeResponse} distance={(int)distance}");
+                // Back to the phase's own activity once the defense ends.
+                if (response == AutonomousBattlegroundActivity.SiegeResponse.None && _battlegroundActivity != activity)
+                {
+                    _battlegroundActivity = activity;
+                    AutonomousBattlegroundActivity.Report(key, activity);
+                }
+                _battlegroundSiegeResponse = response;
+            }
+            if (response == AutonomousBattlegroundActivity.SiegeResponse.None) return null;
+
+            if (response == AutonomousBattlegroundActivity.SiegeResponse.Defend)
+            {
+                DropBattlegroundGrindCamp(bot);
+                if (_battlegroundActivity != AutonomousBattlegroundActivity.Activity.KeepFights)
+                {
+                    _battlegroundActivity = AutonomousBattlegroundActivity.Activity.KeepFights;
+                    AutonomousBattlegroundActivity.Report(key, AutonomousBattlegroundActivity.Activity.KeepFights);
+                }
+                _rvrIntent = AutonomousRvrEventLayer.Intent.Roam;
+                SetBattlegroundStatus(bot, bracket, $"Defending {central.Name}", "Our keep is under siege");
+                if (distance > 3_500)
+                    return TravelToDefensivePost(bot, central, new(central.X, central.Y, central.Z));
+                return HoldDefensiveKeepPost(bot, central);
+            }
+
+            // A third realm is sieging another realm's keep: come in on its edges; the hunter's own scan picks targets.
+            _rvrIntent = AutonomousRvrEventLayer.Intent.Roam;
+            if (distance > 3_000)
+            {
+                IssueVariedRvrPath(bot, new Vector3(central.X, central.Y, central.Z));
+                SetBattlegroundStatus(bot, bracket, $"Heading for the siege at {central.Name}", "Picking off the edges of another realm's siege");
+                return true;
+            }
+            return RoamBattleground(bot, bracket, central);
+        }
+
+        /// <summary>A party member stays with its leader (formation point; the leader keeps the party's plan).</summary>
+        private bool FollowBattlegroundParty(GameBot bot, BattlegroundBrackets.Bracket bracket, GameBot leader,
+            AutonomousBattlegroundActivity.Activity activity)
+        {
+            Vector3 point = AutonomousBotGroupCoordinator.FormationPoint(bot, new Vector3(leader.X, leader.Y, leader.Z), false);
+            if (bot.IsWithinRadius(leader, 450) && !leader.IsMoving)
+            {
+                bot.StopMovingOnPath();
+                bot.StopMoving();
+            }
+            else IssuePath(bot, point, retargetWhileMoving: true);
+            SetBattlegroundStatus(bot, bracket, $"With {leader.Name}'s party",
+                activity == AutonomousBattlegroundActivity.Activity.OutskirtHunt ? "Hunting the outskirts as a small group"
+                    : "Fighting around the central keep as a group");
             return true;
         }
     }

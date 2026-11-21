@@ -62,6 +62,7 @@ namespace DOL.GS
             if (source != null && source.Realm != eRealm.None && source.Realm != keep.Realm)
             {
                 KeepCombatPressure[id] = now;
+                KeepAttackerPressure[((int)keep.KeepID, source.Realm)] = now;
                 ObserveBattlegroundSiege(keep, source.Realm, now, PlayerInstigator(source) != null);
                 CompanionRaidSiege.ObserveKeepUnderAttack(keep);
             }
@@ -105,6 +106,12 @@ namespace DOL.GS
             if (log.IsInfoEnabled) log.Info($"BG_SIEGE_STARTED keep=\"{keep.Name}\" region={keep.Region} attacker={GlobalConstants.RealmToName(attacker)} " +
                 $"holder={(keep.Realm == eRealm.None ? "unclaimed" : GlobalConstants.RealmToName(keep.Realm))}");
         }
+
+        private static readonly ConcurrentDictionary<(int Keep, eRealm Attacker), long> KeepAttackerPressure = new();
+
+        /// <summary>When <paramref name="attacker"/> last damaged this keep (0 if never), for battleground siege responses.</summary>
+        public static long LastKeepPressureBy(AbstractGameKeep keep, eRealm attacker) =>
+            keep == null ? 0 : KeepAttackerPressure.GetValueOrDefault(((int)keep.KeepID, attacker));
 
         /// <summary>When an enemy realm last damaged this keep (0 if never).</summary>
         public static long LastKeepPressure(AbstractGameKeep keep) =>

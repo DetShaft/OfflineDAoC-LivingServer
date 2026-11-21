@@ -66,6 +66,49 @@ namespace DOL.UnitTests
         public void HuntersAvoidOutnumberingGroups(int enemies, int friends, bool avoids) =>
             Assert.That(AutonomousBattlegroundActivity.HunterAvoids(enemies, friends), Is.EqualTo(avoids));
 
+        [TestCase(3, 2, 1, 3.0, true)]    // solo hunter, three levels over two busy campers of three
+        [TestCase(3, 2, 1, 2.0, false)]   // not enough edge alone
+        [TestCase(3, 2, 2, 0.0, true)]    // a hunting pair
+        [TestCase(3, 1, 2, 0.0, false)]   // the camp is not busy
+        [TestCase(4, 4, 2, 4.0, false)]   // four is a group, not a camp of three
+        public void HuntersJumpACampOfThreeOnlyWhenItIsGoodAction(int enemies, int busy, int friends, double edge, bool favorable)
+        {
+            Assert.That(AutonomousBattlegroundActivity.FavorableCamp(enemies, busy, friends, edge), Is.EqualTo(favorable));
+            Assert.That(AutonomousBattlegroundActivity.HunterAvoids(enemies, friends, favorable), Is.EqualTo(!favorable && enemies > friends + 1));
+        }
+
+        [Test]
+        public void OwnKeepSiegeIsDefendedAndThirdRealmSiegesDrawHalfTheHunters()
+        {
+            Assert.That(AutonomousBattlegroundActivity.RespondToSiege(Activity.KeepFights, true, 9_000, 1), Is.EqualTo(AutonomousBattlegroundActivity.SiegeResponse.Defend));
+            Assert.That(AutonomousBattlegroundActivity.RespondToSiege(Activity.OutskirtHunt, true, 15_000, 1), Is.EqualTo(AutonomousBattlegroundActivity.SiegeResponse.Defend));
+            Assert.That(AutonomousBattlegroundActivity.RespondToSiege(Activity.Grind, true, 5_000, 1), Is.EqualTo(AutonomousBattlegroundActivity.SiegeResponse.Defend));
+            Assert.That(AutonomousBattlegroundActivity.RespondToSiege(Activity.Grind, true, 9_000, 1), Is.EqualTo(AutonomousBattlegroundActivity.SiegeResponse.None));
+            Assert.That(AutonomousBattlegroundActivity.RespondToSiege(Activity.Grind, false, 1_000, 1), Is.EqualTo(AutonomousBattlegroundActivity.SiegeResponse.None));
+            Assert.That(AutonomousBattlegroundActivity.RespondToSiege(Activity.KeepFights, false, 1_000, 1), Is.EqualTo(AutonomousBattlegroundActivity.SiegeResponse.None),
+                "keep fighters already assault another realm's keep with their wave");
+            int thirdParty = Enumerable.Range(0, 1_000).Count(key => AutonomousBattlegroundActivity.RespondToSiege(Activity.OutskirtHunt, false, 8_000, key) ==
+                AutonomousBattlegroundActivity.SiegeResponse.ThirdParty);
+            Assert.That(thirdParty, Is.InRange(420, 580));
+            Assert.That(AutonomousBattlegroundActivity.SiegeActive(0, 10_000), Is.False);
+            Assert.That(AutonomousBattlegroundActivity.SiegeActive(5_000, 5_000 + AutonomousBattlegroundActivity.SiegeActiveMilliseconds), Is.True);
+            Assert.That(AutonomousBattlegroundActivity.SiegeActive(5_000, 5_001 + AutonomousBattlegroundActivity.SiegeActiveMilliseconds), Is.False);
+        }
+
+        [Test]
+        public void PartiesFormFromNearbyBotsWithinTheActivitysSizes()
+        {
+            var together = Enumerable.Range(0, 10).Select(i => new Vector2(i * 100, 0)).ToArray();
+            var keep = AutonomousBattlegroundActivity.FormParties(together, Activity.KeepFights);
+            Assert.That(keep.Select(p => p.Length), Is.EqualTo(new[] { 8 }), "eight, and the last two are too few for a keep party");
+            var hunt = AutonomousBattlegroundActivity.FormParties(together, Activity.OutskirtHunt);
+            Assert.That(hunt.All(p => p.Length is 2 or 3), Is.True);
+            Assert.That(hunt.Sum(p => p.Length), Is.EqualTo(9), "the tenth hunts alone");
+            var apart = new[] { new Vector2(0, 0), new Vector2(10_000, 0), new Vector2(20_000, 0) };
+            Assert.That(AutonomousBattlegroundActivity.FormParties(apart, Activity.OutskirtHunt), Is.Empty, "nobody near enough");
+            Assert.That(keep[0][0], Is.EqualTo(0), "the first bot leads");
+        }
+
         [Test]
         public void HuntersPreferCampersAndLowerLevels()
         {
