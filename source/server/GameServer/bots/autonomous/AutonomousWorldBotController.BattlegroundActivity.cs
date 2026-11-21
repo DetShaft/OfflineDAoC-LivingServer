@@ -204,11 +204,11 @@ namespace DOL.GS
             long now = GameLoop.GameLoopTime;
             long key = AutonomousBattlegroundActivity.KeyOf(bot);
             bool own = central.Realm == bot.Realm;
-            bool active = own
-                ? AutonomousBattlegroundActivity.SiegeActive(AutonomousRvrEventLayer.LastKeepPressure(central), now)
-                : central.Realm != eRealm.None && new[] { eRealm.Albion, eRealm.Midgard, eRealm.Hibernia }
-                    .Where(realm => realm != bot.Realm && realm != central.Realm)
-                    .Any(realm => AutonomousBattlegroundActivity.SiegeActive(AutonomousRvrEventLayer.LastKeepPressureBy(central, realm), now));
+            // Only hits from the holder's current enemies count: the holder's own hits from before a capture are not a siege.
+            // Own keep: either other realm sieging it. Another realm's keep: the third realm sieging it.
+            bool active = central.Realm != eRealm.None && new[] { eRealm.Albion, eRealm.Midgard, eRealm.Hibernia }
+                .Where(realm => realm != bot.Realm && realm != central.Realm)
+                .Any(realm => AutonomousBattlegroundActivity.SiegeActive(AutonomousRvrEventLayer.LastKeepPressureBy(central, realm), now));
             double distance = Math.Sqrt(Vector2.DistanceSquared(new(bot.X, bot.Y), new(central.X, central.Y)));
             AutonomousBattlegroundActivity.SiegeResponse response = active
                 ? AutonomousBattlegroundActivity.RespondToSiege(activity, own, distance, key)
