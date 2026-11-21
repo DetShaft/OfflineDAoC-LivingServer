@@ -50,8 +50,10 @@ public static class AutonomousBattlegroundWave
             if (now >= wave.NextTotalCount)
             {
                 wave.NextTotalCount = now + 5_000;
+                // Grinders and outskirt hunters (AutonomousBattlegroundActivity) are not part of the wave.
                 wave.Total = AutonomousBotRegistry.Snapshot().Count(other => other.IsAlive && other.Realm == realm &&
-                    other.CurrentRegionID == bracket.RegionId);
+                    other.CurrentRegionID == bracket.RegionId &&
+                    AutonomousBattlegroundActivity.JoinsKeepFights(AutonomousBattlegroundActivity.KeyOf(other)));
             }
             return IsTooFew(wave.Total);
         }
@@ -87,7 +89,8 @@ public static class AutonomousBattlegroundWave
                 var keepPoint = new Point3D(central.X, central.Y, central.Z);
                 var stagePoint = new Point3D((int)staging.X, (int)staging.Y, (int)staging.Z);
                 GameBot[] realmBots = AutonomousBotRegistry.Snapshot().Where(other => other.IsAlive && other.Realm == bot.Realm &&
-                    other.CurrentRegionID == bracket.RegionId).ToArray();
+                    other.CurrentRegionID == bracket.RegionId &&
+                    AutonomousBattlegroundActivity.JoinsKeepFights(AutonomousBattlegroundActivity.KeyOf(other))).ToArray();
                 wave.Total = realmBots.Length;
                 wave.Gathered = realmBots.Count(other => other.IsWithinRadius(stagePoint, 900));
                 wave.NearKeep = realmBots.Count(other => other.IsWithinRadius(keepPoint, 2_500));

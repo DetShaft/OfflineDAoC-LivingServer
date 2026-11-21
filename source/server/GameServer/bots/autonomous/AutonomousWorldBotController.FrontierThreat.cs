@@ -160,6 +160,11 @@ public sealed partial class AutonomousWorldBotController
                 bot.IsWithinRadius(friendly, 1000) && BotSiegeRuntime.HoldingPosition(friendly) ? 0 : 1)
             .ThenBy(bot.GetDistanceTo).ToArray();
         AutonomousLivingServer.ObserveEnemies(bot, nearby);
+        // Battleground tours (AutonomousBattlegroundActivity): grinders and keep fighters start fights only nearer than
+        // the full scan, and hunters leave groups alone and go for campers and lower levels first.
+        AutonomousBattlegroundActivity.Activity? battleground = BattlegroundActivityFor(bot);
+        if (battleground.HasValue && !siegeFighter && !defending)
+            nearby = FilterBattlegroundThreats(bot, nearby, battleground.Value);
         bool Visible(GameLiving target) => FiringOnRealm(bot, target) || nav.HasLineOfSight(bot.CurrentZone,
             new(bot.X, bot.Y, bot.Z + 48), new(target.X, target.Y, target.Z + 48), nav.BlockingDoorAvoidanceFilters);
         var visible = siegeFighter
@@ -170,7 +175,9 @@ public sealed partial class AutonomousWorldBotController
         var visibleTargets=visible.ToArray();
         var operatorThreats=visibleTargets.Where(target=>target.IsAttacking && target.TargetObject is GameBot friendly &&
             friendly.Realm==bot.Realm && bot.IsWithinRadius(friendly,1000) && BotSiegeRuntime.HoldingPosition(friendly)).ToArray();
-        GameLiving enemy = SelectDistributedRvrTarget(bot, operatorThreats.Length>0 ? operatorThreats : visibleTargets);
+        GameLiving enemy = operatorThreats.Length == 0 && battleground == AutonomousBattlegroundActivity.Activity.OutskirtHunt
+            ? visibleTargets.FirstOrDefault()
+            : SelectDistributedRvrTarget(bot, operatorThreats.Length>0 ? operatorThreats : visibleTargets);
         if (enemy == null || !Eligible(enemy)) return false;
         if (previousEngine != null && enemy is GameSiegeWeapon) return false;
 
@@ -199,5 +206,64 @@ public sealed partial class AutonomousWorldBotController
         AutonomousBotGroupCoordinator.MarkCombatObserved(bot.Group);
         brain.FSM.SetCurrentState(eFSMStateType.AGGRO);
         return true;
+    }
+    private AutonomousBattlegroundActivity.Activity? _battlegroundActivity;
+
+    /// <summary>
+    /// The bot's battleground tour activity while it is inside its battleground on the tour; a PvE bot grinding a
+    /// battleground camp (goal 9) counts as a grinder; otherwise null.
+    /// </summary>
+    private AutonomousBattlegroundActivity.Activity? BattlegroundActivityFor(GameBot bot)
+    {
+        if (!BattlegroundBrackets.IsBattlegroundRegion(bot.CurrentRegionID)) return null;
+        if (AutonomousObjectiveAssignments.Is(bot, eAutonomousObjectiveKind.Battleground)) return _battlegroundActivity;
+        return _camp != null && _camp.RegionId == bot.CurrentRegionID ? AutonomousBattlegroundActivity.Activity.Grind : null;
+    }
+
+    private long _nextHuntAvoidLog;
+
+    private GameLiving[] FilterBattlegroundThreats(GameBot bot, GameLiving[] nearby, AutonomousBattlegroundActivity.Activity activity)
+    {
+        int radius = AutonomousBattlegroundActivity.EngageRadius(activity);
+        GameLiving[] kept = nearby.Where(target => FiringOnRealm(bot, target) || bot.IsWithinRadius(target, radius)).ToArray();
+        if (activity != AutonomousBattlegroundActivity.Activity.OutskirtHunt || kept.Length == 0)
+            return kept;
+
+        int friends = 1 + bot.GetNPCsInRadius(AutonomousBattlegroundActivity.GroupRadius).OfType<GameBot>()
+                          .Count(other => other != bot && other.IsAlive && other.Realm == bot.Realm) +
+                      bot.GetPlayersInRadius(AutonomousBattlegroundActivity.GroupRadius)
+                          .Count(player => player.IsAlive && player.Realm == bot.Realm);
+        int EnemiesAround(GameLiving target) => nearby.Count(other => other.Realm == target.Realm && other is GamePlayer or GameBot &&
+            target.IsWithinRadius(other, AutonomousBattlegroundActivity.GroupRadius));
+        bool FightingMonster(GameLiving target) => target.InCombat && target.TargetObject is GameNPC npc &&
+            npc is not GameBot && npc.Realm == eRealm.None;
+
+        var scored = new List<(GameLiving Target, double Score)>(kept.Length);
+        GameLiving avoided = null;
+        foreach (GameLiving target in kept)
+        {
+            int around = EnemiesAround(target);
+            if (!FiringOnRealm(bot, target) && AutonomousBattlegroundActivity.HunterAvoids(around, friends))
+            {
+                avoided ??= target;
+                continue;
+            }
+            scored.Add((target, AutonomousBattlegroundActivity.HuntScore(bot.GetDistanceTo(target), bot.Level, target.Level,
+                FightingMonster(target), around)));
+        }
+        if (avoided != null && scored.Count == 0)
+        {
+            // Turn away: the next hunt point keeps 3,000 from this group.
+            _battlegroundAvoid = new Vector2(avoided.X, avoided.Y);
+            _battlegroundRoamPoint = null;
+            long now = GameLoop.GameLoopTime;
+            if (now >= _nextHuntAvoidLog)
+            {
+                _nextHuntAvoidLog = now + 60_000;
+                Log.Info($"BG_HUNT_AVOID bot={bot.Name} id={bot.DatabaseID} realm={GlobalConstants.RealmToName(bot.Realm)} level={bot.Level} " +
+                         $"group=\"{avoided.Name}\" groupSize={EnemiesAround(avoided)} friends={friends} distance={(int)bot.GetDistanceTo(avoided)}");
+            }
+        }
+        return scored.OrderBy(pair => pair.Score).Select(pair => pair.Target).ToArray();
     }
 }

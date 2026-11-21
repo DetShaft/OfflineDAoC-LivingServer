@@ -59,6 +59,8 @@ Metric definitions:
 | `los-ridge` | The 8v8 with a ridge just in front of side 0 that blocks sight but not movement (#176). Measures the longest idle stretch of casters and mezzers. |
 | `split-kite` | The player holds the middle; three enemy melee fight for 7 s, break off 1,400 units east for 7 s, and come back, while the enemy back line holds the west (#177). Measures how far side 0's melee get from the nearest friendly caster or healer. |
 
+| `battleground-goals` | Not a fight scenario: the goal layer of battleground tours (owner, 2026-11-21). Three realms of twelve bots (levels 15-19) and a scripted level 16 player grinding a camp for an hour on a symmetric field. Compares **before** (every bot charges the nearest enemy within 5,000) with **live** (`AutonomousBattlegroundActivity` phases: grind, keep fights, outskirt hunt). Reports how soon and how often enemies reach the grinding player, bot time by level tier, camper kills, camp sharing and fights started against groups of 3+, per realm. Code: `Tests/BotSim/SimBattleground.cs`, test `UT_BotSim.BattlegroundGoals`. |
+
 Variants (side 0's rules):
 - **fight mode off**: the rules before #165 (server setting `bots / group_fight_mode` = False).
 - **fight mode (#165), before #170**: fight mode as merged in PR #168, with both sides on the rules before #170 (the
