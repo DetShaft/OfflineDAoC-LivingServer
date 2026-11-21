@@ -8,6 +8,19 @@ of its feature groups (bots remember you, grats, rezzes, alarms, nemeses, schedu
 language). From Beta 1.0 the whole add-on is the **Living Server** and that group is **Server life**.
 Older entries below keep the names they were written with.
 
+## Beta 1.1.26 — 2026-11-21
+
+All tests only: not yet seen in game.
+- **Killaloe as a leveling zone (#186):** gamebot kills pay the stock player-kill XP, battleground monster kills give
+  double XP (`battleground_mob_xp_rate` 2, players and gamebots), 60 new Killaloe mob camps, and the 240 camp mobs are
+  snapped to the navmesh at start. Server log: `KILLALOE_CAMPS`.
+- **Battleground bot activity phases (#187):** by level tier, bots grind camps, fight at keeps or hunt the outskirts
+  instead of all charging the nearest enemy. Hunters avoid groups of 3+ that outnumber them and prefer campers and
+  lower levels. Logs: `BG_ACTIVITY`, `BG_GRIND_CAMP`, `BG_HUNT_AVOID`.
+- **Battleground groups and sieges (#188):** bots form real groups (keep 3-8, hunters 2-3, grinders 2-4 per camp), respond to
+  sieges (defend their own keep, some hunters join a siege between the other realms), and hunters jump a camp of three
+  or fewer that is busy with monsters. Logs: `BG_PARTY_FORMED`, `BG_PARTY_ENDED`, `BG_SIEGE_RESPONSE`.
+
 ## Beta 1.1.25 — 2026-11-20
 
 All tests only: not yet seen in game.
