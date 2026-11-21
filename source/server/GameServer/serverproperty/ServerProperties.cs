@@ -774,6 +774,12 @@ namespace DOL.GS.ServerProperties
 		public static double RvR_XP_RATE;
 
 		/// <summary>
+		/// Battleground monster XP rate (owner, 2026-11-21: battlegrounds should be a leveling area worth the risk)
+		/// </summary>
+		[ServerProperty("rates", "battleground_mob_xp_rate", "An extra Experience Points multiplier for monster kills in the battlegrounds (Thidranki, Killaloe, Murdaigean, Caledonia), on top of xp_rate, xp_rate_by_level, bot_xp_rate and rvr_zones_xp_rate. Real players and autonomous gamebots get it alike. Player and gamebot kills are not affected. 1.0 turns it off.", 2.0)]
+		public static double BATTLEGROUND_MOB_XP_RATE;
+
+		/// <summary>
 		/// The Realm Points Rate
 		/// </summary>
 		[ServerProperty("rates", "rp_rate", "The Realm Points Rate Modifier - Edit this to change the rate at which you gain realm points e.g 1.5 is 50% more 2.0 is twice the amount (100%) 0.5 is half the amount (50%)", 1.0)]

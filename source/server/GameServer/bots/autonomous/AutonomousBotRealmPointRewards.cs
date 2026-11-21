@@ -5,14 +5,15 @@ using DOL.AI.Brain;
 using DOL.Database;
 using DOL.GS.PacketHandler;
 using DOL.GS.ServerProperties;
+using DOL.GS.ServerRules;
 using static DOL.GS.ServerRules.IServerRules;
 
 namespace DOL.GS;
 
 /// <summary>
-/// Treats a persistent autonomous gamebot as a player only for RvR realm-point
-/// credit. Ordinary NPCs, controlled pets, and temporary /spawn companions
-/// remain ineligible victims.
+/// Treats a persistent autonomous gamebot as a player for RvR credit: realm points and,
+/// since 1.1.26, the experience a real player kill pays (owner, 2026-11-21). Ordinary NPCs,
+/// controlled pets, and temporary /spawn companions remain ineligible victims.
 /// </summary>
 public static class AutonomousBotRealmPointRewards
 {
@@ -52,6 +53,27 @@ public static class AutonomousBotRealmPointRewards
             realmPoints += (int)(realmPoints * (groupContributorCount - 1) * 0.125);
 
         return Math.Max(0, realmPoints);
+    }
+
+    /// <summary>A player is worth four times a mob of the same level (GamePlayer.ExperienceValue).</summary>
+    public const int PlayerKillExperienceMultiplier = 4;
+
+    /// <summary>
+    /// Experience for one player's share of a gamebot kill, as stock OpenDAoC pays a real player kill
+    /// (AbstractServerRules.AwardPlayerOnPlayerKill): the victim's value (4x a mob of its level) split by the
+    /// player's group contributors, capped at <paramref name="capPercent"/> of the awarder's own value
+    /// (XP_PVP_Cap_Percent), times the group's share of the damage. Rates are not applied, as for a player kill.
+    /// </summary>
+    public static long CalculatePlayerKillExperience(long victimMobValue, long awarderMobValue,
+        int contributorCount, double damagePercent, int capPercent)
+    {
+        if (victimMobValue <= 0 || awarderMobValue <= 0 || contributorCount <= 0 || damagePercent <= 0 || capPercent <= 0)
+            return 0;
+
+        long baseXp = victimMobValue * PlayerKillExperienceMultiplier / contributorCount;
+        long cap = awarderMobValue * PlayerKillExperienceMultiplier * capPercent / 100;
+        baseXp = Math.Min(baseXp, cap);
+        return Math.Max(0, (long)(baseXp * Math.Min(1.0, damagePercent)));
     }
 
     private static readonly DOL.Logging.Logger RvrLog = DOL.Logging.LoggerManager.Create(typeof(AutonomousBotRealmPointRewards));
@@ -163,10 +185,23 @@ public static class AutonomousBotRealmPointRewards
 
                     if (realmPointsEarned > 0)
                         player.GainRealmPoints(realmPointsEarned, true);
+
+                    long experience = CalculatePlayerKillExperience(
+                        killedBot.GetExperienceValueForLevel(killedBot.Level),
+                        player.GetExperienceValueForLevel(player.Level),
+                        contributorCount, damagePercent, Properties.XP_PVP_CAP_PERCENT);
+                    if (experience > 0)
+                    {
+                        experience += AbstractServerRules.CalculateOutpostExperienceBonus(player, experience);
+                        player.GainExperience(eXPSource.Player, experience);
+                    }
                 }
                 else
                 {
-                    player.Out.SendMessage($"{AutonomousNameMask.NameFor(player, killedBot, 0, true)} has been killed recently and is worth no realm points!",
+                    string victimName = AutonomousNameMask.NameFor(player, killedBot, 0, true);
+                    player.Out.SendMessage($"{victimName} has been killed recently and is worth no realm points!",
+                        eChatType.CT_Important, eChatLoc.CL_SystemWindow);
+                    player.Out.SendMessage($"{victimName} has been killed recently and is worth no experience!",
                         eChatType.CT_Important, eChatLoc.CL_SystemWindow);
                 }
 
