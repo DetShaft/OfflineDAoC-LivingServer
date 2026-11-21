@@ -69,11 +69,23 @@ namespace DOL.GS
             if (activity == AutonomousBattlegroundActivity.Activity.Grind)
             {
                 _rvrIntent = AutonomousRvrEventLayer.Intent.Roam;
-                if (GrindBattleground(brain, bot, bracket) is { } grinding) return grinding;
+                if (GrindBattleground(brain, bot, bracket) is { } grinding)
+                {
+                    if (_battlegroundActivity != activity)
+                    {
+                        // A camp turned up after a keep-fights fallback.
+                        _battlegroundActivity = activity;
+                        AutonomousBattlegroundActivity.Report(AutonomousBattlegroundActivity.KeyOf(bot), activity);
+                    }
+                    return grinding;
+                }
                 // No camp with room or in level: this phase fights at the keep instead.
                 activity = AutonomousBattlegroundActivity.Activity.KeepFights;
-                _battlegroundActivity = activity;
-                AutonomousBattlegroundActivity.Report(AutonomousBattlegroundActivity.KeyOf(bot), activity);
+                if (_battlegroundActivity != activity)
+                {
+                    _battlegroundActivity = activity;
+                    AutonomousBattlegroundActivity.Report(AutonomousBattlegroundActivity.KeyOf(bot), activity);
+                }
             }
             if (activity == AutonomousBattlegroundActivity.Activity.OutskirtHunt)
             {

@@ -16,22 +16,27 @@ namespace DOL.GS
         private CampDestination _battlegroundGrindCamp;
         private long _nextBattlegroundGrindPlan;
         private Vector2? _battlegroundAvoid;
+        // The activity the phase chose; _battlegroundActivity is what the bot does (keep fights when a grind phase finds no camp).
+        private AutonomousBattlegroundActivity.Activity? _battlegroundChosen;
 
         private AutonomousBattlegroundActivity.Activity UpdateBattlegroundActivity(GameBot bot, BattlegroundBrackets.Bracket bracket)
         {
             long key = AutonomousBattlegroundActivity.KeyOf(bot);
             AutonomousBattlegroundActivity.Activity activity = AutonomousBattlegroundActivity.ChooseNow(bot.Level,
                 bracket.MinLevel, bracket.MaxLevel, key, GameLoop.GameLoopTime);
-            if (_battlegroundActivity != activity)
+            // Compared with the phase's chosen activity, not a grind phase's keep-fights fallback (Squire's review of
+            // #187): otherwise every turn of a fallback counted as a change and re-rolled the lurk point.
+            if (_battlegroundChosen != activity)
             {
                 Log.Info($"BG_ACTIVITY bot={bot.Name} id={bot.DatabaseID} realm={GlobalConstants.RealmToName(bot.Realm)} level={bot.Level} " +
                          $"battleground={bracket.Name} tier={AutonomousBattlegroundActivity.TierOf(bot.Level, bracket.MinLevel, bracket.MaxLevel)} " +
-                         $"activity={activity} previous={_battlegroundActivity?.ToString() ?? "none"}");
+                         $"activity={activity} previous={_battlegroundChosen?.ToString() ?? "none"}");
                 _battlegroundRoamPoint = null;
                 _battlegroundAvoid = null;
+                _battlegroundChosen = activity;
+                _battlegroundActivity = activity;
+                AutonomousBattlegroundActivity.Report(key, activity);
             }
-            _battlegroundActivity = activity;
-            AutonomousBattlegroundActivity.Report(key, activity);
             return activity;
         }
 
@@ -40,6 +45,7 @@ namespace DOL.GS
         {
             DropBattlegroundGrindCamp(bot);
             _battlegroundActivity = null;
+            _battlegroundChosen = null;
             _battlegroundAvoid = null;
             AutonomousBattlegroundActivity.Forget(AutonomousBattlegroundActivity.KeyOf(bot));
         }
