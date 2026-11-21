@@ -31,6 +31,42 @@ namespace DOL.UnitTests.BotSim
         /// <summary>The variant whose findings CI warns about and BOT_SIM_STRICT fails on: what ships today.</summary>
         public bool Live;
 
+        /// <summary>
+        /// The rules differ by realm on purpose (upstream 1.2's realm kill orders), so the realm-evenness check skips this
+        /// variant. Its per-realm rows are the point of the comparison.
+        /// </summary>
+        public bool RealmFlavoured;
+
+        /// <summary>Head-to-head baseline: side 0's bots on this fork's autonomous rules, so both sides are identical.</summary>
+        public static SimVariant MirrorControl() => new()
+        {
+            Name = "mirror control",
+            Description = "Harness check, not a rule set: side 0's bots use the enemy's autonomous rules, so both sides are identical. It should win about half; if it does, the other variants' results come from their rules, not from the setup. Also the baseline for \"upstream 1.2 group vs our autonomous\".",
+            Side0Bots = AutonomousEnemy,
+        };
+
+        /// <summary>Upstream 1.2's field plan as the enemy gamebot group, against this fork's live rules (comparison only).</summary>
+        public static SimVariant VsUpstreamEnemy() => new()
+        {
+            Name = "live vs upstream 1.2 enemy",
+            Description = "Comparison with upstream Living Server 1.2 (v1.2, 3ba8f20), not shipped: side 0 runs this fork's live rules; the enemy gamebot group runs upstream's open-field plan as carried into the harness by hand (Upstream12FieldTactics: perception curve, stances, kill-order call, crowd-control plan, interrupt duty; Average tier). Compare side 0's wins with the live variant, which meets this fork's autonomous enemy.",
+            Side0Bots = () => new FightModeTactics(),
+            Side1Bots = () => new Upstream12FieldTactics { Label = "upstream 1.2 enemy" },
+            RealmFlavoured = true,
+            Tags = { "upstream", "enemy-ai" },
+        };
+
+        /// <summary>Upstream 1.2's field plan run by side 0's bots against this fork's autonomous enemy (comparison only).</summary>
+        public static SimVariant UpstreamGroup(Upstream12FieldTactics.Tier tier = Upstream12FieldTactics.Tier.Average) => new()
+        {
+            Name = tier == Upstream12FieldTactics.Tier.Average ? "upstream 1.2 group vs our autonomous" : $"upstream 1.2 group ({tier}) vs our autonomous",
+            Description = $"Comparison with upstream Living Server 1.2, not shipped: side 0's bots run upstream's open-field plan ({tier} tier) and the enemy runs this fork's autonomous rules. Compare with mirror control (ours against ours). Upstream keeps a group a player leads on older rules, so on side 0 this is a what-if: the field plan in a group whose leader charges.",
+            Side0Bots = () => new Upstream12FieldTactics { SkillTier = tier, Label = $"upstream 1.2 group ({tier})" },
+            Side1Bots = AutonomousEnemy,
+            RealmFlavoured = true,
+            Tags = { "upstream" },
+        };
+
         public static SimVariant Current() => new()
         {
             Name = "fight mode off",
@@ -97,6 +133,10 @@ namespace DOL.UnitTests.BotSim
                 : new[] { 1, 2, 3 };
         public Func<SimSetup, SimWorld> Build;
         public List<SimVariant> Variants = new() { SimVariant.Current(), SimVariant.FightModeBefore170(), SimVariant.FightMode170(), SimVariant.FightMode() };
+        /// <summary>Upstream 1.2 comparison: add the mirror control and the upstream group variant.</summary>
+        public bool UpstreamComparison = true;
+        /// <summary>The scenario's enemy side has gamebots (so "live vs upstream 1.2 enemy" means something).</summary>
+        public bool HasEnemyBots = true;
         public List<SimExpectation> Expectations = new();
     }
 
@@ -105,10 +145,25 @@ namespace DOL.UnitTests.BotSim
         public static IEnumerable<(eRealm, eRealm)> RealmPairs() =>
             from a in SimRoster.Realms from b in SimRoster.Realms where a != b select (a, b);
 
+        /// <summary>The scenario's own variants plus the upstream 1.2 comparison variants (by name, no duplicates).</summary>
+        public static List<SimVariant> AllVariants(SimScenario scenario)
+        {
+            var all = scenario.Variants.ToList();
+            if (!scenario.UpstreamComparison)
+                return all;
+            var extra = new List<SimVariant> { SimVariant.MirrorControl(), SimVariant.UpstreamGroup() };
+            if (scenario.HasEnemyBots)
+                extra.Insert(1, SimVariant.VsUpstreamEnemy());
+            foreach (SimVariant v in extra)
+                if (all.All(x => x.Name != v.Name))
+                    all.Add(v);
+            return all;
+        }
+
         public static List<SimRunResult> Run(SimScenario scenario, IEnumerable<SimVariant> variants = null)
         {
             var results = new List<SimRunResult>();
-            foreach (SimVariant variant in variants ?? scenario.Variants)
+            foreach (SimVariant variant in variants ?? AllVariants(scenario))
                 foreach ((eRealm side0, eRealm side1) in RealmPairs())
                     foreach (int seed in scenario.Seeds)
                         results.Add(RunOne(scenario, new SimSetup { Side0 = side0, Side1 = side1, Seed = seed, Variant = variant }));
@@ -230,12 +285,9 @@ namespace DOL.UnitTests.BotSim
             Build = s => TwoGroups(s, StandardGroup, 2_400),
             Variants =
             {
-                new SimVariant
-                {
-                    Name = "mirror control",
-                    Description = "Harness check, not a rule set: side 0's bots use the enemy's autonomous rules, so both sides are identical. It should win about half; if it does, the other variants' results come from their rules, not from the setup.",
-                    Side0Bots = SimVariant.AutonomousEnemy,
-                },
+                SimVariant.MirrorControl(),
+                SimVariant.UpstreamGroup(Upstream12FieldTactics.Tier.Veteran),
+                SimVariant.UpstreamGroup(Upstream12FieldTactics.Tier.Casual),
             },
             Expectations =
             {
@@ -274,6 +326,7 @@ namespace DOL.UnitTests.BotSim
             Issues = "#157 #160",
             Why = "A player-led group stands in the courtyard after the gate and keep door fell; the upper gatehouse doors still stand (Dun Killaloe, 2026-11-19). The player attacks the lord; two guards defend. Side 1 is the keep (NPCs).",
             Seconds = 150,
+            UpstreamComparison = false, // keep fights are outside upstream's field plan (RvrTacticsScope)
             Build = s =>
             {
                 var w = new SimWorld(s.Seed);
@@ -439,6 +492,7 @@ namespace DOL.UnitTests.BotSim
             Title = "Chase / leash distance",
             Why = "Two enemy melee harass side 0 for 8 s, then run straight away at the same speed. The player never moves or attacks. Measures how far bots chase away from their leader.",
             Seconds = 60,
+            HasEnemyBots = false, // two scripted runners
             Build = s =>
             {
                 var w = new SimWorld(s.Seed);

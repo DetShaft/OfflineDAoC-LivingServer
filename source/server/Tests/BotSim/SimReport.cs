@@ -34,7 +34,7 @@ namespace DOL.UnitTests.BotSim
                 foreach (SimExpectation e in scenario.Expectations)
                 {
                     (bool ok, string detail) = e.Check(runs);
-                    bool live = scenario.Variants.Any(v => v.Name == group.Key && v.Live);
+                    bool live = SimRunner.AllVariants(scenario).Any(v => v.Name == group.Key && v.Live);
                     findings.Add(new SimFinding { Scenario = scenario.Name, Variant = group.Key, Expectation = e.Text, Measured = detail, Ok = ok, Live = live });
                 }
             }
@@ -59,7 +59,7 @@ namespace DOL.UnitTests.BotSim
             sb.AppendLine($"Runs: {perVariant} per variant (6 realm pairings x {scenario.Seeds.Length} seeds), up to {scenario.Seconds} simulated seconds each. Level {SimScenarios.Level}. Simulation results are tests only, not in-game evidence.");
             sb.AppendLine();
             sb.AppendLine("Variants:");
-            foreach (SimVariant v in scenario.Variants)
+            foreach (SimVariant v in SimRunner.AllVariants(scenario))
                 sb.AppendLine($"- **{v.Name}**: {v.Description}");
             sb.AppendLine();
 
@@ -89,6 +89,26 @@ namespace DOL.UnitTests.BotSim
                     sb.AppendLine($"| {variant} | {SimRoster.Short(realm)} | {runs.Count} | {runs.Count(r => r.WinnerSide == 0)} | {F1(idle)}% | " +
                                   $"{F(bots.Average(b => b.Metrics.DamageDealt))} | {F(bots.Average(b => b.Metrics.DamageTaken))} | {bots.Average(b => b.Metrics.Deaths):0.00} | " +
                                   $"{bots.Sum(b => b.Metrics.CcCasts)} | {bots.Sum(b => b.Metrics.WastedCc)} | {F(bots.Max(b => b.Metrics.MaxDistanceFromLeader))} |");
+                }
+            sb.AppendLine();
+
+            sb.AppendLine("## Side 1 bots by realm (both sides' AI, every variant)");
+            sb.AppendLine();
+            sb.AppendLine("The enemy gamebot group by its own realm: for the upstream 1.2 comparison, the rows of \"live vs upstream 1.2 enemy\" are upstream's bots and the others this fork's autonomous bots.");
+            sb.AppendLine();
+            sb.AppendLine("| Variant | Side 1 realm | Runs | Side 1 won | Side 0 won | Timed out | Deaths / bot | Damage dealt / bot | CC casts | Wasted CC | Enemies mezzed | Casts interrupted (side 0) |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|");
+            foreach (string variant in variants)
+                foreach (var realm in SimRoster.Realms)
+                {
+                    var runs = results.Where(r => r.Variant == variant && r.Realms.Side1 == realm).ToList();
+                    var bots = runs.SelectMany(r => r.Side(1).Where(a => a.IsBot)).ToList();
+                    if (bots.Count == 0)
+                        continue;
+                    int won1 = runs.Count(r => r.WinnerSide == 1), won0 = runs.Count(r => r.WinnerSide == 0);
+                    sb.AppendLine($"| {variant} | {SimRoster.Short(realm)} | {runs.Count} | {won1} | {won0} | {runs.Count - won0 - won1} | " +
+                                  $"{bots.Average(b => b.Metrics.Deaths):0.00} | {F(bots.Average(b => b.Metrics.DamageDealt))} | {bots.Sum(b => b.Metrics.CcCasts)} | " +
+                                  $"{bots.Sum(b => b.Metrics.WastedCc)} | {bots.Sum(b => b.Metrics.EnemiesMezzed)} | {runs.SelectMany(r => r.Bots()).Sum(b => b.Metrics.CastsInterrupted)} |");
                 }
             sb.AppendLine();
 

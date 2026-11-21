@@ -61,7 +61,7 @@ namespace DOL.UnitTests
 
             // The harness must produce a fight: someone on side 0 dealt or took damage.
             Assert.That(results.All(r => r.Side(0).Any(a => a.Metrics.DamageDealt + a.Metrics.DamageTaken > 0)), Is.True, "Every run has combat.");
-            AssertRealmEven(results);
+            AssertRealmEven(results, SimRunner.AllVariants(scenario));
 
             if (Strict)
                 Assert.That(findings.Where(f => f.Live && !f.Ok).Select(f => f.Expectation), Is.Empty,
@@ -72,10 +72,12 @@ namespace DOL.UnitTests
         /// Realm evenness: role stats are identical in every realm, so a realm playing side 0 must get exactly the same
         /// numbers as any other realm with the same seeds. A difference means realm leaked into a rule.
         /// </summary>
-        private static void AssertRealmEven(System.Collections.Generic.List<SimRunResult> results)
+        private static void AssertRealmEven(System.Collections.Generic.List<SimRunResult> results, System.Collections.Generic.List<SimVariant> variants)
         {
             foreach (var variant in results.GroupBy(r => r.Variant))
             {
+                if (variants.Any(v => v.Name == variant.Key && v.RealmFlavoured))
+                    continue; // upstream 1.2's realm kill orders differ by realm on purpose
                 var perRealm = SimRoster.Realms.Select(realm =>
                 {
                     var bots = variant.Where(r => r.Realms.Side0 == realm).SelectMany(r => r.Bots()).ToList();
