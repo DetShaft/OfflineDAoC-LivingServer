@@ -89,6 +89,14 @@ A new install starts with an empty world:
 The launcher's bot goals settings choose how much bots solo, group or go to RvR at each level
 range. You can recruit companion bots in game.
 
+### Planning a character
+
+The launcher's **Tools** tab has a **Character Builder**. Pick a realm, class, race and level to see your stats
+(race, creation points, and what levels add), your spec points, and what each line gives at each spec level:
+styles, spells and abilities, read from your game's own data. Type a level in a line's **Spec** column to plan a
+spec. **SAVE BUILD** keeps a plan in `runtime\character-builds`; **COPY SUMMARY** copies it as text. It only plans:
+it never creates or changes a character, and it works whether the server is running or not.
+
 #### How many bots?
 
 Counts are gamebots per realm (Albion / Midgard / Hibernia):

@@ -91,6 +91,10 @@ internal static class BotCharacterGenerator
             .ToArray();
     }
 
+    /// <summary>The legal player races of a class (the character builder's race picker, #69).</summary>
+    public static IReadOnlyList<(int Id, string Name)> RacesForClass(int classId) =>
+        Choices.Values.SelectMany(pool => pool).FirstOrDefault(entry => entry.ClassId == classId)?.Races ?? Array.Empty<(int Id, string Name)>();
+
     /// <summary>
     /// A new bot. Its name is three in four in the 2003 style and one in four a lore name (OfflineDaoc.Shared.EraBotNames has
     /// the mix and the research); <paramref name="rejected"/> is the server's invalid-names check (EraBotNames.LoadRejected).
