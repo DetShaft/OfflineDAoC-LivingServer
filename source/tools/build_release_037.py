@@ -54,7 +54,9 @@ QUEST_RESPAWN_SECONDS = 300
 
 # Personal or run-state files that are never part of a public world.
 EXCLUDED_DIRS = {"logs", "backups", "dxvk-staging", "deployment-backups", "keep-relic-reset-backups", "progress-backups",
-                 "screenshots", ".git", "testresults", "dumps"}
+                 "screenshots", ".git", "testresults", "dumps",
+                 # the launcher's saved character plans (Tools tab, #69)
+                 "character-builds"}
 EXCLUDED_NAMES = {"account.txt", "rvr-world.json", "bot-goals.json", "bot-world.json", "bot-world.request", "bot-ai-delay.json",
                   "realm-events.request.json", "realm-events.result.json", "realm-event-records.sqlite3",
                   "realm-event-records.sqlite3-wal", "realm-event-records.sqlite3-shm", "errorlog.txt",
