@@ -110,6 +110,29 @@ namespace DOL.UnitTests
                     "BOT_SIM_STRICT=1: the live rules miss these expectations.");
         }
 
+        /// <summary>
+        /// Chant and song twisting by level (issue #32, SimTwisting): Paladin, Minstrel, Bard and Skald at levels 10-45
+        /// through travel, fights and rests, live tiers against the rules before. Findings are reported, not failed.
+        /// </summary>
+        [Test]
+        public void Twisting()
+        {
+            var runs = SimTwisting.RunAll();
+            var findings = SimTwisting.Evaluate(runs);
+            SimTwisting.Write(runs, findings);
+            foreach (SimFinding f in findings)
+                TestContext.Progress.WriteLine($"[bot-sim] {(f.Ok ? "pass   " : "FINDING")} {f.Scenario} / {f.Variant}: {f.Expectation} -> {f.Measured}");
+            Assert.That(runs.All(r => r.Casts > 0), Is.True, "Every bot sings or chants.");
+            var again = SimTwisting.RunOne(SimTwisting.Rules.Live, "Skald", 45, 2);
+            var first = runs.Single(r => r.Rules == SimTwisting.Rules.Live && r.Class == "Skald" && r.Level == 45 && r.Seed == 2);
+            Assert.That((again.Casts, again.TwistCasts, again.Toggles), Is.EqualTo((first.Casts, first.TwistCasts, first.Toggles)), "The same seed gives the same run.");
+            // Hard rule at every tier: the live rules never toggle a running chant or song off.
+            Assert.That(runs.Where(r => r.Rules == SimTwisting.Rules.Live).Sum(r => r.Toggles), Is.Zero);
+            if (Strict)
+                Assert.That(findings.Where(f => f.Live && !f.Ok).Select(f => f.Expectation), Is.Empty,
+                    "BOT_SIM_STRICT=1: the live rules miss these expectations.");
+        }
+
         [Test]
         public void SameSeedGivesTheSameRun()
         {

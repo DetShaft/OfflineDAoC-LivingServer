@@ -59,6 +59,7 @@ Metric definitions:
 | `los-ridge` | The 8v8 with a ridge just in front of side 0 that blocks sight but not movement (#176). Measures the longest idle stretch of casters and mezzers. |
 | `split-kite` | The player holds the middle; three enemy melee fight for 7 s, break off 1,400 units east for 7 s, and come back, while the enemy back line holds the west (#177). Measures how far side 0's melee get from the nearest friendly caster or healer. |
 
+| `twisting` | Not a fight scenario: chant and song twisting by level (issue #32). One grouped Paladin, Minstrel, Bard and Skald at levels 10, 22, 35 and 45 run 10 minutes of travel, fights and rests while the group's lowest health, power and endurance follow a fixed curve. Compares **before** (performers by `BotSongTwistPolicy.Choose` with the old song order, Paladins holding #41's one chant, Skalds and Minstrels silent in melee) with **live** (`BotTwistPlanner` tiers). The spells' cast times, child lifetimes, pulse frequencies and reuse timers are the game database's. Reports casts per minute, twists, the most casts in 5 s, recasts that would toggle a song off, and how much of the time each need (speed while traveling, damage or armor in fights, heal under 60%, power, endurance, resists) had a matching effect up, by class, level and realm. Code: `Tests/BotSim/SimTwisting.cs`, test `UT_BotSim.Twisting`. |
 | `battleground-goals` | Not a fight scenario: the goal layer of battleground tours (owner, 2026-11-21). Three realms of eighteen bots (levels 15-19), a central keep held in rotation, scripted 8-bot raids on it at 10 and 40 minutes, and a scripted level 16 player grinding a camp for an hour on a symmetric field. Compares **before** (every bot charges the nearest enemy within 5,000), **phases** (PR #187: grind, keep fights, outskirt hunt) and **live** (phases plus `AutonomousBattlegroundParties`, siege responses and hunters jumping a busy camp of three). Reports how soon and how often enemies reach the grinding player, bot time by level tier, party time, camper kills, camp sharing, fights started against groups of 3+, defenders per siege second and raid captures, per realm. Code: `Tests/BotSim/SimBattleground.cs`, test `UT_BotSim.BattlegroundGoals`. |
 
 Variants (side 0's rules):
@@ -131,7 +132,7 @@ the real server code wherever a bot rule is a pure function.
 - Pets (#175) fight the nearest enemy near their owner, are not in the group, and die with their owner.
 
 **Not simulated:** power and endurance, styles and positionals, buffs, stuns and roots (only mez), pet classes' own
-rules (pets are plain melee), songs, stealth, archers, realm abilities, terrain beyond sight ridges, siege, the autonomous gamebot goal layer (travel, camps,
+rules (pets are plain melee), songs (except in the `twisting` scenario), stealth, archers, realm abilities, terrain beyond sight ridges, siege, the autonomous gamebot goal layer (travel, camps,
 group orders), real class spell lists, and Darkness Falls or raid AI.
 
 ## Adding a scenario

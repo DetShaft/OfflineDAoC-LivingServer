@@ -2491,6 +2491,24 @@ namespace DOL.GS.ServerProperties
 		public static int GROUP_FIGHT_CHASE_DISTANCE = 1500;
 
 		/// <summary>
+		/// Issue #32: the levels at which bots twist chants and songs better.
+		/// </summary>
+		[ServerProperty("bots", "twist_tier_levels", "Issue #32: three levels, such as 15,30,40, at which Paladin, Minstrel, Bard and Skald bots twist chants and songs better, the way a player learns the class. Below the first a bot holds one chant or song (Novice). From the first it twists one secondary with its anchor, never while moving (Practiced). From the second it twists the two its group needs most, also while moving, and switches at once to the heal chant or song when a groupmate in a fight drops under 40% (Skilled). From the third it twists every useful one by need and reacts under 55% (Expert). A solo Paladin always holds one chant, and Wardens keep one situational chant. 1,1,1 makes every bot an Expert; 99,99,99 makes every bot a Novice.", "15,30,40")]
+		public static string BOT_TWIST_TIER_LEVELS = "15,30,40";
+
+		/// <summary>
+		/// Issue #32: the least time between two twist casts for each tier above Novice.
+		/// </summary>
+		[ServerProperty("bots", "twist_gap_seconds", "Issue #32: three numbers of seconds, such as 6,3,0: the least time between two twist casts (a secondary chant or song) for Practiced, Skilled and Expert bots (see twist_tier_levels). The return to the anchor does not count. The songs' own reuse timers always apply.", "6,3,0")]
+		public static string BOT_TWIST_GAP_SECONDS = "6,3,0";
+
+		/// <summary>
+		/// Issue #32: log the chants and songs cast by bots grouped with a player.
+		/// </summary>
+		[ServerProperty("bots", "twist_log", "Issue #32: write a BOT_TWIST line to the server log for each chant or song a bot in your group casts (tier, spell, reason and what the group needed), not counting the return to its anchor after a twist.", true)]
+		public static bool BOT_TWIST_LOG = true;
+
+		/// <summary>
 		/// Autonomous gamebots speak lines from the bot-voices corpus in their own writing style.
 		/// </summary>
 		[ServerProperty("bots", "bot_voices_enabled", "Autonomous gamebots say pre-written, period lines (docs/bot-voices/DESIGN.md) chosen by personality, level, realm, class and situation, each in its own writing style, without repeating a line in a realm within 6 hours. On by default since Beta 1.1 (the talking update). False keeps the old lines.", true)]
