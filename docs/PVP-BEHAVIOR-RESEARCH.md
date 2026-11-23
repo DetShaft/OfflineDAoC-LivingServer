@@ -6,6 +6,9 @@ Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here wa
 Follow-up (#138, 2026-11-23): [PVP-GROUP-PLAYBOOK.md](PVP-GROUP-PLAYBOOK.md) walks a group fight phase by phase,
 gives a decision order per role and maps each step onto the bot code.
 
+For the class-by-class comparison with this server's own class data, and the balance and era-gate
+recommendations from #108, see [docs/research/CLASS-BALANCE-RESEARCH.md](research/CLASS-BALANCE-RESEARCH.md).
+
 ## How to read this
 
 - **Labels.** Every claim carries one of three labels:
