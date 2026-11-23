@@ -3,6 +3,9 @@
 Status: research only (2026-11-19). No code, data or balance changes. Written by Squire - Grokbot for
 Jay's brief on #108, #126, #136, #151, #152 and #32. Tests only: nothing here was checked in game.
 
+Follow-up (#138, 2026-11-23): [PVP-GROUP-PLAYBOOK.md](PVP-GROUP-PLAYBOOK.md) walks a group fight phase by phase,
+gives a decision order per role and maps each step onto the bot code.
+
 ## How to read this
 
 - **Labels.** Every claim carries one of three labels:
