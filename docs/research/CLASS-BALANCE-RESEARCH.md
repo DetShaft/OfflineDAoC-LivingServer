@@ -37,6 +37,7 @@ asked for and the PvP doc did not do:
 | CH-DT | Camelot Herald wiki "Damage Table", PDF supplied by Jay | Live per-weapon damage factors (current page, not era-tagged). |
 | CH-1.5x/1.6x/1.7x | Camelot Herald patch notes 1.50 to 1.72, 1.104, 1.108, 1.111, PDFs supplied by Jay (2026-11-19) | 1.56 Warrior weapon skill, 1.68 interrupt, 1.72 pet stun immunity checked directly. |
 | PX-S1 | Phoenix Season 1 patch notes (Wayback copy), as summarised in PVP-BEHAVIOR-RESEARCH.md | The Wayback copy was blocked for automated fetching on 2026-11-23 and the Phoenix site is offline, so Phoenix items are taken from the PvP doc and keep its labels. |
+| OD-DB | OpenDAoC public database, `opendaoc-db-core/spell.sql` (master), read 2026-11-23: https://github.com/OpenDAoC/OpenDAoC-Database | Stun rows and `ResurrectHealth` only. |
 | PVP | docs/PVP-BEHAVIOR-RESEARCH.md, Table 1 and section A | Full per-class Phoenix/Eden columns and the source list. |
 | #35/#109 | Bonedancer research comment on #108 | Eden Bonedancer comparison; Jay chose none of those changes (2026-11-17). |
 
@@ -123,7 +124,7 @@ and one is Midgard; Hibernia has none, because no Hibernian class has a split ta
 | Rule | This server today | Classic live | Phoenix | Eden | Confidence |
 |---|---|---|---|---|---|
 | Spell interrupt window after being hit | 3.0 s (`spell_interrupt_duration` = 3000) | 2 s from *1.68* | Nsf | Nsf | Confirmed (CODE, CH-1.68) |
-| Pet stun immunity (Cabalist Amber Simulacrum, Spiritmaster Spirit Thrall line, Druid Nature Spirit line) | 0 s (`CCSpellHandler`: "Pet Stun" gives no immunity) | 5 × stun length from *1.72* | Nsf | Nsf | Confirmed (CODE, CH-1.72) |
+| Pet stun immunity (Cabalist Amber Simulacrum, Spiritmaster Spirit Thrall line, Druid Nature Spirit line) | Depends on spell data: `StunSpellHandler.OnEffectExpires` gives `Duration × ResurrectHealth` when the spell's `ResurrectHealth` > 0 (its comment says 5×); otherwise the base handler gives 0 s for an effect named "Pet Stun" | 5 × stun length from *1.72* | Nsf | Nsf | Live Confirmed (CH-1.72). Public OpenDAoC data: no stun spell has `ResurrectHealth` > 0, and "Pet Stun" (2165) has 0, so 0 s (Confirmed, OD-DB). Jay's shipped DB not read |
 | Player CC immunity after mez/stun | 60 s flat (`immunity_timer_use_adaptive` = False) | 60 s | Nsf | Nsf | Confirmed (CODE) |
 | Guard bonus block per Guard level | 5% | 5% | Nsf | 10% (custom) | Confirmed (CODE, EDN-W) |
 | Protect range | 1,000 | 1,000 | Nsf | 2,500, and 50% stronger against pets (custom) | Confirmed (CODE, EDN-W) |
@@ -136,8 +137,10 @@ and one is Midgard; Hibernia has none, because no Hibernian class has a split ta
 | Concentration buff range | unlimited (`buff_range` = 0) | limited | Nsf | Nsf | Confirmed (CODE); live range Unsure |
 | Maximum active pulses | 1, or 2 for Paladin, Minstrel, Skald, Bard, Warden | same | Nsf | 9 for everyone (custom) | Confirmed (CODE, EDN-W) |
 
-**Finding 2 (Confirmed).** Two global values sit on the pre-patch side of a live change: the 3 s interrupt window
-(live 2 s from 1.68) and zero pet-stun immunity (live 5× from 1.72). Both are real, even, one-switch decisions.
+**Finding 2 (Confirmed).** One global value sits on the pre-patch side of a live change: the 3 s interrupt window
+(live 2 s from 1.68). Pet-stun immunity (live 5× from 1.72) may or may not be in place: the code supports it, but
+whether it applies depends on each pet stun spell's `ResurrectHealth` in the database, which was not read. Both are
+even decisions.
 The pet-stun rule touches exactly one class per realm (Cabalist, Spiritmaster, Druid). The interrupt window touches
 every caster, so Hibernia, the caster realm, feels it most. That is realm identity, not a reason to skip it.
 
@@ -159,7 +162,7 @@ patch tag. "Nsf" = no source found.
 | Friar | 1.5 / 19 | Factor 21 | Cure Nearsight; group cure disease; 70% Focus Shield | One value for crush (live 18) and staff (live 20) | Phoenix Unsure |
 | Sorcerer | 1.0 / 14 | Nsf | Resist debuffs become 8 s spec debuffs; DD+snare 2.6 s | None | Confirmed (EDN-W) |
 | Theurgist | 1.0 / 14 | Nsf | Pet health −25%; air pet stun range 750 | Uncapped pets (1.65) | Confirmed (CODE, EDN-W) |
-| Cabalist | 1.0 / 14 | Nsf | 8 s spec resist debuffs; stat debuffs 60 s / 10 s recast | Pet stun gives no immunity (see R2) | Confirmed |
+| Cabalist | 1.0 / 14 | Nsf | 8 s spec resist debuffs; stat debuffs 60 s / 10 s recast | Pet stun immunity is 0 s in stock data (see R2) | Confirmed (OD-DB); Jay's DB unread |
 | Wizard | 1.0 / 12 | Nsf | Thornweed Field; DD+snare 50%, 2.6 s | None | Confirmed (EDN-W) |
 | Necromancer | 1.0 / 14 | Nsf | No Necromancer; Occultist instead (pet 88% level) | Acts through its pet; no reference to compare | Confirmed (EDN-W) |
 | Minstrel | 1.5 / 18 | Charm 6 s recast; releasing the pet cancels the charm pulse | Charm no longer breaks mez/root on expiry; +50% charm duration *(1.121)*; Determination; Speed of Sound only in a group | Called the strongest classic class for control (Unsure) | Phoenix Confirmed |
@@ -178,7 +181,7 @@ patch tag. "Nsf" = no source found.
 | Healer | 1.0 / 18 | Celerity range 1,500 | Mez-dampening self buff *(1.114)*; Cure Nearsight | None | Confirmed |
 | Shaman | 1.0 / 18 | Nsf | Cure Nearsight; group cure disease; regen buffs become HoTs; faster Cave DDs | None | Confirmed (EDN-W) |
 | Runemaster | 1.0 / 14 | Nsf | 8 s spec resist debuffs; Thornweed; DD+snare 50%, 2.6 s | None | Confirmed (EDN-W) |
-| Spiritmaster | 1.0 / 14 | Nsf | 8 s spec resist debuffs; pet intercept 75% to 60% | Pet stun gives no immunity (see R2) | Confirmed |
+| Spiritmaster | 1.0 / 14 | Nsf | 8 s spec resist debuffs; pet intercept 75% to 60% | Pet stun immunity is 0 s in stock data (see R2) | Confirmed (OD-DB); Jay's DB unread |
 | Bonedancer | 1.0 / 14 | Nsf | Body debuff 10/20/30% for 8 s; healer minion 80%; DD+snare 2.6 s | Jay chose none of the Eden changes (#35, 2026-11-17) | Confirmed |
 | Hunter | 2.0 / 19 | Nsf | Tracker's Alacrity (custom); Power Shot 3.5 s *(1.121)* | Phoenix cut Ranger and Scout bows but no Hunter note was found | Unsure |
 | Shadowblade | 2.2 / 18 | Nsf | DoT poisons raised *(1.104)*; Pincer 4 s stun *(1.121)* | None | Consensus |
@@ -192,7 +195,7 @@ patch tag. "Nsf" = no source found.
 | Blademaster | 2.0 / 22 | Nsf | Stoicism III; Slam 5 s; Triple Wield buffed *(1.111)* | None | Confirmed (EDN-W) |
 | Champion | 2.0 / 19 | Nsf | Stat debuff range 1,500; instant acuity debuff *(1.114)* | None | Confirmed (EDN-W) |
 | Valewalker | 1.5 / 21 | Used as the factor-21 reference point | Group damage add raised *(1.114)*; Blizzard Blade −15% | None | Confirmed (EDN-W) |
-| Druid | 1.0 / 16 | Nsf | Cure Nearsight 3.5 s *(1.114)*; Nature DoT to baseline *(1.101)* | Pet stun gives no immunity (see R2) | Confirmed |
+| Druid | 1.0 / 16 | Nsf | Cure Nearsight 3.5 s *(1.114)*; Nature DoT to baseline *(1.101)* | Pet stun immunity is 0 s in stock data (see R2) | Confirmed (OD-DB); Jay's DB unread |
 | Bard | 1.5 / 18 | Instant amnesia range 1,850 | Second instant DD *(1.102)*; mez-dampening buff *(1.114)*; amnesia 2,000 *(1.116)* | Dominant group healer on Eden (Consensus) | Phoenix Confirmed |
 | Warden | 1.5 / 18 | Nsf | Greater heal and group heal *(1.110)*; root; Cure Nearsight | None | Confirmed (EDN-W) |
 | Eldritch | 1.0 / 14 | Nsf | 8 s spec resist debuffs; Ichor *(1.121)*; DD+snare 50%, 2.6 s | None | Confirmed (EDN-W) |
@@ -218,7 +221,7 @@ The "Rule" column is what stays the same everywhere.
 | # | Recommendation | Rule (same in every realm) | Type | Suggested decision |
 |---|---|---|---|---|
 | R1 | Keep classic class constants as they are | Live damage table per class | none | Keep |
-| R2 | Pet stun immunity 5× stun length | All pet stuns, *1.72* | Era gate | Add as an era setting; default off for Classic/SI |
+| R2 | Pet stun immunity 5× stun length | All pet stuns, *1.72* | Check data first | Read the three pet stun spells' `ResurrectHealth`; if 0, Jay decides whether to set 5 |
 | R3 | Spell interrupt window 2 s instead of 3 s | All casters, *1.68* | Era gate or server setting | Jay's call; the most faithful classic value is 2 s |
 | R4 | Per-weapon-line damage factors | Live table per weapon line | Fidelity fix | Later, as one change for all classes |
 | R5 | Phoenix hybrid-melee bump (factor 21) | Every "hybrid melee" class in each realm, not Albion only | Balance | Not now; revisit after group-AI work |
@@ -234,18 +237,30 @@ Today's spec multipliers, weapon-skill bases and HP match live classic for every
 class-wide constant needs to change to be faithful. Balance worries in classic-era commentary (Infiltrator, Minstrel,
 Bard healing) are about abilities and play, not constants, and they are mostly bot-AI questions (see PVP doc).
 
-### R2. Pet stun immunity, as a *1.72* era gate (Confirmed)
+### R2. Pet stun immunity, check the data first (live rule Confirmed, ours Unsure)
 
-Live 1.72 made a pet's stun give the target an immunity five times the stun's length. Today the server gives none
-(`CCSpellHandler.cs` returns 0 for "Pet Stun"), so these pets can chain-stun a target.
+Live 1.72 made a pet's stun give the target an immunity five times the stun's length. The code already supports this:
+`StunSpellHandler.OnEffectExpires` (`spells/CCSpellHandler.cs`) returns `Spell.Duration × Spell.ResurrectHealth` as the
+immunity when the spell's `ResurrectHealth` is above 0, with a comment that pet stun immunity is 5× the duration. Only
+when `ResurrectHealth` is 0 does the base handler give 0 s for an effect named "Pet Stun". So today's behaviour depends
+on the pet stun spells' rows in the database, which is not in the repo. (Corrected after review on PR #204.)
 
-| Realm | Classes affected | Effect if turned on |
+The public OpenDAoC database (`opendaoc-db-core/spell.sql`, master, read 2026-11-23) has 45 stun rows and none has
+`ResurrectHealth` above 0; the spell named "Pet Stun" (ID 2165, 4 s) has 0. With that stock data the 5× path never
+runs and pet stuns give 0 s immunity, which matches the side finding from PR #156. Jay's shipped database was not read
+and could differ, and which spell each pet template casts was not traced.
+
+Next step: confirm the same rows in Jay's shipped database, read only. If `ResurrectHealth` is already 5, nothing is needed.
+If it is 0, the live rule is one spell-data value per spell (`ResurrectHealth` = 5), not new code; that is still a data
+change and needs Jay's OK. If Jay wants it tied to an era, the era table could set the value.
+
+| Realm | Classes affected | Effect if the value is 5 |
 |---|---|---|
 | Albion | Cabalist (Amber Simulacrum) | Pet stun can't chain on one target |
 | Midgard | Spiritmaster (Spirit Thrall line) | Same |
 | Hibernia | Druid (Nature Spirit line) | Same |
 
-Even across realms: one class each. Fits "every era is a switch": off for Classic/SI (today's behaviour), on from 1.72.
+Even across realms: one class each.
 
 ### R3. Spell interrupt window (Confirmed)
 
@@ -334,7 +349,7 @@ works. Candidates, grouped by kind:
 | Patch | Rule | Already a setting? | Source |
 |---|---|---|---|
 | *1.68* | Spell interrupt 2 s | Yes, `spell_interrupt_duration` | CH-1.68 |
-| *1.72* | Pet stun immunity 5× | No | CH-1.72 |
+| *1.72* | Pet stun immunity 5× | Partly: per-spell `ResurrectHealth` in the DB (not read) | CH-1.72, CODE |
 | *1.101* | Cure Nearsight also cures silence; Druid Nature DoT to baseline | No (spell data) | EDN-W |
 | *1.104* | Assassin poison rework | No (spell data) | CH-1.104, EDN-W |
 | *1.107* / *1.111* | Charge for Savage, then Reaver | No | EDN-W |
@@ -367,6 +382,7 @@ None of these is proposed now.
   Phoenix items rely on the PvP doc's earlier read. A PDF of the Wayback page would let someone confirm the factor-21
   hybrid change and the Thane nuke change, both still Unsure.
 - **Intercept order** in our code was not traced.
+- **Pet stun immunity** depends on the pet stun spells' `ResurrectHealth` in the database (R2).
 - **Eden RvR system pages** (realm skill-point cap, loyalty, timer, renegades) need a Discord login; the PvP doc used
   the public staff posts instead.
 - **Nothing here is in-game verified.** It is all tests-only desk research.
