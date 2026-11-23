@@ -95,6 +95,13 @@ namespace DOL.UnitTests
             public override bool IsCasting => false;
             public override bool InCombat => false;
             public override byte Level => 50;
+            // A twisting bot reads its group's health, power and endurance (issue #32).
+            public override int Health { get => 100; set { } }
+            public override int MaxHealth => 100;
+            public override int Mana { get => 100; set { } }
+            public override int MaxMana => 100;
+            public override int Endurance { get => 100; set { } }
+            public override int MaxEndurance => 100;
             public override int X => PositionX;
             public override int Y => 0;
             public override int Z => 0;
@@ -1056,8 +1063,8 @@ namespace DOL.UnitTests
             source.Start();
             bot.effectListComponent.BeginTick();
             // The brain has cast a chant before, so the hold and the moving rule apply.
-            Field(typeof(BotBrain), bot.Brain, "_lastTankChantId", endurance.ID);
-            Field(typeof(BotBrain), bot.Brain, "_lastTankChantTick", -60_000L);
+            var memory = new TwistMemory { LastCastId = endurance.ID, LastCastTick = -60_000L };
+            Field(typeof(BotBrain), bot.Brain, "_twistMemory", memory);
             typeof(BotBrain).GetMethod("TryMaintainTankChant", Hidden).Invoke(bot.Brain, null);
             Assert.That(bot.LastRequested, Is.Null, "a moving Paladin keeps the chant it has");
             bot.Moving = false;
