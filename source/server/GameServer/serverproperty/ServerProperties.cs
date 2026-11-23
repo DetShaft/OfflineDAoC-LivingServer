@@ -2499,8 +2499,8 @@ namespace DOL.GS.ServerProperties
 		/// <summary>
 		/// Issue #32: the least time between two twist casts for each tier above Novice.
 		/// </summary>
-		[ServerProperty("bots", "twist_gap_seconds", "Issue #32: three numbers of seconds, such as 6,3,0: the least time between two twist casts (a secondary chant or song) for Practiced, Skilled and Expert bots (see twist_tier_levels). The return to the anchor does not count. The songs' own reuse timers always apply.", "6,3,0")]
-		public static string BOT_TWIST_GAP_SECONDS = "6,3,0";
+		[ServerProperty("bots", "twist_gap_seconds", "Issue #32: three numbers of seconds, such as 6,3,1: the least time between two twist casts (a secondary chant or song) for Practiced, Skilled and Expert bots (see twist_tier_levels). The return to the anchor does not count. The songs' own reuse timers always apply.", "6,3,1")]
+		public static string BOT_TWIST_GAP_SECONDS = "6,3,1";
 
 		/// <summary>
 		/// Issue #32: log the chants and songs cast by bots grouped with a player.

@@ -81,6 +81,13 @@ namespace DOL.UnitTests
         }
 
         [Test]
+        public void SongsTheGroupHardlyNeedsAreNeverTwistedIn()
+        {
+            TwistSong[] songs = { S(Anchor, 90), S(Second, BotTwistPlanner.MinTwistScore - 1, remaining: 0) };
+            Assert.That(Plan(TwistTier.Expert, Held(), Anchor, songs: songs).Why, Is.EqualTo("steady"));
+        }
+
+        [Test]
         public void OnlySkilledAndExpertTwistWhileMoving()
         {
             TwistSong[] songs = { S(Anchor, 90), S(Second, 50, remaining: 0) };

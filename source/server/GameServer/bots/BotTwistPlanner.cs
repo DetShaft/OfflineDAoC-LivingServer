@@ -31,7 +31,7 @@ namespace DOL.GS
 
     /// <summary>
     /// A chant or song the bot can cast now. Priority orders them (highest first; the caller's anchor rule may put its
-    /// anchor first with int.MaxValue); 0 means not useful now, so it is never a secondary. CooldownMilliseconds is the
+    /// anchor first with int.MaxValue); below <see cref="MinTwistScore"/> it is never a secondary. CooldownMilliseconds is the
     /// remaining reuse; RemainingMilliseconds is the shortest life left on the song's child effect in the group.
     /// </summary>
     public readonly record struct TwistSong(
@@ -74,7 +74,7 @@ namespace DOL.GS
         public static readonly int[] DefaultTierLevels = { 15, 30, 40 };
 
         /// <summary>Default seconds between two twist casts for Practiced, Skilled and Expert.</summary>
-        public static readonly int[] DefaultGapSeconds = { 6, 3, 0 };
+        public static readonly int[] DefaultGapSeconds = { 6, 3, 1 };
 
         public static TwistTier TierFor(int level, IReadOnlyList<int> tierLevels = null)
         {
@@ -102,6 +102,13 @@ namespace DOL.GS
                     return fallback;
             return values;
         }
+
+        /// <summary>
+        /// The least need score a secondary must have to be worth a twist. Out of a fight a Paladin's damage add or
+        /// armor chant scores 3: the bot keeps them as an anchor fallback but never twists them in (sim, 2026-11-23:
+        /// without this an Expert Paladin twisted 33 times a minute, 7 casts in 5 s).
+        /// </summary>
+        public const int MinTwistScore = 15;
 
         /// <summary>How many secondaries a tier twists with its anchor.</summary>
         public static int MaxSecondaries(TwistTier tier) => tier switch
@@ -254,7 +261,7 @@ namespace DOL.GS
             if (anchorSong.CooldownMilliseconds > 0)
                 return TwistDecision.None("anchor-reuse", anchorSong.Id);
 
-            foreach (TwistSong secondary in ordered.Where(song => song.Id != anchorSong.Id && song.Priority > 0).Take(secondaries))
+            foreach (TwistSong secondary in ordered.Where(song => song.Id != anchorSong.Id && song.Priority >= MinTwistScore).Take(secondaries))
             {
                 if (secondary.CooldownMilliseconds > 0)
                     continue;

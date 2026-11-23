@@ -391,10 +391,12 @@ namespace DOL.UnitTests.BotSim
                     if (heal != null && isLive)
                         Add($"Level 45 {cls}: heal chant or song up when a groupmate is under 60% at least as much as before", heal >= beforeHeal - 0.001,
                             $"{P(heal)} (before {P(beforeHeal)})");
-                    double expertNeeds = Needs.Select(nd => MeanShare(expert, nd)).Where(v => v != null).DefaultIfEmpty(0).Average(v => v.Value);
-                    double noviceNeeds = Needs.Select(nd => MeanShare(novice, nd)).Where(v => v != null).DefaultIfEmpty(0).Average(v => v.Value);
+                    // Only the needs both levels have a song for: a level 45 bot's extra songs (resists) must not count against it.
+                    string[] shared = Needs.Where(nd => MeanShare(expert, nd) != null && MeanShare(novice, nd) != null).ToArray();
+                    double expertNeeds = shared.Select(nd => MeanShare(expert, nd).Value).DefaultIfEmpty(0).Average();
+                    double noviceNeeds = shared.Select(nd => MeanShare(novice, nd).Value).DefaultIfEmpty(0).Average();
                     if (isLive)
-                        Add($"{cls}: level 45 covers its group's needs at least as well as level 10 (a learning curve)", expertNeeds >= noviceNeeds - 0.001,
+                        Add($"{cls}: level 45 covers its group's needs at least as well as level 10 (a learning curve; needs both levels have a song for)", expertNeeds >= noviceNeeds - 0.001,
                             $"{P(expertNeeds)} vs {P(noviceNeeds)}");
                 }
             }
