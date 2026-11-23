@@ -1,3 +1,4 @@
+#nullable enable
 using System.Data.SQLite;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -79,7 +80,7 @@ public class CharacterBuilderTests
 
     [Test] public void EveryRosterClassHasRulesAndRaces()
     {
-        Assert.That(CharacterBuilder.Classes.Count, Is.EqualTo(41));
+        Assert.That(CharacterBuilder.Classes.Count, Is.EqualTo(40), "14 Albion, 12 Midgard and 14 Hibernian classes, the Sluaghbinder included");
         foreach (BuilderClass cls in CharacterBuilder.Classes)
         {
             Assert.That(cls.Races, Is.Not.Empty, cls.Name);
