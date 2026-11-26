@@ -16,6 +16,13 @@ namespace DOL.UnitTests
         }
 
         [Test]
+        public void DarknessFallsCampsGetAFire()
+        {
+            Assert.That(BotCampfire.Wanted(dungeonCamp: true, regionIsDungeon: true, regionId: 249), Is.True, "#180: DF is an RvR zone");
+            Assert.That(BotCampfire.Wanted(dungeonCamp: true, regionIsDungeon: true, regionId: 50), Is.False, "other dungeons stay dark");
+        }
+
+        [Test]
         public void BurnsThroughTheRestAndAMinuteMore()
         {
             Assert.That(BotCampfire.BurnMilliseconds, Is.EqualTo(CampAnchorPolicy.HoldMilliseconds + 60_000));

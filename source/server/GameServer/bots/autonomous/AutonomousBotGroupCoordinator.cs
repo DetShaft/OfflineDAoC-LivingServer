@@ -1322,7 +1322,7 @@ public static partial class AutonomousBotGroupCoordinator
         session.AnchoredCampId = session.Camp.Id;
         session.AnchorUntilTick = CampAnchorPolicy.OpenUntil(now);
         SharedCamp camp = session.Camp;
-        if (BotCampfire.Wanted(camp.IsDungeon, WorldMgr.GetRegion(camp.RegionId)?.IsDungeon == true))
+        if (BotCampfire.Wanted(camp.IsDungeon, WorldMgr.GetRegion(camp.RegionId)?.IsDungeon == true, camp.RegionId))
         {
             try
             {
