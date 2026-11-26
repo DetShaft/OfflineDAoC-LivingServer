@@ -6,7 +6,8 @@ namespace DOL.GS
     /// A campfire a resting bot party lights at its camp (#56, idea 1). It is the client's own stock campfire
     /// (objects.csv model 2656 "Campfire", the one the world's WorldObject rows already use, so both clients draw it);
     /// nothing is added to the client. It burns while the party rests and a little after, then goes out by itself.
-    /// The party's spread spots (GroupFormation) stand around it. Outdoors only: dungeons get no fire.
+    /// The party's spread spots (GroupFormation) stand around it. Outdoors only: dungeons get no fire,
+    /// except Darkness Falls, which counts as an RvR zone (#180).
     /// </summary>
     public sealed class BotCampfire : GameStaticItem
     {
@@ -19,8 +20,9 @@ namespace DOL.GS
 
         private BotCampfire() { }
 
-        /// <summary>Whether a party's camp gets a fire: an outdoor camp only.</summary>
-        public static bool Wanted(bool dungeonCamp, bool regionIsDungeon) => !dungeonCamp && !regionIsDungeon;
+        /// <summary>Whether a party's camp gets a fire: an outdoor camp, or any camp in Darkness Falls (an RvR zone, #180).</summary>
+        public static bool Wanted(bool dungeonCamp, bool regionIsDungeon, ushort regionId = 0) =>
+            regionId == AutonomousDarknessFallsPolicy.RegionId || (!dungeonCamp && !regionIsDungeon);
 
         /// <summary>Lights a fire at the spot, or keeps the given one burning longer when it still burns there.</summary>
         public static BotCampfire LightOrRekindle(BotCampfire current, ushort regionId, int x, int y, int z, ushort heading)
